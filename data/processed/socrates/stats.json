@@ -1,0 +1,229 @@
+{
+  "turns": 15965,
+  "sft_examples": 3297,
+  "passages": 1453,
+  "works": {
+    "euthyphro": {
+      "turns": 232,
+      "socrates_turns": 116,
+      "socrates_words": 4958,
+      "total_words": 6511,
+      "attribution": {
+        "explicit": 232
+      }
+    },
+    "apology": {
+      "turns": 75,
+      "socrates_turns": 75,
+      "socrates_words": 11328,
+      "total_words": 11328,
+      "attribution": {
+        "explicit": 75
+      }
+    },
+    "crito": {
+      "turns": 95,
+      "socrates_turns": 48,
+      "socrates_words": 4137,
+      "total_words": 5232,
+      "attribution": {
+        "explicit": 95
+      }
+    },
+    "phaedo": {
+      "turns": 626,
+      "socrates_turns": 0,
+      "socrates_words": 0,
+      "total_words": 27125,
+      "attribution": {
+        "explicit": 34,
+        "narration": 592
+      }
+    },
+    "charmides": {
+      "turns": 361,
+      "socrates_turns": 181,
+      "socrates_words": 7634,
+      "total_words": 10277,
+      "attribution": {
+        "inferred": 210,
+        "tagged": 151
+      },
+      "tag_vs_alternation_agreement": 0.921
+    },
+    "laches": {
+      "turns": 254,
+      "socrates_turns": 108,
+      "socrates_words": 4422,
+      "total_words": 9969,
+      "attribution": {
+        "explicit": 254
+      }
+    },
+    "lysis": {
+      "turns": 388,
+      "socrates_turns": 193,
+      "socrates_words": 7160,
+      "total_words": 8901,
+      "attribution": {
+        "inferred": 277,
+        "tagged": 111
+      },
+      "tag_vs_alternation_agreement": 0.928
+    },
+    "euthydemus": {
+      "turns": 624,
+      "socrates_turns": 291,
+      "socrates_words": 9725,
+      "total_words": 15040,
+      "attribution": {
+        "explicit": 64,
+        "tagged": 280,
+        "inferred": 280
+      },
+      "tag_vs_alternation_agreement": 0.8
+    },
+    "protagoras": {
+      "turns": 442,
+      "socrates_turns": 221,
+      "socrates_words": 14852,
+      "total_words": 22447,
+      "attribution": {
+        "explicit": 22,
+        "inferred": 236,
+        "tagged": 184
+      },
+      "tag_vs_alternation_agreement": 0.94
+    },
+    "gorgias": {
+      "turns": 1082,
+      "socrates_turns": 527,
+      "socrates_words": 27213,
+      "total_words": 34592,
+      "attribution": {
+        "explicit": 1082
+      }
+    },
+    "meno": {
+      "turns": 568,
+      "socrates_turns": 284,
+      "socrates_words": 10046,
+      "total_words": 12146,
+      "attribution": {
+        "explicit": 568
+      }
+    },
+    "ion": {
+      "turns": 171,
+      "socrates_turns": 86,
+      "socrates_words": 4068,
+      "total_words": 4964,
+      "attribution": {
+        "explicit": 171
+      }
+    },
+    "cratylus": {
+      "turns": 771,
+      "socrates_turns": 383,
+      "socrates_words": 19819,
+      "total_words": 23026,
+      "attribution": {
+        "explicit": 771
+      }
+    },
+    "symposium": {
+      "turns": 169,
+      "socrates_turns": 0,
+      "socrates_words": 0,
+      "total_words": 21987,
+      "attribution": {
+        "narration": 165,
+        "explicit": 4
+      }
+    },
+    "republic": {
+      "turns": 4255,
+      "socrates_turns": 2122,
+      "socrates_words": 93837,
+      "total_words": 115507,
+      "attribution": {
+        "inferred": 3031,
+        "tagged": 1224
+      },
+      "tag_vs_alternation_agreement": 0.963
+    },
+    "phaedrus": {
+      "turns": 371,
+      "socrates_turns": 186,
+      "socrates_words": 18475,
+      "total_words": 22526,
+      "attribution": {
+        "explicit": 371
+      }
+    },
+    "theaetetus": {
+      "turns": 1022,
+      "socrates_turns": 498,
+      "socrates_words": 24891,
+      "total_words": 30115,
+      "attribution": {
+        "narration": 1,
+        "explicit": 1021
+      }
+    },
+    "philebus": {
+      "turns": 1144,
+      "socrates_turns": 569,
+      "socrates_words": 17870,
+      "total_words": 22138,
+      "attribution": {
+        "explicit": 1144
+      }
+    },
+    "parmenides": {
+      "turns": 1207,
+      "socrates_turns": 0,
+      "socrates_words": 0,
+      "total_words": 18813,
+      "attribution": {
+        "narration": 1207
+      }
+    },
+    "timaeus": {
+      "turns": 41,
+      "socrates_turns": 19,
+      "socrates_words": 1388,
+      "total_words": 32255,
+      "attribution": {
+        "explicit": 41
+      }
+    },
+    "critias": {
+      "turns": 5,
+      "socrates_turns": 1,
+      "socrates_words": 128,
+      "total_words": 6727,
+      "attribution": {
+        "explicit": 5
+      }
+    },
+    "sophist": {
+      "turns": 1170,
+      "socrates_turns": 7,
+      "socrates_words": 375,
+      "total_words": 20817,
+      "attribution": {
+        "explicit": 1170
+      }
+    },
+    "statesman": {
+      "turns": 892,
+      "socrates_turns": 4,
+      "socrates_words": 161,
+      "total_words": 22031,
+      "attribution": {
+        "explicit": 892
+      }
+    }
+  }
+}
