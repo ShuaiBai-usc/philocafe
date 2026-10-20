@@ -25,6 +25,7 @@ class SafetyConfig:
     jev_timeout_s: float = 2.0
     history_turns: int = 4
     fallback_model: str = "claude-haiku-5-5"
+    fallback_timeout_s: float = 5.0
 
 
 @dataclass(frozen=True)

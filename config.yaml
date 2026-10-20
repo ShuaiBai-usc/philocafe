@@ -9,6 +9,7 @@ safety:
   jev_timeout_s: 2.0
   history_turns: 4          # previous turns sent to Jev as state
   fallback_model: claude-haiku-5-5
+  fallback_timeout_s: 5.0
 
 persona:
   default: socrates

@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, Protocol, TypedDict
 
 from langchain_core.messages import AnyMessage
 
-from app.config import Config
+from app.config import Config, load_config
 from app.retrieval import Chunk
+from app.safety.log import DecisionLog
 
 
 class SafetyScores(TypedDict):
@@ -35,9 +36,22 @@ class Deps:
     retrieve: Retrieve
     generate: Generate
     resources: Sequence[dict] = ()         # crisis resources for the exit flow: {name, contact}
+    decision_log: DecisionLog = field(default_factory=DecisionLog)
 
 
-def default_deps() -> Deps:
-    """Deps wired to the real services."""
-    raise NotImplementedError("the Jev, fallback and voice clients land with the safety and persona steps; "
-                              "use --fake until then")
+def default_deps(config: Config | None = None) -> Deps:
+    """Deps wired to the real services. Opens the corpus database at once, so a
+    missing database or sqlite-vec fails here rather than on the first turn."""
+    from app import retrieval
+    from app.exit import load_resources
+    from app.safety.fallback import FallbackModel
+    from app.safety.jev import JevModel
+    from app.voice import ClaudeVoice
+
+    config = config or load_config()
+    retrieval.open_db()
+    return Deps(config=config,
+                safety_models=[JevModel(config.safety), FallbackModel(config.safety)],
+                retrieve=retrieval.retrieve,
+                generate=ClaudeVoice(config.voice_model),
+                resources=load_resources())

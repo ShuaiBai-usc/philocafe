@@ -7,11 +7,17 @@ the team to review; the resource list comes from the UI/UX teammates.
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import yaml
 from langchain_core.messages import AIMessage
 
+from app.config import ROOT
 from app.deps import Deps
 from app.events import emit
 from app.state import TurnState
+
+RESOURCES_PATH = ROOT / "data" / "resources.yaml"
 
 HANDOVER = (
     "It sounds like you are carrying something very heavy right now, and I'm glad you said it. "
@@ -22,6 +28,11 @@ STILL_HERE = (
     "I'm still here with you, and the philosopher will stay aside for now. "
     "If you might be in danger, please reach out to one of the people below right now."
 )
+
+
+def load_resources(path: Path = RESOURCES_PATH) -> list[dict]:
+    resources = yaml.safe_load(path.read_text(encoding="utf-8")) or []
+    return [{"name": r["name"], "contact": r["contact"]} for r in resources]
 
 
 def exit_node(state: TurnState, deps: Deps) -> dict:
