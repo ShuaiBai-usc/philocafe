@@ -1,0 +1,8 @@
+# Vercel configuration only (ADR-11). Dependencies live in requirements.txt (server)
+# and requirements-dev.txt (tests and the Streamlit debug UI).
+
+[tool.vercel]
+entrypoint = "asgi:app"
+
+[tool.vercel.scripts]
+build = "python deploy/vercel_build.py"

@@ -8,3 +8,7 @@ __pycache__/
 .pytest_cache/
 eval/.cache/
 data/*.db-*
+# Vercel build outputs (deploy/vercel_build.py)
+public/
+.cache/
+.vercel/

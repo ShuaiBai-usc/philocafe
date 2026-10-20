@@ -37,6 +37,7 @@ eval/       evaluation scripts; one row per turn, header logs config, model vers
 ui/         app.py: Streamlit debug UI (midterm); web/: the UI/UX café app (template.html + data.json → index.html),
             served by app/server.py and installable on iPhone as a PWA
 scripts/    corpus pipeline and retrieval (owned by Jiayue)
+deploy/     Vercel build step and deployment notes; asgi.py is the Vercel entrypoint (ADR-11)
 ```
 
 ## Contracts (design doc section 7)
@@ -59,7 +60,7 @@ Modules talk only through these. Changing one means updating the design doc firs
 
 ```bash
 # app environment (Python 3.12; macOS system Python cannot load sqlite-vec)
-uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt
+uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements-dev.txt
 cp .env.example .env          # then fill in the keys
 .venv/bin/python -m pytest    # app tests; no network, no API calls
 .venv/bin/streamlit run ui/app.py             # midterm UI on the real services
@@ -68,6 +69,7 @@ cp .env.example .env          # then fill in the keys
 PHILOCAFE_FAKE=1 .venv/bin/uvicorn --factory app.server:create_app --port 8000 # web app on offline stand-ins
 # --host 0.0.0.0 lets a phone on the same Wi-Fi open it (Safari → Add to Home Screen); demos only
 .venv/bin/python ui/web/tools/build_index.py   # after editing ui/web/template.html or data.json
+.venv/bin/python deploy/vercel_build.py        # the Vercel build step, locally (deploy/README.md, ADR-11)
 
 # eval: one row per turn plus report under eval/results/ (calls cached in eval/.cache/)
 .venv/bin/python eval/run_testset.py --input data/tests/midterm_30.csv
@@ -83,11 +85,12 @@ python3 scripts/socrates_pipeline.py
 .venv/bin/python scripts/build_sqlite.py search --db data/philocafe.db --persona socrates "is virtue teachable"
 ```
 
-Settings live in `config.yaml` (thresholds, models, timeouts); secrets live in `.env`.
+Settings live in `config.yaml` (thresholds, models, timeouts); secrets live in `.env` locally and in Vercel environment variables when deployed. Dependencies: `requirements.txt` is the server runtime (what Vercel installs, keep it lean); `requirements-dev.txt` adds tests and Streamlit.
 
 ## Working rules
 
-- API keys only in `.env` (gitignored), read from environment variables. Never commit keys or print them in logs or the debug panel.
+- API keys only in `.env` (gitignored) or Vercel environment variables, read from the environment. Never commit keys or print them in logs or the debug panel.
+- The deployed demo sits behind `PHILOCAFE_ACCESS_CODE` and keeps conversation checkpoints in Postgres for at most 24 hours (ADR-11, D8).
 - Do not edit files under `scripts/` or `data/processed/`; they belong to the retrieval work. Open an issue for Jiayue instead.
 - Work on a feature branch and merge to `main` through a PR. Do not push to `main` directly.
 - Keep the budget in mind (under $100 for the semester): cache LLM calls in tests and use the cheapest model that works for the fallback.

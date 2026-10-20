@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["sfo1"],
+  "functions": {
+    "asgi.py": {
+      "maxDuration": 60,
+      "includeFiles": "{data/philocafe.db,data/resources.yaml,.cache/fastembed/**,personas/**,config.yaml}",
+      "excludeFiles": "{public/**,ui/**,tests/**,eval/**,docs/**,data/processed/**,data/raw/**,scripts/tests/**,.venv/**,**/*.md}"
+    }
+  },
+  "crons": [{ "path": "/internal/purge", "schedule": "0 10 * * *" }]
+}

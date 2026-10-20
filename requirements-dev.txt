@@ -1,0 +1,4 @@
+# Local development: the server runtime plus tests and the Streamlit debug UI.
+-r requirements.txt
+pytest==9.1.1
+streamlit==1.66.0

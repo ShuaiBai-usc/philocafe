@@ -1,0 +1,11 @@
+# Not uploaded by `vercel deploy` (Git deploys only see committed files anyway).
+.venv/
+.claude/
+data/raw/
+data/*.db
+data/*.db-*
+eval/.cache/
+eval/results/
+.cache/
+public/
+__pycache__/

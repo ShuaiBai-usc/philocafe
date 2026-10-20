@@ -200,6 +200,7 @@ p { margin: 0; }
 .cite a { color: var(--ink); }
 .sysnote .inner p + p { margin-top: 4px; }
 .netnote { text-align: center; }
+.codein { width: 100%; height: 40px; border: 1px solid var(--ink); background: var(--paper); padding: 0 10px; font: 16px var(--f-pixel); color: var(--ink); border-radius: 0; }
 #debugPanel { position: fixed; left: 8px; bottom: 8px; z-index: 50; max-width: 360px; max-height: 45vh; overflow: auto; margin: 0; padding: 8px 10px;
   background: rgba(47,38,28,.92); color: #fffae0; font: 11px/1.45 var(--f-mono); white-space: pre-wrap; }
 
@@ -412,10 +413,16 @@ const DEBUG = /debug/.test(location.hash + location.search);
 const backend = {
   live: false,
   ids: new Set(),
+  // The deployed café asks for an access code (ADR-11); it is kept on this device only.
+  code() { try { return localStorage.getItem("philocafe.code") || ""; } catch { return ""; } },
+  setCode(c) { try { c ? localStorage.setItem("philocafe.code", c) : localStorage.removeItem("philocafe.code"); } catch {} },
+  headers(extra = {}) { const c = this.code(); return c ? { ...extra, "X-Philocafe-Code": c } : extra; },
   async init() {
     try {
-      const r = await fetch("personas", { cache: "no-store" });
+      const r = await fetch("personas", { cache: "no-store", headers: this.headers() });
+      if (r.status === 401) { this.live = false; askCode(this.code() ? "That code didn’t open the café. Please try again." : ""); return; }
       if (!r.ok) throw new Error(r.status);
+      this.ids.clear();
       (await r.json()).filter(p => p.available).forEach(p => this.ids.add(p.id));
       this.live = true;
     } catch { this.live = false; }
@@ -429,15 +436,16 @@ const backend = {
   async thread() {
     const v = this.visit();
     if (v.thread_id) return v.thread_id;
-    const r = await fetch("threads", { method: "POST" });
+    const r = await fetch("threads", { method: "POST", headers: this.headers() });
     const { thread_id } = await r.json();
     this.save({ thread_id, paused: false });
     return thread_id;
   },
   async *turn(text, personaId) {
     const id = await this.thread();
-    const r = await fetch(`threads/${id}/messages`, { method: "POST", headers: { "Content-Type": "application/json" },
+    const r = await fetch(`threads/${id}/messages`, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
                                                     body: JSON.stringify({ text, persona_id: personaId }) });
+    if (r.status === 401) { this.setCode(""); askCode("That code no longer opens the café."); }
     if (!r.ok) {
       let e = { code: String(r.status), message: "request failed" };
       try { e = (await r.json()).error; } catch {}
@@ -463,7 +471,7 @@ const backend = {
     }
   },
   async note() {
-    const r = await fetch(`threads/${this.visit().thread_id}/note`, { method: "POST" });
+    const r = await fetch(`threads/${this.visit().thread_id}/note`, { method: "POST", headers: this.headers() });
     if (!r.ok) throw new Error(r.status);
     return r.json();
   }
@@ -474,6 +482,26 @@ const setMode = () => {
   $("#modeNote").textContent = live ? "Replies: live from the PhiloCafe server, with a safety check on every turn." : "Replies: scripted demo lines (open the page from the PhiloCafe server for live replies).";
 };
 backend.init().then(setMode);
+
+// Entrance popup for the access code, in the same pixel style as the other popups.
+function askCode(message) {
+  if (document.querySelector(".veil.entrance")) return;
+  const veil = el("div", "veil entrance");
+  veil.innerHTML = `<form class="pop card" role="dialog" aria-label="Café entrance">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">Café entrance</div>
+    <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
+      <div>${esc(message || "This café is open to our class. Please enter the access code.")}</div>
+      <input class="codein" type="password" autocomplete="off" aria-label="Access code" required>
+      <div class="btns"><button class="btn go" type="submit">ENTER</button></div></div></form>`;
+  $("form", veil).onsubmit = async e => {
+    e.preventDefault();
+    backend.setCode($(".codein", veil).value.trim());
+    veil.remove();
+    await backend.init(); setMode();
+  };
+  $(".screens").append(veil);
+  $(".codein", veil).focus();
+}
 
 function debugShow(ev) {
   let pre = $("#debugPanel");

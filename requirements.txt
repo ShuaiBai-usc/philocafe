@@ -1,12 +1,15 @@
-# App dependencies (Python 3.12). The corpus pipeline needs only the standard library.
+# Server runtime (Python 3.12): what Vercel installs and what app/server.py needs.
+# Development extras (tests, Streamlit debug UI) are in requirements-dev.txt.
 anthropic==1.15.0
+fastapi==0.156.2
 fastembed==0.9.0
 httpx==0.28.1
 langgraph==1.2.16
-pytest==9.1.1
+langgraph-checkpoint-postgres==3.2.0
+psycopg[binary]==3.3.6
+psycopg-pool==3.3.3
 python-dotenv==1.2.4
 pyyaml==6.0.3
 sqlite-vec==0.1.9
 starlette==1.9.0
-streamlit==1.66.0
 uvicorn==0.54.0
