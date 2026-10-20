@@ -10,7 +10,8 @@ in Postgres so a thread, and its support mode, survives across function instance
    repository root; Vercel detects the FastAPI app and runs `deploy/vercel_build.py` as the build step.
 2. **Add Postgres**: Storage, then Neon (Marketplace). Pick a region near `sfo1` (for example AWS
    us-west-2). The integration sets `DATABASE_URL`; the server creates its tables on first start.
-3. **Set environment variables** (Settings, then Environment Variables; never in the repo or the chat):
+3. **Set environment variables** (Settings, then Environment Variables; never in the repo or the chat).
+   `.env.example` lists the same names for local runs, where the deployment ones stay empty:
 
    | Name | Value |
    |---|---|

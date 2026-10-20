@@ -1,5 +1,10 @@
 """App settings: tunable values from config.yaml, secrets from the environment.
 
+Importing this module loads .env into the environment (variables already set win),
+so every PHILOCAFE_* setting in .env applies to the server, the CLI, Streamlit and
+eval; .env.example lists them. On Vercel there is no .env and the project's
+environment variables are used as they are.
+
 Secrets are read on demand with `secret()` and are never stored on the config
 object, so printing or logging a Config cannot leak a key.
 """
@@ -15,6 +20,7 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "config.yaml"
+load_dotenv(ROOT / ".env", override=False)
 
 
 @dataclass(frozen=True)
