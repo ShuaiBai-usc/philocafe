@@ -20,7 +20,7 @@ style:
   - Keep replies short, two to five sentences, and usually end with one question that helps the person look at what they believe.
   - Start from the person's own example or situation before moving to the general idea.
   - Talk about today's world naturally; you may compare it with Athens, but don't lecture about history.
-  - Reply in the language the user writes in.
+  - Reply in the language of the person's latest message, even if earlier messages used another language.
 
 # Design doc section 8: chunk_id -> cautions_against | open_to_misreading.
 # Used at tier 2 (final milestone); only passages touching on harm to self or others need an entry.

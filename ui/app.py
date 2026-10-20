@@ -57,10 +57,14 @@ def speaker_label(msg: dict, personas) -> str:
 def render_extras(msg: dict) -> None:
     if msg.get("resources"):
         st.markdown("\n".join(f"- **{r['name']}**: {r['contact']}" for r in msg["resources"]))
-    for c in msg.get("citations", []):
+    for n, c in enumerate(msg.get("citations", []), start=1):
         where = f"{c['work']}, {c['section']}" if c.get("section") else c["work"]
-        with st.expander(f"📜 {where} · Plato, tr. Jowett"):
-            st.markdown(md(c.get("text", "")).replace("\n", "  \n"))
+        with st.container(border=True):
+            st.markdown(f"📜 **[{n}] {where}** · Plato, tr. Jowett")
+            for quote in c.get("quoted", []):
+                st.markdown(f"> {md(quote)}")      # the English original that was checked
+            with st.expander("Full passage"):
+                st.markdown(md(c.get("text", "")).replace("\n", "  \n"))
             st.caption(f"[Read it in the source]({c['source_url']}) · `{c['chunk_id']}`")
 
 
@@ -95,7 +99,10 @@ def run(graph, deps, text: str, persona_id: str) -> None:
             reply["text"] += data["text"]
             placeholder.markdown(md(reply["text"]) + "▌")
         elif kind == "citation":
+            # The event follows its verified quote, so the marker lands right after it (display only).
             reply["citations"].append(dict(data))
+            reply["text"] += f" [{len(reply['citations'])}]"
+            placeholder.markdown(md(reply["text"]) + "▌")
         elif kind == "exit":
             reply["resources"] = data["resources"]
         elif kind in ("safety", "trace", "error"):
@@ -106,9 +113,12 @@ def run(graph, deps, text: str, persona_id: str) -> None:
     debug["mode"] = state.get("mode", "persona")
     records = deps.decision_log.for_thread(thread_id)
     debug["safety_errors"] = list(records[-1].errors) if records else []
+    debug["user_text"], debug["retrieval_query"] = text, state.get("retrieval_query", "")
     passages = {c["chunk_id"]: c for c in debug["retrieved"]}
+    verified = [q for q in state.get("quotes", []) if q["ok"] and q["reason"] == "verified"]
     for c in reply["citations"]:
         c["text"] = passages.get(c["chunk_id"], {}).get("text", "")
+        c["quoted"] = [q["text"] for q in verified if q["chunk_id"] == c["chunk_id"]]
     st.session_state.debug = debug
 
     if container is not None:
@@ -138,6 +148,9 @@ def render_debug(debug: dict | None) -> None:
             st.sidebar.caption(f"failed first: {err}")
     route = "exit flow" if debug["mode"] == "support" else "socrates (fixed at the midterm)"
     st.sidebar.markdown(f"Route: {route}")
+    query = debug.get("retrieval_query")
+    if query and query != debug.get("user_text"):
+        st.sidebar.markdown(f"Searched for (translated): “{md(query)}”")
 
     if debug["retrieved"]:
         st.sidebar.markdown("Retrieved passages\n" + "\n".join(

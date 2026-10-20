@@ -100,3 +100,55 @@ def test_bad_tier2_mark_is_rejected(tmp_path):
     path.write_text("id: x\nname: X\nprompt: hi\ntier2_passages:\n  x-1: dangerous\n")
     with pytest.raises(ValueError):
         load_persona(path)
+
+
+class RecordingTranslate:
+    def __init__(self, result="is virtue teachable", fail=False):
+        self.result, self.fail, self.calls = result, fail, []
+
+    def __call__(self, text):
+        self.calls.append(text)
+        if self.fail:
+            raise RuntimeError("translation down")
+        return self.result
+
+
+def test_chinese_question_is_translated_before_retrieval():
+    retrieve, translate = RecordingRetrieve(), RecordingTranslate()
+    events, state = turn(fake_deps(retrieve=retrieve, translate=translate), text="美德可以教吗？")
+    assert translate.calls == ["美德可以教吗？"]
+    assert retrieve.calls[0]["query"] == "is virtue teachable"
+    assert state["retrieval_query"] == "is virtue teachable"
+    assert state["messages"][-2].content == "美德可以教吗？"     # the persona still sees the user's words
+
+
+def test_english_question_is_not_translated():
+    translate = RecordingTranslate()
+    _, state = turn(fake_deps(translate=translate))
+    assert translate.calls == [] and state["retrieval_query"] == "is virtue teachable"
+
+
+def test_failed_translation_searches_the_original_words():
+    retrieve = RecordingRetrieve()
+    events, state = turn(fake_deps(retrieve=retrieve, translate=RecordingTranslate(fail=True)), text="美德可以教吗？")
+    assert retrieve.calls[0]["query"] == "美德可以教吗？"
+    assert events[-1]["type"] == "done"
+
+
+@pytest.mark.parametrize("text, expected", [("美德可以教吗？", True), ("is virtue teachable?", False),
+                                            ("Добродетель можно научить?", True), ("¿Se puede enseñar?", False),
+                                            ("42?", False)])
+def test_needs_translation(text, expected):
+    from app.translate import needs_translation
+    assert needs_translation(text) is expected
+
+
+def test_quoting_rules_explain_translated_quotes():
+    assert 'src="exact English words"' in QUOTING_RULES
+
+
+def test_leaked_notes_are_not_shown():
+    voice = FakeVoice(["<reasoning>plan the reply", "</reasoning>", "Tell me more."])
+    events, state = turn(fake_deps(generate=voice))
+    assert state["reply"] == "Tell me more."
+    assert "reasoning" not in "".join(e["data"].get("text", "") for e in events if e["type"] == "token")

@@ -12,6 +12,6 @@ _SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-from retrieval import Chunk, corpus_version, open_db, retrieve  # noqa: E402
+from retrieval import Chunk, corpus_version, default_min_score, open_db, retrieve  # noqa: E402
 
-__all__ = ["Chunk", "corpus_version", "open_db", "retrieve"]
+__all__ = ["Chunk", "corpus_version", "default_min_score", "open_db", "retrieve"]

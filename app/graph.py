@@ -63,7 +63,7 @@ def run_turn(graph, thread_id: str, text: str, persona_id: str) -> Iterator[Even
     config = {"configurable": {"thread_id": thread_id}}
     # Per-turn fields are reset here; messages and mode carry over in the checkpoint.
     turn = {"thread_id": thread_id, "persona_id": persona_id, "messages": [HumanMessage(text)],
-            "trace": [], "retrieved": [], "reply": "", "citations": [], "quotes": []}
+            "trace": [], "retrieved": [], "reply": "", "citations": [], "quotes": [], "retrieval_query": ""}
     try:
         yield from graph.stream(turn, config, stream_mode="custom")
         state = graph.get_state(config).values
