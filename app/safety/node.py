@@ -22,7 +22,7 @@ from app.state import SafetyDecision, TurnState
 log = logging.getLogger(__name__)
 
 FAIL_CLOSED = SafetyScores(tier_probs={0: 0.0, 1: 0.0, 2: 0.0, 3: 1.0}, needs_retrieval=False,
-                           model_version="fail-closed")
+                           wants_persona_back=False, model_version="fail-closed")
 
 
 def decide(tier_probs: dict[int, float], cfg: SafetyConfig) -> tuple[int, float, float]:
@@ -64,8 +64,12 @@ def safety_node(state: TurnState, deps: Deps) -> dict:
         scores, source = FAIL_CLOSED, "fallback"
 
     tier, probability, threshold = decide(scores["tier_probs"], cfg)
+    # FR-32: in support mode, `route` names the persona the user asked to have back.
+    # Whether risk has dropped enough is the graph's edge rule (route_after_safety).
+    asked_back = state.get("mode") == "support" and scores.get("wants_persona_back", False)
     decision = SafetyDecision(tier=tier, tier_probs=scores["tier_probs"],
-                              needs_retrieval=scores["needs_retrieval"], route=None,
+                              needs_retrieval=scores["needs_retrieval"],
+                              route=state["persona_id"] if asked_back else None,
                               source=source, model_version=scores["model_version"])
     turn = sum(isinstance(m, HumanMessage) for m in state["messages"])
     deps.decision_log.record(DecisionRecord(

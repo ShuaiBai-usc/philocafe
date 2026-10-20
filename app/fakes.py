@@ -2,7 +2,7 @@
 runs (python -m app.cli --fake). They make no network calls.
 
 A message containing TEST_TIER2 or TEST_TIER3 gets that tier; anything else
-is tier 0. Test data stays synthetic: these markers, not realistic text.
+is tier 0. TEST_COME_BACK asks for the persona back (FR-32). Test data stays synthetic: these markers, not realistic text.
 """
 
 from __future__ import annotations
@@ -47,7 +47,8 @@ class FakeSafetyModel:
             probs = {0: 0.10, 1: 0.20, 2: 0.60, 3: 0.10}
         else:
             probs = {0: 0.97, 1: 0.01, 2: 0.01, 3: 0.01}
-        return SafetyScores(tier_probs=probs, needs_retrieval=self.needs_retrieval, model_version=f"fake-{self.source}")
+        return SafetyScores(tier_probs=probs, needs_retrieval=self.needs_retrieval,
+                            wants_persona_back="TEST_COME_BACK" in text, model_version=f"fake-{self.source}")
 
 
 class FakeVoice:
@@ -82,3 +83,8 @@ def fake_deps(**overrides) -> Deps:
                   resources=[{"name": "988 Suicide & Crisis Lifeline (placeholder)", "contact": "Call or text 988"}])
     values.update(overrides)
     return Deps(**values)
+
+
+def fake_distill_note(persona_name: str, messages) -> dict:
+    return {"title": "What makes a person good?", "why": "Come back to it when you judge someone quickly.",
+            "topic": "On being good"}

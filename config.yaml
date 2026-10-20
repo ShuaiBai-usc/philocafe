@@ -15,6 +15,7 @@ persona:
   default: socrates
   voice_model: claude-sonnet-5-5
   voice_effort: low
+  notes_model: claude-haiku-5-5   # "Save thought" notes (FR-07)
 
 retrieval:
   k: 5

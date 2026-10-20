@@ -34,6 +34,7 @@ class Config:
     default_persona: str = "socrates"
     voice_model: str = "claude-sonnet-5-5"
     voice_effort: str = "low"        # conversational replies; keeps the first token fast
+    notes_model: str = "claude-haiku-5-5"   # "Save thought" (FR-07)
     k: int = 5
     min_score: float | None = None   # None: the retrieval default
     translate_model: str = "claude-haiku-5-5"   # for non-English retrieval queries
@@ -49,6 +50,7 @@ def load_config(path: Path = CONFIG_PATH) -> Config:
         default_persona=persona.get("default", Config.default_persona),
         voice_model=persona.get("voice_model", Config.voice_model),
         voice_effort=persona.get("voice_effort", Config.voice_effort),
+        notes_model=persona.get("notes_model", Config.notes_model),
         k=retrieval.get("k", Config.k),
         min_score=retrieval.get("min_score"),
         translate_model=retrieval.get("translate_model", Config.translate_model),

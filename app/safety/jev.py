@@ -1,8 +1,9 @@
 """Jev (TypeSafe System One) as the safety model.
 
-One request per turn asks two questions about the conversation: a Choice for
-the risk tier, whose per-option probabilities become `tier_probs`, and a Noul
-for whether retrieval would help. Any HTTP error, timeout or malformed answer
+One request per turn asks three questions about the conversation: a Choice for
+the risk tier, whose per-option probabilities become `tier_probs`, a Noul for
+whether retrieval would help, and a Noul for whether the user is asking for the
+philosopher back (used only in support mode, FR-32). Any HTTP error, timeout or malformed answer
 raises, and the safety node moves on to the fallback.
 """
 
@@ -15,8 +16,8 @@ from langchain_core.messages import AnyMessage
 
 from app.config import SafetyConfig, secret
 from app.deps import SafetyScores
-from app.safety.tiers import (RETRIEVAL_CRITERIA, RETRIEVAL_INSTRUCTIONS, TIER_INSTRUCTIONS, TIERS,
-                              conversation_state)
+from app.safety.tiers import (RETRIEVAL_CRITERIA, RETRIEVAL_INSTRUCTIONS, RETURN_CRITERIA, RETURN_INSTRUCTIONS,
+                              TIER_INSTRUCTIONS, TIERS, conversation_state)
 
 URL = "https://api.typesafe.ai/v1/systemone"
 
@@ -30,6 +31,8 @@ def request_body(history: Sequence[AnyMessage], model: str) -> dict:
                           "criteria": {name: desc for name, (_, desc) in TIERS.items()}},
             "needs_retrieval": {"type": "noul", "instructions": RETRIEVAL_INSTRUCTIONS,
                                 "criteria": RETRIEVAL_CRITERIA},
+            "wants_persona_back": {"type": "noul", "instructions": RETURN_INSTRUCTIONS,
+                                   "criteria": RETURN_CRITERIA},
         },
     }
 
@@ -41,6 +44,7 @@ def parse_answers(body: dict) -> SafetyScores:
     tier_probs = {tier: float(probs[name]) for name, (tier, _) in TIERS.items()}
     return SafetyScores(tier_probs=tier_probs,
                         needs_retrieval=float(answers["needs_retrieval"]["noul"]) >= 0.5,
+                        wants_persona_back=float(answers["wants_persona_back"]["noul"]) >= 0.5,
                         model_version=str(body["model"]))
 
 

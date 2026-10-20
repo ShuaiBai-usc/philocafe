@@ -31,10 +31,13 @@ def timed(name: str, fn: Callable[[TurnState], dict]) -> Callable[[TurnState], d
 
 
 def route_after_safety(state: TurnState) -> Literal["exit", "moderator"]:
-    # Midterm: support mode lasts for the rest of the thread; the persona's
-    # return when risk has dropped (FR-32) comes at the final.
-    if state["safety"]["tier"] == 3 or state.get("mode") == "support":
+    """Design doc 9.1: exit on tier 3, or in support mode unless the user asked for the
+    persona back (safety's `route`) and risk has dropped to tier 1 or below (FR-32)."""
+    safety = state["safety"]
+    if safety["tier"] == 3:
         return "exit"
+    if state.get("mode") == "support":
+        return "moderator" if safety["route"] and safety["tier"] <= 1 else "exit"
     return "moderator"
 
 

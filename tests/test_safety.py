@@ -21,11 +21,12 @@ CFG = SafetyConfig()
 HISTORY = [HumanMessage("first"), AIMessage("a reply", name="socrates"), HumanMessage("TEST_MESSAGE")]
 
 
-def jev_answer(probs=(0.7, 0.2, 0.08, 0.02), noul=0.8, model="jev-1.13.0"):
+def jev_answer(probs=(0.7, 0.2, 0.08, 0.02), noul=0.8, back=0.1, model="jev-1.13.0"):
     return {"model": model,
             "answers": {"risk_tier": {"type": "choice", "choice": "everyday", "confidence": 0.9,
                                       "probabilities": dict(zip(TIERS, probs))},
-                        "needs_retrieval": {"type": "noul", "noul": noul}},
+                        "needs_retrieval": {"type": "noul", "noul": noul},
+                        "wants_persona_back": {"type": "noul", "noul": back}},
             "usage": {"input_tokens": 300, "output_tokens": 20}}
 
 
@@ -52,7 +53,9 @@ def test_jev_request_and_answer():
     assert body["questions"]["risk_tier"]["type"] == "choice"
     assert list(body["questions"]["risk_tier"]["criteria"]) == list(TIERS)
     assert body["questions"]["needs_retrieval"]["type"] == "noul"
+    assert body["questions"]["wants_persona_back"]["type"] == "noul"
     assert scores == {"tier_probs": {0: 0.7, 1: 0.2, 2: 0.08, 3: 0.02}, "needs_retrieval": True,
+                      "wants_persona_back": False,
                       "model_version": "jev-1.13.0"}
 
 
@@ -97,11 +100,12 @@ def haiku_response(estimate, stop_reason="end_turn"):
 
 
 def test_fallback_normalizes_probabilities():
-    estimate = TierEstimate(everyday=2.0, mild_distress=1.0, elevated=1.0, high_risk=0.0, needs_retrieval=False)
+    estimate = TierEstimate(everyday=2.0, mild_distress=1.0, elevated=1.0, high_risk=0.0, needs_retrieval=False,
+                            wants_persona_back=True)
     client = StubAnthropic(haiku_response(estimate))
     scores = FallbackModel(CFG, client=client).classify(HISTORY)
     assert scores["tier_probs"] == {0: 0.5, 1: 0.25, 2: 0.25, 3: 0.0}
-    assert scores["needs_retrieval"] is False
+    assert scores["needs_retrieval"] is False and scores["wants_persona_back"] is True
     assert scores["model_version"] == "claude-haiku-5-5"
     call = client.calls[0]
     assert call["model"] == CFG.fallback_model
@@ -111,7 +115,8 @@ def test_fallback_normalizes_probabilities():
 
 @pytest.mark.parametrize("response", [
     haiku_response(None, stop_reason="refusal"),
-    haiku_response(TierEstimate(everyday=0, mild_distress=0, elevated=0, high_risk=0, needs_retrieval=True)),
+    haiku_response(TierEstimate(everyday=0, mild_distress=0, elevated=0, high_risk=0, needs_retrieval=True,
+                               wants_persona_back=False)),
 ])
 def test_fallback_without_usable_answer_raises(response):
     with pytest.raises((RuntimeError, ValueError)):

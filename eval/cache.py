@@ -57,7 +57,9 @@ class CachedSafetyModel:
         if hit is not None:
             self.hits += 1
             return SafetyScores(tier_probs={int(t): p for t, p in hit["tier_probs"].items()},
-                                needs_retrieval=hit["needs_retrieval"], model_version=hit["model_version"])
+                                needs_retrieval=hit["needs_retrieval"],
+                                wants_persona_back=hit.get("wants_persona_back", False),
+                                model_version=hit["model_version"])
         scores = self.model.classify(history)
         self.cache.put(key, scores)
         return scores

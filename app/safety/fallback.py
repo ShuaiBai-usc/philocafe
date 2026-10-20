@@ -16,7 +16,8 @@ from pydantic import BaseModel
 
 from app.config import SafetyConfig, secret
 from app.deps import SafetyScores
-from app.safety.tiers import RETRIEVAL_CRITERIA, RETRIEVAL_INSTRUCTIONS, TIER_INSTRUCTIONS, TIERS, conversation_state
+from app.safety.tiers import (RETRIEVAL_CRITERIA, RETRIEVAL_INSTRUCTIONS, RETURN_CRITERIA, RETURN_INSTRUCTIONS,
+                              TIER_INSTRUCTIONS, TIERS, conversation_state)
 
 
 class TierEstimate(BaseModel):
@@ -25,6 +26,7 @@ class TierEstimate(BaseModel):
     elevated: float
     high_risk: float
     needs_retrieval: bool
+    wants_persona_back: bool
 
 
 SYSTEM = "\n".join([
@@ -38,6 +40,10 @@ SYSTEM = "\n".join([
     f"needs_retrieval: {RETRIEVAL_INSTRUCTIONS}",
     f"- true: {RETRIEVAL_CRITERIA['true']}",
     f"- false: {RETRIEVAL_CRITERIA['false']}",
+    "",
+    f"wants_persona_back: {RETURN_INSTRUCTIONS}",
+    f"- true: {RETURN_CRITERIA['true']}",
+    f"- false: {RETURN_CRITERIA['false']}",
 ])
 
 
@@ -77,4 +83,4 @@ class FallbackModel:
         est = response.parsed_output
         probs = normalize({TIERS[name][0]: getattr(est, name) for name in TIERS})
         return SafetyScores(tier_probs=probs, needs_retrieval=est.needs_retrieval,
-                            model_version=response.model)
+                            wants_persona_back=est.wants_persona_back, model_version=response.model)

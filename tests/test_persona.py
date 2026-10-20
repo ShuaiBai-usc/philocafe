@@ -39,7 +39,9 @@ def test_verified_quote_streams_with_citation():
     assert "".join(t["text"] for t in of(events, "token")) == (
         "Well, “can either a young man or an elder one be good”? Tell me.")
     assert of(events, "citation") == [{"chunk_id": CHUNK["chunk_id"], "work": "Meno", "section": "",
-                                       "source_url": CHUNK["source_url"]}]
+                                       "source_url": CHUNK["source_url"],
+                                       "quote": "can either a young man or an elder one be good",
+                                       "passage": CHUNK["text"]}]
     assert state["citations"] == [CHUNK["chunk_id"]]
     assert of(events, "trace")[0]["skipped"] == []
     assert state["messages"][-1].content == state["reply"]

@@ -34,6 +34,10 @@ QUOTING_RULES = """Quoting the dialogues:
 REPLY_RULE = ("Write only what you say to the person. Never include notes to yourself, drafts, reasoning, "
               "or any tags other than <q>.")
 
+REENTRY_NOTE = ("The person stepped away from your conversation for a while to get support, and has now asked "
+                "to continue with you. Welcome them back warmly in a sentence, don't bring up the difficult "
+                "topic unless they do, and follow their lead.")
+
 SHORT_QUERY_WORDS = 6
 
 
@@ -92,10 +96,13 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
                 emit("token", text=value)
                 parts.append(value)
             else:
-                emit("citation", chunk_id=value["chunk_id"], work=value["work"],
-                     section=value["section"], source_url=value["source_url"])
+                # quote and passage are optional 7.2 fields: the checked words and the full passage.
+                emit("citation", chunk_id=value["chunk_id"], work=value["work"], section=value["section"],
+                     source_url=value["source_url"], quote=value["quote"], passage=value["text"])
 
-    messages = [*state["messages"], SystemMessage(passages_note(chunks, wants_passages))]
+    returning = state.get("mode") == "support"      # FR-32: safety let the persona back in
+    notes_for_turn = ([SystemMessage(REENTRY_NOTE)] if returning else []) + [SystemMessage(passages_note(chunks, wants_passages))]
+    messages = [*state["messages"], *notes_for_turn]
     for delta in deps.generate(system_prompt(persona), messages):
         send(quotes.feed(notes.feed(delta)))
     send(quotes.feed(notes.close()))
@@ -105,4 +112,4 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
 
     reply = "".join(parts)
     return {"retrieved": chunks, "reply": reply, "citations": quotes.cited, "quotes": quotes.checks,
-            "retrieval_query": query, "messages": [AIMessage(reply, name=persona.id)]}
+            "retrieval_query": query, "mode": "persona", "messages": [AIMessage(reply, name=persona.id)]}

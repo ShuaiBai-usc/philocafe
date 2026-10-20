@@ -42,7 +42,8 @@ class QuoteCheck(TypedDict):
     reason: str   # verified | not_in_passages | speaker_uncertain | too_short | unclosed | untagged_found | untagged_not_found
 
 
-Output = Union[tuple[Literal["text"], str], tuple[Literal["citation"], Chunk]]
+# A citation carries the chunk plus "quote": the words that passed the check.
+Output = Union[tuple[Literal["text"], str], tuple[Literal["citation"], dict]]
 
 
 def normalize(text: str) -> str:
@@ -164,7 +165,7 @@ class QuoteFilter:
         out: list[Output] = [("text", f"“{shown}”")]
         if check["chunk_id"] not in self.cited:
             self.cited.append(check["chunk_id"])
-            out.append(("citation", self.chunks[check["chunk_id"]]))
+            out.append(("citation", {**self.chunks[check["chunk_id"]], "quote": check["text"]}))
         return out
 
     def _check(self, quote: str, claimed: str | None, closed: bool) -> QuoteCheck:

@@ -115,10 +115,9 @@ def run(graph, deps, text: str, persona_id: str) -> None:
     debug["safety_errors"] = list(records[-1].errors) if records else []
     debug["user_text"], debug["retrieval_query"] = text, state.get("retrieval_query", "")
     passages = {c["chunk_id"]: c for c in debug["retrieved"]}
-    verified = [q for q in state.get("quotes", []) if q["ok"] and q["reason"] == "verified"]
-    for c in reply["citations"]:
-        c["text"] = passages.get(c["chunk_id"], {}).get("text", "")
-        c["quoted"] = [q["text"] for q in verified if q["chunk_id"] == c["chunk_id"]]
+    for c in reply["citations"]:      # quote and passage arrive on the citation event
+        c["text"] = c.get("passage") or passages.get(c["chunk_id"], {}).get("text", "")
+        c["quoted"] = [c["quote"]] if c.get("quote") else []
     st.session_state.debug = debug
 
     if container is not None:
