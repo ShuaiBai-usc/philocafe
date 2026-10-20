@@ -90,7 +90,7 @@ Settings live in `config.yaml` (thresholds, models, timeouts); secrets live in `
 ## Working rules
 
 - API keys only in `.env` (gitignored) or Vercel environment variables, read from the environment. Never commit keys or print them in logs or the debug panel.
-- The deployed demo sits behind `PHILOCAFE_ACCESS_CODE` and keeps conversation checkpoints in Postgres for at most 24 hours (ADR-11, D8).
+- The deployed demo sits behind `PHILOCAFE_ACCESS_CODE` and keeps conversation checkpoints in Postgres for `PHILOCAFE_RETENTION_HOURS`: 168 (7 days) by default for multi-day testing, set to 24 on Vercel on showcase day, 0 = never purge (ADR-11, D8).
 - Do not edit files under `scripts/` or `data/processed/`; they belong to the retrieval work. Open an issue for Jiayue instead.
 - Work on a feature branch and merge to `main` through a PR. Do not push to `main` directly.
 - Keep the budget in mind (under $100 for the semester): cache LLM calls in tests and use the cheapest model that works for the fallback.

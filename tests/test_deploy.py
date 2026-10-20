@@ -91,3 +91,35 @@ def test_turn_state_survives_the_checkpoint_serializer():
            [(type(m).__name__, m.name, m.content) for m in state["messages"]]
     assert back["safety"] == state["safety"]
     assert back["quotes"] == state["quotes"] and back["retrieved"] == state["retrieved"]
+
+
+class PostgresLikeSaver(InMemorySaver):
+    """In-memory checkpoints that the purge treats as the Postgres checkpointer."""
+    conn = None
+
+
+@pytest.mark.parametrize("setting, hours", [(None, 168.0), ("", 168.0), ("24", 24.0)])
+def test_purge_deletes_conversations_older_than_the_retention_window(monkeypatch, setting, hours):
+    asked = []
+    monkeypatch.setattr(server, "stale_threads", lambda saver, h: asked.append(h) or ["old"])
+    saver = PostgresLikeSaver()
+    client = TestClient(create_app(quoting_deps(), checkpointer=saver, access_code=""))
+    client.post("/threads/old/messages", json={"text": "hello"})
+    monkeypatch.setenv("CRON_SECRET", "s3cret")
+    if setting is not None:
+        monkeypatch.setenv("PHILOCAFE_RETENTION_HOURS", setting)
+    r = client.get("/internal/purge", headers={"Authorization": "Bearer s3cret"})
+    assert asked == [hours] and r.json() == {"deleted": 1}
+    assert saver.get_tuple({"configurable": {"thread_id": "old"}}) is None
+
+
+def test_retention_zero_turns_the_purge_off(monkeypatch):
+    monkeypatch.setattr(server, "stale_threads", lambda saver, h: pytest.fail("purge should be off"))
+    saver = PostgresLikeSaver()
+    client = TestClient(create_app(quoting_deps(), checkpointer=saver, access_code=""))
+    client.post("/threads/kept/messages", json={"text": "hello"})
+    monkeypatch.setenv("CRON_SECRET", "s3cret")
+    monkeypatch.setenv("PHILOCAFE_RETENTION_HOURS", "0")
+    r = client.get("/internal/purge", headers={"Authorization": "Bearer s3cret"})
+    assert r.json()["deleted"] == 0 and "off" in r.json()["note"]
+    assert saver.get_tuple({"configurable": {"thread_id": "kept"}}) is not None

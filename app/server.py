@@ -12,7 +12,8 @@ On Vercel (ADR-11) the entrypoint is asgi.py and these environment variables mat
   go to Postgres, so a thread (and its support mode, FR-32) survives across function
   instances. Without one, checkpoints stay in memory, which is right for local runs.
 - CRON_SECRET: guards /internal/purge, which the daily Vercel Cron calls to delete
-  conversations older than PHILOCAFE_RETENTION_HOURS (default 24).
+  conversations older than PHILOCAFE_RETENTION_HOURS: 168 (7 days) by default, set to
+  24 on showcase day; 0 turns the purge off.
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ from app.graph import build_graph, run_turn
 log = logging.getLogger(__name__)
 
 MAX_TEXT = 2000
+DEFAULT_RETENTION_HOURS = 168     # 7 days, for multi-day testing; 24 on showcase day (ADR-11)
 WEB_DIR = ROOT / "ui" / "web"
 CODE_HEADER = "x-philocafe-code"
 mimetypes.add_type("application/manifest+json", ".webmanifest")
@@ -163,9 +165,11 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         secret = os.environ.get("CRON_SECRET", "")
         if not secret or not hmac.compare_digest(request.headers.get("authorization", ""), f"Bearer {secret}"):
             return error(401, "cron_only", "Only the scheduled purge may call this.")
+        hours = float(os.environ.get("PHILOCAFE_RETENTION_HOURS") or DEFAULT_RETENTION_HOURS)
+        if hours <= 0:
+            return JSONResponse({"deleted": 0, "note": "PHILOCAFE_RETENTION_HOURS=0: purge is off"})
         if not hasattr(checkpointer, "delete_thread") or not hasattr(checkpointer, "conn"):
             return JSONResponse({"deleted": 0, "note": "checkpoints are in memory"})
-        hours = float(os.environ.get("PHILOCAFE_RETENTION_HOURS", "24"))
         threads = await run_in_threadpool(stale_threads, checkpointer, hours)
         for thread_id in threads:
             await run_in_threadpool(checkpointer.delete_thread, thread_id)

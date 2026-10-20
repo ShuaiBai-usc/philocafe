@@ -20,10 +20,11 @@ in Postgres so a thread, and its support mode, survives across function instance
    | `PHILOCAFE_ACCESS_CODE` | the code you give the class; the app asks for it once per device |
    | `CRON_SECRET` | any long random string; guards the daily purge |
    | `PHILOCAFE_MIN_SCORE` | optional, defaults to 0.3 |
-   | `PHILOCAFE_RETENTION_HOURS` | optional, defaults to 24 |
+   | `PHILOCAFE_RETENTION_HOURS` | optional: 168 (7 days) by default; **set 24 on showcase day**; 0 = never purge |
 
 4. **Deploy.** Branch pushes get preview deployments; `main` gets the production deployment. The daily
-   purge (`vercel.json` crons) runs on production only.
+   purge (`vercel.json` crons) runs on production only and deletes conversations older than
+   `PHILOCAFE_RETENTION_HOURS`. After changing that variable, redeploy so the function picks it up.
 
 ## Check a deployment
 
