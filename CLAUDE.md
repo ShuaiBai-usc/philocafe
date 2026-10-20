@@ -9,7 +9,7 @@ The design doc is the source of truth for scope, contracts and decisions. Read t
 
 ## Current state
 
-- `main` holds the Socrates corpus pipeline (`scripts/socrates_pipeline.py`, fixed for issue #2 in PR #3), the SQLite builder (`scripts/build_sqlite.py`), the processed data in `data/processed/socrates/` and the corpus notes in `docs/socrates.md`. App code is being built on feature branches, starting with `setup`.
+- `main` holds the Socrates corpus pipeline (`scripts/socrates_pipeline.py`, fixed for issue #2 in PR #3), the SQLite builder (`scripts/build_sqlite.py`), the processed data in `data/processed/socrates/` and the corpus notes in `docs/socrates.md`. App code is built on stacked feature branches (`setup` merged; then `safety` → `persona` → `ui` → `eval` → `web-ui`).
 - `retrieve()` matches design doc 7.1 v0.2 and lives in PR #1 (`retrieval-contract`, `scripts/retrieval.py`), not yet merged. Call `retrieval.open_db()` once at startup; `retrieval.corpus_version(persona)` goes in eval headers.
 - Corpus notes that affect the persona:
   - Passage lines whose speaker was inferred are prefixed `[speaker uncertain]`; the persona must not quote them as Socrates' own words.
@@ -25,7 +25,7 @@ The design doc is the source of truth for scope, contracts and decisions. Read t
 4. Streamlit UI: chat, debug panel (tier, probability, route, retrieved chunk IDs, node timings) and a source card for cited passages.
 5. Run the 30 test messages and record results.
 
-Decided, do not reopen without asking: midterm persona is Socrates; no plain-language toggle (replies use everyday words by default via the persona prompt); corpus is the repo's Jowett dialogues, no Stephanus page numbers; storage is one SQLite file (FTS5 + sqlite-vec).
+Decided, do not reopen without asking: midterm persona is Socrates; final personas are Montaigne and Schopenhauer (D6, public domain); no plain-language toggle (replies use everyday words by default via the persona prompt); corpus is the repo's Jowett dialogues, no Stephanus page numbers; storage is one SQLite file (FTS5 + sqlite-vec).
 
 ## Layout
 
@@ -34,7 +34,8 @@ app/        graph and nodes (safety, moderator, persona, exit)
 personas/   one config file per persona: prompt, corpus, style rules, risk sensitivity, tier-2 passage list
 data/       corpus, processed data, test sets (CSV)
 eval/       evaluation scripts; one row per turn, header logs config, model versions, git commit, corpus version
-ui/         Streamlit app (midterm); the Figma-designed UI replaces it at the final
+ui/         app.py: Streamlit debug UI (midterm); web/: the UI/UX café app (template.html + data.json → index.html),
+            served by app/server.py and installable on iPhone as a PWA
 scripts/    corpus pipeline and retrieval (owned by Jiayue)
 ```
 
@@ -43,8 +44,8 @@ scripts/    corpus pipeline and retrieval (owned by Jiayue)
 Modules talk only through these. Changing one means updating the design doc first and telling the team.
 
 - 7.1 `retrieve(persona, query, k=5, min_score=None) -> list[Chunk]`; `Chunk` = chunk_id, persona, work, section, text, source_url, score. No safety fields in `Chunk`, and `retrieve()` never filters for safety.
-- 7.2 UI events: voice, token, citation, exit, safety, trace (includes `skipped`), done, error. Streamlit consumes the same events so the final UI can swap in.
-- 7.3 `SafetyDecision` = tier, tier_probs, needs_retrieval, route, source ("jev" | "fallback"), model_version.
+- 7.2 UI events: voice, token, citation (optional `quote`, `passage`), exit, safety, trace (includes `skipped`), done, error, over `GET /personas`, `POST /threads`, `POST /threads/{id}/messages` (SSE) and `POST /threads/{id}/note`. One thread per visit; `persona_id` travels with each message.
+- 7.3 `SafetyDecision` = tier, tier_probs, needs_retrieval, route, source ("jev" | "fallback"), model_version. In support mode `route` names the persona the user asked to have back (FR-32).
 
 ## Safety rules
 
@@ -63,6 +64,10 @@ cp .env.example .env          # then fill in the keys
 .venv/bin/python -m pytest    # app tests; no network, no API calls
 .venv/bin/streamlit run ui/app.py             # midterm UI on the real services
 .venv/bin/streamlit run ui/app.py -- --fake   # offline demo: no keys, no network
+.venv/bin/uvicorn --factory app.server:create_app --port 8000                  # web app at http://localhost:8000
+PHILOCAFE_FAKE=1 .venv/bin/uvicorn --factory app.server:create_app --port 8000 # web app on offline stand-ins
+# --host 0.0.0.0 lets a phone on the same Wi-Fi open it (Safari → Add to Home Screen); demos only
+.venv/bin/python ui/web/tools/build_index.py   # after editing ui/web/template.html or data.json
 
 # eval: one row per turn plus report under eval/results/ (calls cached in eval/.cache/)
 .venv/bin/python eval/run_testset.py --input data/tests/midterm_30.csv

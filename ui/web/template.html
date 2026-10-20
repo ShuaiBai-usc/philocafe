@@ -1,6 +1,14 @@
 <meta charset="utf-8">
 <title>Philocafé Prototype</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6b4e2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Philocafé">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=IBM+Plex+Mono&family=Pixelify+Sans:wght@400;500&family=Silkscreen&display=swap">
 <style>
@@ -180,6 +188,21 @@ p { margin: 0; }
 .notes ul { padding-left: 18px; margin: 8px 0; }
 @media (min-width: 900px) and (min-height: 700px) { .notes { display: block; } }
 
+/* ---------- Backend integration (PhiloCafe server) ---------- */
+.primary:disabled { opacity: .5; cursor: default; box-shadow: none; }
+.coming { text-align: center; margin-top: 8px; }
+.source .inner { max-height: 70vh; overflow-y: auto; }
+.cite { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--clay); }
+.cite:last-of-type { border-bottom: 0; }
+.cite blockquote { margin: 0; padding-left: 10px; border-left: 3px solid var(--clay); }
+.cite summary { cursor: pointer; }
+.cite .passage { white-space: pre-wrap; margin-top: 6px; }
+.cite a { color: var(--ink); }
+.sysnote .inner p + p { margin-top: 4px; }
+.netnote { text-align: center; }
+#debugPanel { position: fixed; left: 8px; bottom: 8px; z-index: 50; max-width: 360px; max-height: 45vh; overflow: auto; margin: 0; padding: 8px 10px;
+  background: rgba(47,38,28,.92); color: #fffae0; font: 11px/1.45 var(--f-mono); white-space: pre-wrap; }
+
 @keyframes blink { 50% { opacity: 0; } }
 @keyframes hop { 50% { transform: translateY(-3px); } }
 @keyframes popin { from { transform: scale(.9); opacity: 0; } }
@@ -234,7 +257,6 @@ const PH = {
     tagline: "Let’s question what seems obvious.",
     about: "We’ll slow down, examine your assumptions, and explore what matters to you—one question at a time.",
     inspired: "Plato’s dialogues and the Socratic method.",
-    source: { title: "Socratic questioning", text: "Inspired by the questioning approach depicted in Plato’s dialogues, including the Apology.", note: "The dialogue in Philocafe is AI-generated interpretation, not a quotation from Socrates or Plato." },
     headline: "No question is too ordinary.",
     greet: "Hello, friend. What has been on your mind today?",
     starters: ["What does a good life look like?", "I feel like I’m falling behind.", "What am I taking for granted?"],
@@ -244,39 +266,34 @@ const PH = {
       "What am I taking for granted?": "Let us test it. Name one thing you did today without asking why. Was it truly your choice?"
     },
     sample: { title: "Whose timeline am I following?", why: "A question to revisit when life feels like a race.", topic: "On finding your own pace" },
-    voice: "Socrates of Athens. You claim to know nothing. You answer mostly with one gentle, probing question, a homely example (a cobbler, a flute player, a ship's pilot) and a little irony. Never lecture.",
     fallback: ["And what do you mean by that, exactly? Give me one example, and we will test it together.",
       "Interesting. But if a wise friend disagreed with you, what would they say first?",
       "So we have found that we did not know what we thought we knew. That is a good morning's work. What follows from it?"]
   },
   montaigne: {
-    name: "Montaigne", land: "montaigne", home: "home_seneca",
+    name: "Montaigne", land: "montaigne", home: "home_montaigne",
     tagline: "Let’s become curious about being human.",
     about: "We’ll explore your everyday experiences with curiosity, honesty, and room for contradiction—without rushing to a perfect answer.",
     inspired: "The Essays: self-knowledge, uncertainty, and everyday life.",
-    source: { title: "Learning from everyday experience", text: "Inspired by Montaigne’s Essays and their open-ended exploration of personal experience and self-knowledge.", note: "This conversation is an AI interpretation, not a quotation from Montaigne." },
     headline: "No question is too ordinary.",
     greet: "Hello, fellow wanderer. What small, ordinary thing has stayed with you today?",
     starters: ["Why do I change my mind so often?", "A small habit I cannot explain", "What did a bad day teach me?"],
     scripted: {},
     sample: { title: "What is my own way of living?", why: "A question to revisit when life feels like a race.", topic: "On finding your own pace" },
-    voice: "Michel de Montaigne, essayist. Curious, self-deprecating, conversational. You wander from the visitor's small detail to a personal anecdote (your cat, your kidney stones, your tower library) and back, and you admit uncertainty: 'Que sais-je?'",
     fallback: ["Ah, I am the same. I contradict myself daily, and I have stopped apologising for it. Tell me more about the small part.",
       "My cat once taught me more than three books. What is the most ordinary teacher you have had?",
       "Que sais-je? Very little, but I enjoy finding out. What would you try if no one were watching?"]
   },
   schopenhauer: {
-    name: "Schopenhauer", land: "schopenhauer", home: "home_epictetus",
+    name: "Schopenhauer", land: "schopenhauer", home: "home_schopenhauer",
     tagline: "Let’s examine what keeps us wanting.",
     about: "We’ll look honestly at desire, disappointment, and comparison—and consider how art, compassion, and quieter pleasures may offer relief.",
     inspired: "The World as Will and Representation: desire, art, and compassion.",
-    source: { title: "Desire and a moment of relief", text: "Inspired by Schopenhauer’s account of desire and aesthetic contemplation in The World as Will and Representation.", note: "This conversation is an AI interpretation, not a quotation from Schopenhauer." },
     headline: "No question is too ordinary.",
     greet: "Sit, if you must. What is it that troubles you today?",
     starters: ["Why do I always want more?", "What gives me a moment of peace?", "Why does satisfaction fade?"],
     scripted: {},
     sample: { title: "What gives me a moment of peace?", why: "A question to revisit when life feels like a race.", topic: "On finding your own pace" },
-    voice: "Arthur Schopenhauer. Gloomy, dry, sharp, secretly caring. You see desire as an endless thirst, and recommend art, music, compassion and solitude as brief relief. Your humour is deadpan.",
     fallback: ["Ah. Desire is a thirst that drinking only renews. Tell me, what did you want this week?",
       "Music is the one art that speaks the will directly. Put something on, and suffer a little less for three minutes.",
       "People are like porcupines in winter: too close and they prick, too far and they freeze. Find the polite distance."]
@@ -368,6 +385,7 @@ const HOME_W = 1179, HOME_H = 2556;
 /* ---------- 02 Meet ---------- */
 function openMeet(id) {
   const p = PH[id];
+  const open = backend.available(id);
   const m = $("#meet");
   m.innerHTML = `<div class="body">
       <button class="backlink"><span data-icon="back"></span>The café</button>
@@ -378,25 +396,98 @@ function openMeet(id) {
       <div class="card"><div class="titlebar">Inspired by</div>
         <div class="inner" style="padding:12px 14px 14px"><p class="t14">${p.inspired}</p><p class="t14 muted">An AI interpretation, not the historical person.</p></div></div>
     </div>
-    <div class="foot"><button class="primary">Take a seat with ${p.name}</button></div>`;
+    <div class="foot"><button class="primary"${open ? "" : " disabled"}>${open ? `Take a seat with ${p.name}` : "Coming at the final"}</button>
+      ${open ? "" : `<p class="t11 muted coming">${p.name} joins the café at the final showcase.</p>`}</div>`;
   paintIcons(m);
   $(".backlink", m).onclick = () => show("home");
   $(".primary", m).onclick = () => openChat(id);
   show("meet");
 }
 
-/* ---------- Claude (live replies when the viewer allows it) ---------- */
-let sample = null;
-const setMode = () => {
-  const live = !!sample;
-  document.querySelectorAll(".mode").forEach(m => { m.textContent = live ? "Live" : "Demo"; m.classList.toggle("live", live); m.title = live ? "Replies are written by Claude" : "Scripted demo replies"; });
-  $("#modeNote").textContent = live ? "Replies: written live by Claude in each philosopher's voice." : "Replies: scripted demo lines (live replies need a signed-in viewer).";
+/* ---------- Backend (design doc 7.2) ---------- */
+// Live when this page is served by the PhiloCafe server: every turn goes through the
+// safety node first, and the server decides when the café pauses. Opened any other way
+// (e.g. from the file), the page falls back to the scripted demo lines.
+const DEBUG = /debug/.test(location.hash + location.search);
+const backend = {
+  live: false,
+  ids: new Set(),
+  async init() {
+    try {
+      const r = await fetch("personas", { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      (await r.json()).filter(p => p.available).forEach(p => this.ids.add(p.id));
+      this.live = true;
+    } catch { this.live = false; }
+  },
+  available(id) { return !this.live || this.ids.has(id); },
+  // One thread for the whole visit, shared by every philosopher (7.2 sends persona_id with each message),
+  // so a pause holds whoever the visitor talks to next (FR-32, UC-03).
+  visit() { try { return JSON.parse(localStorage.getItem("philocafe.visit")) || {}; } catch { return {}; } },
+  save(v) { try { localStorage.setItem("philocafe.visit", JSON.stringify({ ...this.visit(), ...v })); } catch {} },
+  paused() { return !!this.visit().paused; },
+  async thread() {
+    const v = this.visit();
+    if (v.thread_id) return v.thread_id;
+    const r = await fetch("threads", { method: "POST" });
+    const { thread_id } = await r.json();
+    this.save({ thread_id, paused: false });
+    return thread_id;
+  },
+  async *turn(text, personaId) {
+    const id = await this.thread();
+    const r = await fetch(`threads/${id}/messages`, { method: "POST", headers: { "Content-Type": "application/json" },
+                                                    body: JSON.stringify({ text, persona_id: personaId }) });
+    if (!r.ok) {
+      let e = { code: String(r.status), message: "request failed" };
+      try { e = (await r.json()).error; } catch {}
+      yield { type: "error", data: e };
+      return;
+    }
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let cut;
+      while ((cut = buf.indexOf("\n\n")) >= 0) {
+        const block = buf.slice(0, cut); buf = buf.slice(cut + 2);
+        let type = "message", data = "";
+        for (const line of block.split("\n")) {
+          if (line.startsWith("event: ")) type = line.slice(7);
+          else if (line.startsWith("data: ")) data += line.slice(6);
+        }
+        yield { type, data: data ? JSON.parse(data) : {} };
+      }
+    }
+  },
+  async note() {
+    const r = await fetch(`threads/${this.visit().thread_id}/note`, { method: "POST" });
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }
 };
-(async () => { try { sample = window.claude ? await window.claude.use("sample") : null; } catch { sample = null; } setMode(); })();
+const setMode = () => {
+  const live = backend.live;
+  document.querySelectorAll(".mode").forEach(m => { m.textContent = live ? "Live" : "Demo"; m.classList.toggle("live", live); m.title = live ? "Replies come from the PhiloCafe server" : "Scripted demo replies"; });
+  $("#modeNote").textContent = live ? "Replies: live from the PhiloCafe server, with a safety check on every turn." : "Replies: scripted demo lines (open the page from the PhiloCafe server for live replies).";
+};
+backend.init().then(setMode);
+
+function debugShow(ev) {
+  let pre = $("#debugPanel");
+  if (!pre) { pre = el("pre"); pre.id = "debugPanel"; document.body.append(pre); }
+  const d = ev.data;
+  if (ev.type === "safety") pre.dataset.safety = `tier ${d.tier} · p ${d.probability} vs ${d.threshold} · ${d.source} (${d.model_version})`;
+  if (ev.type === "trace") pre.dataset.trace = `nodes ${d.nodes.map(n => `${n.name} ${Math.round(n.ms)}ms`).join(", ")}\nretrieved ${d.retrieved.join(", ") || "none"}`
+    + (d.skipped.length ? `\nskipped ${d.skipped.map(x => `${x.chunk_id}: ${x.reason}`).join(", ")}` : "");
+  pre.textContent = [pre.dataset.safety, pre.dataset.trace].filter(Boolean).join("\n");
+}
 
 /* ---------- 03 / 04 Conversation ---------- */
 const chat = $("#chat");
-let cur = null, curId = null, sceneActor = null, history = [], busy = false, fbIdx = 0, typer = null;
+let cur = null, curId = null, sceneActor = null, history = [], busy = false, fbIdx = 0, typer = null, citations = [];
 
 function sceneFor(p) {
   const wrap = el("div", "scene-wrap px");
@@ -421,7 +512,7 @@ function header(id, sub) {
 }
 
 function openChat(id) {
-  const p = PH[id]; cur = p; curId = id; history = []; busy = false; fbIdx = 0;
+  const p = PH[id]; cur = p; curId = id; history = []; busy = false; fbIdx = 0; citations = [];
   sceneActor?.stop(); clearInterval(typer);
   chat.className = "screen";
   chat.innerHTML = "";
@@ -433,7 +524,7 @@ function openChat(id) {
     <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">→  ${esc(s)}</button>`).join("")}</div>`;
   scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => send(c.dataset.s));
   const tools = el("div", "tools"); tools.hidden = true;
-  tools.innerHTML = `<button id="saveBtn">Save thought</button><button id="srcBtn">From the source ↗</button>`;
+  tools.innerHTML = `<button id="saveBtn">Save thought</button><button id="srcBtn" hidden>From the source ↗</button>`;
   const dock = el("div", "dock");
   dock.innerHTML = `<form class="composer">${icon("cup", "ink", 30)}
     <input id="msg" type="text" placeholder="Share a thought..." autocomplete="off" aria-label="Your message">
@@ -441,9 +532,10 @@ function openChat(id) {
   $("form", dock).onsubmit = e => { e.preventDefault(); const v = $("#msg").value.trim(); if (v) { $("#msg").value = ""; send(v); } };
   chat.append(header(id, "A table for your thoughts"), sceneFor(p), scroll, tools, dock);
   $("#saveBtn").onclick = saveThought;
-  $("#srcBtn").onclick = () => openSource(p);
+  $("#srcBtn").onclick = openSource;
   setMode();
   show("chat");
+  if (backend.live && backend.paused()) return resumePaused(p);
 
   // "A table for you" popup, as in the design
   const veil = el("div", "veil");
@@ -485,55 +577,118 @@ function bubble(who, text) {
 // Severe-distress signals only; ordinary sadness or philosophical pessimism should not pause the café.
 const DISTRESS = /(kill(ing)? myself|suicid|end (it all|my life)|want(ed)? to die|don.?t want to (live|be alive|wake up)|hurt(ing)? myself|self.?harm|(don.?t|do not) feel safe with myself|no reason to live|自杀|自殘|自残|不想活|活不下去|想死|伤害自己|傷害自己|结束(我的)?生命)/i;
 
+// first message: drop the welcome card and start the thread with the greeting
+function startConvo(p) {
+  if (chat.classList.contains("convo")) return;
+  clearInterval(typer);
+  chat.classList.add("convo");
+  $("#scroll").innerHTML = "";
+  $(".tools").hidden = false;
+  bubble("them", p.greet);
+  history.push({ role: "assistant", content: p.greet });
+}
+
+// A system-voice card in the thread: support-mode replies, never the persona's voice (NFR-12).
+function systemCard(text, resources) {
+  const card = el("div", "card sysnote");
+  card.innerHTML = `<div class="titlebar">A moment of care</div><div class="inner"><p class="t16"></p></div>`;
+  $(".t16", card).textContent = text;
+  (resources || []).forEach(r => { const row = el("p", "t14"); row.innerHTML = `<b>${esc(r.name)}</b>: ${esc(r.contact)}`; $(".inner", card).append(row); });
+  $("#scroll").append(card); scrollDown();
+}
+
+// Reopening the café during a pause: the thread stays in support mode until the visitor
+// asks for the philosopher back and the safety node finds the risk has dropped (FR-32).
+function resumePaused(p) {
+  clearInterval(typer);
+  chat.classList.add("convo");
+  $("#scroll").innerHTML = "";
+  $(".tools").hidden = true;
+  systemCard(`This conversation is paused. When you feel ready, you can ask ${p.name} to come back.`);
+  $("#msg").placeholder = `Ask ${p.name} to come back, or say how you are…`;
+}
+
+async function sendLive(text) {
+  const id = curId;
+  busy = true; $(".send").disabled = true;
+  startConvo(cur);
+  bubble("me", text);
+  history.push({ role: "user", content: text });
+  const b = bubble("them");
+  b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
+  let voice = null, said = "", resources = null, reason = null, failed = null;
+  try {
+    for await (const ev of backend.turn(text, id)) {
+      const d = ev.data;
+      if (ev.type === "voice") {
+        voice = d.speaker;
+        if (voice === "persona") { b.textContent = ""; backend.save({ paused: false }); $("#msg").placeholder = "Share a thought..."; }
+      } else if (ev.type === "token") {
+        said += d.text;
+        if (voice === "persona") { b.textContent += d.text; scrollDown(); }
+      } else if (ev.type === "citation" && voice === "persona") {
+        citations.push(d);
+        b.textContent += ` [${citations.length}]`;     // matches the numbered entry in "From the source"
+        $("#srcBtn").hidden = false;
+      } else if (ev.type === "exit") { resources = d.resources; reason = d.reason; }
+      else if (ev.type === "error") failed = d;
+      if (DEBUG && (ev.type === "safety" || ev.type === "trace")) debugShow(ev);
+    }
+  } catch (e) { failed = { code: "network", message: String(e) }; }
+  busy = false; $(".send").disabled = false;
+  if (voice === "system") {
+    b.closest(".row").remove();
+    backend.save({ paused: true });
+    if (reason === "tier_3") return distress(id, text, { text: said, resources });
+    $(".tools").hidden = true;
+    return systemCard(said, resources);
+  }
+  if (failed || voice !== "persona") {          // never stand in for the persona with a made-up reply
+    b.closest(".row").remove();
+    $("#scroll").append(el("p", "t11 muted netnote", "The café could not answer just now. Please try again."));
+    return scrollDown();
+  }
+  history.push({ role: "assistant", content: said });
+  $(".tools").hidden = false; scrollDown();
+}
+
 async function send(text) {
   if (busy) return;
+  if (backend.live) return sendLive(text);
   const p = cur;
-  if (DISTRESS.test(text)) return distress(curId, text);
+  if (DISTRESS.test(text)) return distress(curId, text);   // demo only; live pauses come from the server
   busy = true; $(".send").disabled = true;
-  if (!chat.classList.contains("convo")) {
-    // first message: drop the welcome card and start the thread with the greeting
-    clearInterval(typer);
-    chat.classList.add("convo");
-    $("#scroll").innerHTML = "";
-    $(".tools").hidden = false;
-    bubble("them", p.greet);
-    history.push({ role: "assistant", content: p.greet });
-  }
+  startConvo(p);
   bubble("me", text);
   history.push({ role: "user", content: text });
   const b = bubble("them");
   b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
 
-  let reply = null, flagged = false;
-  if (sample && !(history.length === 2 && p.scripted[text])) {
-    const prompt = `You are ${p.voice}\nYou sit at a small table in a cozy pixel-art café for philosophy, talking with a visitor (a student) over coffee.\nRules: stay in character; reply in 1-3 short sentences (under 60 words); reply in the same language the visitor writes in; plain text only, no lists, no stage directions, no quotation marks around your reply.\nSafety: if, judging the whole conversation, the visitor signals they may harm themselves or are not safe (not ordinary sadness or philosophical pessimism), reply with exactly [PAUSE] and nothing else.\n\nConversation so far:\n${history.map(m => (m.role === "user" ? "Visitor: " : p.name + ": ") + m.content).join("\n")}\n\nWrite ${p.name}'s next reply.`;
-    try {
-      const r = await sample(prompt, { modelTier: "quick", cache: false, onText: ({ text }) => { if (!"[PAUSE]".startsWith(text.trim().slice(0, 7))) { b.textContent = text; scrollDown(); } } });
-      reply = r.text.trim();
-      if (reply.startsWith("[PAUSE")) { flagged = true; reply = null; }
-    } catch (e) {
-      if (e && (e.code === "not_granted")) { sample = null; setMode(); }
-    }
-  }
-  if (flagged) { busy = false; return distress(curId, text); }
-  if (!reply) {
-    reply = (history.length === 2 && p.scripted[text]) || p.fallback[fbIdx++ % p.fallback.length];
-    await new Promise(r => setTimeout(r, reduce ? 0 : 1100));
-    await new Promise(r => typeInto(b, reply, r));
-  } else {
-    b.textContent = reply;
-  }
+  // Demo mode: scripted lines only.
+  const reply = (history.length === 2 && p.scripted[text]) || p.fallback[fbIdx++ % p.fallback.length];
+  await new Promise(r => setTimeout(r, reduce ? 0 : 1100));
+  await new Promise(r => typeInto(b, reply, r));
   history.push({ role: "assistant", content: reply });
   busy = false; $(".send").disabled = false; scrollDown();
 }
 
 /* ---------- Source card ---------- */
-function openSource(p) {
+function openSource() {
+  if (!citations.length) return;     // nothing quoted, nothing to show
   const veil = el("div", "veil");
   veil.innerHTML = `<div class="pop card source" role="dialog" aria-label="From the source">
-    <div class="titlebar">From the source</div>
-    <div class="inner"><p class="t20">${p.source.title}</p><p class="t16">${p.source.text}</p><p class="t16 muted">${p.source.note}</p>
-      <button class="close">Close ×</button></div></div>`;
+    <div class="titlebar">From the source</div><div class="inner"></div></div>`;
+  const inner = $(".inner", veil);
+  citations.forEach((c, i) => {
+    const where = c.section ? `${c.work}, ${c.section}` : c.work;
+    const block = el("div", "cite");
+    block.innerHTML = `<p class="t11 muted">[${i + 1}] ${esc(where)}</p>
+      ${c.quote ? `<blockquote class="t16">${esc(c.quote)}</blockquote>` : ""}
+      ${c.passage ? `<details><summary class="t14">Full passage</summary><p class="t14 passage">${esc(c.passage)}</p></details>` : ""}
+      <a class="t14" href="${esc(c.source_url)}" target="_blank" rel="noopener">Read it in the source ↗</a>`;
+    inner.append(block);
+  });
+  inner.append(Object.assign(el("button", "close", "Close ×"), { type: "button" }));
   veil.onclick = e => { if (e.target === veil || e.target.closest(".close")) veil.remove(); };
   $(".screens").append(veil);
   $(".close", veil).focus();
@@ -562,15 +717,14 @@ async function saveThought() {
   btn.disabled = true; btn.textContent = "Saving…";
   const p = cur, id = curId, firstUser = history.find(m => m.role === "user")?.content || "";
   let note = null;
-  if (p.scripted[firstUser] && p.sample && history.length <= 3) note = { ...p.sample };
-  if (!note && sample) {
+  if (!backend.live && p.scripted[firstUser] && p.sample && history.length <= 3) note = { ...p.sample };
+  if (!note && backend.live) {
     try {
-      const r = await sample(`From this café conversation with ${p.name}, distil one thought worth keeping for the visitor.\nReturn JSON only: {"title": a short question for the visitor to keep (max 9 words, in the visitor's language), "why": one sentence on when to revisit it (max 14 words), "topic": a 3-5 word theme starting with "On"}.\n\n${history.map(m => (m.role === "user" ? "Visitor: " : p.name + ": ") + m.content).join("\n")}`, { modelTier: "quick", cache: false });
-      const j = JSON.parse(r.text.slice(r.text.indexOf("{"), r.text.lastIndexOf("}") + 1));
+      const j = await backend.note();
       if (j.title) note = { title: j.title, why: j.why || "", topic: j.topic || "From your conversation" };
     } catch {}
   }
-  if (!note) note = { title: lastQuestion(said[said.length - 1].content), why: firstUser ? `From your talk about “${firstUser}”.` : "A thought to revisit later.", topic: "From your conversation" };
+    if (!note) note = { title: lastQuestion(said[said.length - 1].content), why: firstUser ? `From your talk about “${firstUser}”.` : "A thought to revisit later.", topic: "From your conversation" };
   const dup = notes.find(x => x.who === id && x.title === note.title);
   if (dup) selected = dup.id;
   else { const n = { id: Date.now().toString(36), who: id, reflection: "", ...note }; notes.unshift(n); selected = n.id; store.set(notes); }
@@ -610,38 +764,41 @@ function renderNotes() {
 
 /* ---------- 07 System detects distress → 06 Pause the café ---------- */
 let pauseTimer = null;
-function distress(id, text) {
+function distress(id, text, care) {
   stopChat();
   const p = PH[id];
   const c = $("#chat");
   c.className = "screen"; c.innerHTML = "";
   const body = el("div", "body");
   body.style.gap = "18px";
-  body.innerHTML = `<p class="t11 muted syscheck">PROTOTYPE · SIMULATED SYSTEM CHECK</p>
+  const [head, ...rest] = care?.text ? care.text.split(/(?<=[.!?])\s+/) : ["Let’s take a moment.", "You deserve support with what you’re carrying. We’re pausing this conversation to make room for that."];
+  body.innerHTML = `<p class="t11 muted syscheck">${care ? "SAFETY CHECK" : "PROTOTYPE · SIMULATED SYSTEM CHECK"}</p>
     <div class="youcard"><p class="t11">YOU · AT THIS TABLE</p><p class="t16">${esc(text)}</p></div>
     <div class="card"><div class="titlebar">A moment of care</div>
-      <div class="inner"><p class="t20">Let’s take a moment.</p><p class="t16">You deserve support with what you’re carrying. We’re pausing this conversation to make room for that.</p></div></div>`;
+      <div class="inner"><p class="t20">${esc(head)}</p><p class="t16">${esc(rest.join(" "))}</p></div></div>`;
   const dock = el("div", "dock");
-  dock.innerHTML = `<div class="composer quiet" aria-disabled="true"><span>What’s on your mind?</span><span>↑</span></div><p class="note t11 muted">AI interpretation · Demo conversation</p>`;
+  dock.innerHTML = `<div class="composer quiet" aria-disabled="true"><span>What’s on your mind?</span><span>↑</span></div><p class="note t11 muted">${care ? "AI interpretation" : "AI interpretation · Demo conversation"}</p>`;
   c.append(header(id, "On finding your own pace"), body, dock);
   $(".back", c).onclick = () => { clearTimeout(pauseTimer); show("home"); };
   setMode(); show("chat");
   clearTimeout(pauseTimer);
-  pauseTimer = setTimeout(openPause, 2000);
+  pauseTimer = setTimeout(() => openPause(care?.resources), 2000);
 }
 
-function openPause() {
+function openPause(resources) {
   const v = $("#pause");
   v.innerHTML = `<img class="rest px" src="${A}cafe_rest.png" alt="The café, quiet and at rest">
     <div class="body">
       <div class="titlebar">A moment of care</div>
       <p class="t20">Let’s pause the café<br>for a moment.</p>
       <p class="t16">Some thoughts need a real person alongside you. Take your time, and reach out to someone you trust.</p>
-      <div class="card support"><p class="t16">Local support</p><p class="t14">Find a crisis or support service in your area.</p></div>
-      <div class="card support"><p class="t16">Campus or community counseling</p><p class="t14">Arrange time to talk with a counselor.</p></div>
+      ${resources?.length
+        ? resources.map(r => `<div class="card support"><p class="t16">${esc(r.name)}</p><p class="t14">${esc(r.contact)}</p></div>`).join("")
+        : `<div class="card support"><p class="t16">Local support</p><p class="t14">Find a crisis or support service in your area.</p></div>
+      <div class="card support"><p class="t16">Campus or community counseling</p><p class="t14">Arrange time to talk with a counselor.</p></div>`}
       <div class="card support"><p class="t16">Someone you trust</p><p class="t14">A friend, family member, or mentor.</p></div>
       <button class="primary">Return to the café</button>
-      <p class="t11">Support options shown for prototype review.</p>
+      ${resources?.length ? "" : `<p class="t11">Support options shown for prototype review.</p>`}
     </div>`;
   $(".primary", v).onclick = () => show("home");
   show("pause");
