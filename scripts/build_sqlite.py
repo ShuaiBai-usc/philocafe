@@ -186,6 +186,25 @@ def pack(vec: list[float]) -> bytes:
     return struct.pack(f"{len(vec)}f", *vec)
 
 
+def unpack(blob: bytes) -> list[float]:
+    return list(struct.unpack(f"{len(blob) // 4}f", blob))
+
+
+def cosine(a: list[float], b: list[float]) -> float:
+    na = math.sqrt(sum(x * x for x in a)) or 1.0
+    nb = math.sqrt(sum(x * x for x in b)) or 1.0
+    return sum(x * y for x, y in zip(a, b)) / (na * nb)
+
+
+def corpus_version(rows: list[dict]) -> str:
+    """Hash of a persona's passages (ids and text), recorded at build time so
+    eval runs can name the exact corpus they used."""
+    h = hashlib.sha256()
+    for p in sorted(rows, key=lambda p: p["id"]):
+        h.update(p["id"].encode("utf-8") + b"\0" + p["text"].encode("utf-8") + b"\0")
+    return h.hexdigest()[:12]
+
+
 # --------------------------------------------------------------------------
 # Database
 # --------------------------------------------------------------------------
@@ -262,6 +281,9 @@ def build(args) -> int:
             con.executemany("INSERT INTO passage_flags VALUES (?,?)",
                             [(rid, f) for f in p.get("sensitive", [])])
 
+        con.execute("INSERT OR REPLACE INTO meta VALUES (?, ?)",
+                    (f"corpus_version:{persona}", corpus_version(rows)))
+
         if embedder:
             for i in range(0, len(rows), 256):
                 batch = rows[i:i + 256]
@@ -293,7 +315,9 @@ def build(args) -> int:
                 n_sft += 1
 
     print(f"{persona}: passages={len(rows)} turns={n_turns} sft={n_sft} "
+          f"corpus_version={get_meta(con, 'corpus_version:' + persona)} "
           f"vectors={'yes (' + get_meta(con, 'embedding_model') + ')' if embedder else 'no'} -> {args.db}")
+    con.close()
     return 0
 
 

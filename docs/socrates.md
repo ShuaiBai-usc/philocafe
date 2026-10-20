@@ -108,7 +108,7 @@ One example from `socrates_sft.jsonl` (Meno, turn 31):
 | `passages_vec` | sqlite-vec vector index (optional, `--embed`) |
 | `turns` | every speaker turn |
 | `sft_examples` | chat-format examples, `messages` stored as JSON |
-| `meta` | settings such as the embedding model |
+| `meta` | settings such as the embedding model, and `corpus_version:<persona>` (hash of that persona's passage ids and text, written at every build) |
 
 ```bash
 pip install sqlite-vec fastembed                 # only needed for vector search
@@ -120,10 +120,26 @@ python3 scripts/build_sqlite.py search --db data/philocafe.db \
 ```
 
 - Search modes: `keyword` (BM25 over FTS5), `vector` (cosine over embeddings) and `hybrid` (default; merges both with reciprocal rank fusion).
-- From Python, call `search(con, query, persona=..., k=5, exclude_flags=...)` in `build_sqlite.py`.
+- The lower-level `search(con, query, persona=..., k=5, exclude_flags=...)` in `build_sqlite.py` is for analysis; the app uses `retrieve()` below.
 - Default embedding model: `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions, runs locally, free), run through fastembed (ONNX, no PyTorch needed). It downloads on first use. If fastembed is not installed, sentence-transformers is used instead. Every persona in one database must use the same model.
 - `--model hash` is a non-semantic fallback used by the tests; don't use it for the product.
-- Without `--embed` the database still works with keyword search.
+- Without `--embed` the CLI search still works with keywords, but `retrieve()` refuses the database.
+
+### `retrieve()` (design doc v0.2, section 7.1)
+
+```python
+import retrieval                     # scripts/retrieval.py
+retrieval.open_db()                  # at app startup
+chunks = retrieval.retrieve("socrates", "can virtue be taught", k=5)
+```
+
+- Returns a list of `Chunk` dicts with exactly `chunk_id`, `persona`, `work`, `section`, `text`, `source_url` and `score`. No safety fields; nothing is filtered by topic.
+- `chunk_id` is the persona plus the passage id, e.g. `socrates-meno-3fa9c2e1`.
+- `score` is the cosine similarity between the query and the passage. Hybrid search (keyword and vector, fused by reciprocal rank) picks the candidates; the result is sorted by score.
+- `min_score` drops weaker chunks, so a query with no relevant passage returns `[]`. Its default comes from `PHILOCAFE_MIN_SCORE`, else 0.3, which is provisional. Calibrate it on the 30-message test set with `python3 scripts/calibrate_min_score.py <test_set.csv>`; a persona config overrides it by passing `min_score`.
+- An unknown persona raises `ValueError`.
+- `open_db()` opens the database read-only, once per process, and raises at once if sqlite-vec is not installed or the database has no vector index. `retrieve()` calls it on first use if the app has not. The path comes from `PHILOCAFE_DB` (default `data/philocafe.db`).
+- `retrieval.corpus_version("socrates")` returns the corpus version for eval report headers (NFR-11).
 
 The real model has been run on a Mac (conda, Python 3.11, fastembed).
 
@@ -133,8 +149,11 @@ The real model has been run on a Mac (conda, Python 3.11, fastembed).
 scripts/
   socrates_pipeline.py          cleaning code (work list and modes at the top of the file)
   build_sqlite.py               loads the JSONL files into SQLite, plus search
+  retrieval.py                  retrieve(persona, query, k, min_score), design doc 7.1
+  calibrate_min_score.py        best score per test message, to set min_score
   tests/test_pipeline.py        unit tests for the pipeline (including a Gutenberg-format sample)
   tests/test_build_sqlite.py    unit tests for the database build and search
+  tests/test_retrieval.py       unit tests for the retrieval contract
 data/
   raw/socrates/                 download cache (git-ignored)
   processed/socrates/           turns.jsonl, rag_passages.jsonl, socrates_sft.jsonl, stats.json
