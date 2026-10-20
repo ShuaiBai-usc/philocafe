@@ -1,7 +1,15 @@
 {
+  "source": {
+    "standard_ebooks_repo": "standardebooks/plato_dialogues_benjamin-jowett",
+    "standard_ebooks_commit": "2420758c289891438b0099019cfc7d3108b5062c"
+  },
   "turns": 15965,
-  "sft_examples": 3297,
-  "passages": 1453,
+  "sft_examples": 3184,
+  "sft_split": {
+    "train": 2799,
+    "eval": 385
+  },
+  "passages": 3531,
   "works": {
     "euthyphro": {
       "turns": 232,
@@ -14,11 +22,12 @@
     },
     "apology": {
       "turns": 75,
-      "socrates_turns": 75,
-      "socrates_words": 11328,
+      "socrates_turns": 57,
+      "socrates_words": 11235,
       "total_words": 11328,
       "attribution": {
-        "explicit": 75
+        "explicit": 34,
+        "inferred": 41
       }
     },
     "crito": {
@@ -43,13 +52,14 @@
     "charmides": {
       "turns": 361,
       "socrates_turns": 181,
-      "socrates_words": 7634,
-      "total_words": 10277,
+      "socrates_words": 7623,
+      "total_words": 10190,
       "attribution": {
         "inferred": 210,
         "tagged": 151
       },
-      "tag_vs_alternation_agreement": 0.921
+      "tag_vs_alternation_agreement": 0.921,
+      "partner_name_agreement": 0.4
     },
     "laches": {
       "turns": 254,
@@ -62,38 +72,41 @@
     },
     "lysis": {
       "turns": 388,
-      "socrates_turns": 193,
-      "socrates_words": 7160,
-      "total_words": 8901,
+      "socrates_turns": 192,
+      "socrates_words": 6691,
+      "total_words": 8857,
       "attribution": {
         "inferred": 277,
         "tagged": 111
       },
-      "tag_vs_alternation_agreement": 0.928
+      "tag_vs_alternation_agreement": 0.928,
+      "partner_name_agreement": 0.429
     },
     "euthydemus": {
       "turns": 624,
-      "socrates_turns": 291,
-      "socrates_words": 9725,
-      "total_words": 15040,
+      "socrates_turns": 290,
+      "socrates_words": 9382,
+      "total_words": 14594,
       "attribution": {
         "explicit": 64,
         "tagged": 280,
         "inferred": 280
       },
-      "tag_vs_alternation_agreement": 0.8
+      "tag_vs_alternation_agreement": 0.793,
+      "partner_name_agreement": 0.328
     },
     "protagoras": {
       "turns": 442,
-      "socrates_turns": 221,
-      "socrates_words": 14852,
-      "total_words": 22447,
+      "socrates_turns": 217,
+      "socrates_words": 13270,
+      "total_words": 22099,
       "attribution": {
         "explicit": 22,
-        "inferred": 236,
-        "tagged": 184
+        "inferred": 233,
+        "tagged": 187
       },
-      "tag_vs_alternation_agreement": 0.94
+      "tag_vs_alternation_agreement": 0.925,
+      "partner_name_agreement": 0.609
     },
     "gorgias": {
       "turns": 1082,
@@ -143,14 +156,15 @@
     },
     "republic": {
       "turns": 4255,
-      "socrates_turns": 2122,
-      "socrates_words": 93837,
-      "total_words": 115507,
+      "socrates_turns": 2114,
+      "socrates_words": 92185,
+      "total_words": 115183,
       "attribution": {
-        "inferred": 3031,
-        "tagged": 1224
+        "inferred": 3029,
+        "tagged": 1226
       },
-      "tag_vs_alternation_agreement": 0.963
+      "tag_vs_alternation_agreement": 0.961,
+      "partner_name_agreement": 0.422
     },
     "phaedrus": {
       "turns": 371,
