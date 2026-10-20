@@ -8,9 +8,9 @@ three JSONL files:
 
   turns.jsonl         one record per speaker turn (all works)
   socrates_sft.jsonl  chat-format examples where Socrates is the assistant
-  rag_passages.jsonl  ~250-word passages with citations, for retrieval
+  rag_passages.jsonl  passages of at most ~180 words with citations, for retrieval
 
-Sources (see SOURCES.md for copyright notes):
+Sources (see docs/socrates.md for copyright notes):
   * Plato, Dialogues, tr. Benjamin Jowett, via Standard Ebooks
     (proofread edition of the Project Gutenberg Jowett texts; text is public
     domain, Standard Ebooks markup is CC0).
@@ -18,15 +18,16 @@ Sources (see SOURCES.md for copyright notes):
     Gutenberg plain text (--with-xenophon). These are narrated, so they go
     to rag_passages only.
 
-Only the Python standard library is used.
+Only the Python standard library is used. Run from the repository root:
 
-    python socrates_pipeline.py --out output
-    python socrates_pipeline.py --out output --with-xenophon --include-inferred
+    python3 scripts/socrates_pipeline.py
+    python3 scripts/socrates_pipeline.py --with-xenophon --include-inferred
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -40,8 +41,14 @@ from pathlib import Path
 # Source configuration
 # --------------------------------------------------------------------------
 
-SE_BASE = ("https://raw.githubusercontent.com/standardebooks/"
-           "plato_dialogues_benjamin-jowett/master/src/epub/text/")
+# Pinned to a commit so that upstream proofreading changes cannot silently
+# change the output. The commit is also recorded in stats.json.
+SE_REPO = "standardebooks/plato_dialogues_benjamin-jowett"
+SE_COMMIT = "2420758c289891438b0099019cfc7d3108b5062c"
+SE_BASE = f"https://raw.githubusercontent.com/{SE_REPO}/{SE_COMMIT}/src/epub/text/"
+# Citation link shown to users: the same pinned file served by jsDelivr, which
+# sends it as XHTML so the browser renders the text instead of the markup.
+SE_READ_BASE = f"https://cdn.jsdelivr.net/gh/{SE_REPO}@{SE_COMMIT}/src/epub/text/"
 
 # mode:
 #   drama        speakers are labelled ("Socrates: ..."); unlabelled paragraphs
@@ -50,11 +57,15 @@ SE_BASE = ("https://raw.githubusercontent.com/standardebooks/"
 #                speakers are inferred from attribution tags and alternation
 #   frame_only   labelled frame, then someone other than Socrates narrates;
 #                only labelled turns are split, the rest is kept as narration
-#   monologue    a single speech by Socrates
+#   monologue    a single speech by Socrates; `exchanges` marks stretches where
+#                he questions someone and their short answers are interleaved
 # socrates_role: main | minor | absent (absent works are skipped by default)
 PLATO_WORKS = {
     "euthyphro":  dict(title="Euthyphro",  mode="drama",      socrates_role="main"),
-    "apology":    dict(title="Apology",    mode="monologue",  socrates_role="main"),
+    "apology":    dict(title="Apology",    mode="monologue",  socrates_role="main",
+                       exchanges=[dict(start=r"Come hither, Meletus",
+                                       end=r"I have said enough in answer to the charge of Meletus",
+                                       partner="Meletus")]),
     "crito":      dict(title="Crito",      mode="drama",      socrates_role="main"),
     "phaedo":     dict(title="Phaedo",     mode="frame_only", socrates_role="main", narrator="Phaedo"),
     "charmides":  dict(title="Charmides",  mode="narrated",   socrates_role="main"),
@@ -107,10 +118,22 @@ SENSITIVE_PATTERNS = {
     "suicide": r"\b(suicide|take (his|her|their|one's|my|your) own life|kill (him|her|my|your|them)sel(f|ves)|lay violent hands)\b",
     "death": r"\b(death|dying|die|dies|died|corpse|hemlock|poison(ed)?|executed?|execution)\b",
     "violence": r"\b(murder(ed|er)?|slay|slain|beat(en)?|scourged?|tortur(e|ed))\b",
-    "sexuality": r"\b(lover|beloved|desire|passion|embrace)s?\b",
+    # "desire" and "passion" are deliberately left out: in the Republic they
+    # are terms of moral psychology, and matching them floods this flag.
+    "sexuality": r"\b(lovers?|beloved|sexual|intercourse|embraces?)\b",
 }
 
+# Works held out of the SFT training split (meta.split == "eval"). Splitting
+# by work avoids leakage: neighbouring examples share most of their context.
+EVAL_WORKS = ("charmides", "crito", "euthyphro", "ion", "laches")
+
+# Persona list entries that are not a named speaker ("And others who are
+# mute auditors", "An Athenian Stranger", "The younger Socrates", ...).
+NOT_A_NAME = {"A", "An", "And", "The", "Their", "Others", "Some"}
+
+
 AGREEMENT: dict[str, float] = {}
+PARTNER_AGREEMENT: dict[str, float] = {}
 
 XHTML = "{http://www.w3.org/1999/xhtml}"
 EPUB_TYPE = "{http://www.idpf.org/2007/ops}type"
@@ -228,27 +251,42 @@ def text_after_label(p: ET.Element, label_el: ET.Element) -> str:
 # Plato (Standard Ebooks XHTML)
 # --------------------------------------------------------------------------
 
-SOC_TAG = re.compile(
-    r"\b(I (said|replied|answered|asked|rejoined|continued|added|proceeded|retorted|resumed|observed)"
-    r"|(said|replied|answered|asked|rejoined) I)\b")
+# One verb list for detecting and for stripping attribution tags, so that
+# every tag that decides a speaker is also removed from the training text.
+TAG_VERBS = ("said|replied|answered|asked|rejoined|continued|added|proceeded|retorted"
+             "|resumed|observed|interposed|exclaimed|interrupted")
+SOC_TAG = re.compile(rf"\b(I ({TAG_VERBS})|({TAG_VERBS}) I)\b")
 OTHER_TAG = re.compile(
-    r"\b((he|she|they) (said|replied|answered|asked|rejoined|continued|added|retorted|observed)"
-    r"|(said|replied|answered|asked|rejoined|retorted) (he|she)"
-    r"|(said|replied|answered|asked|rejoined|retorted) (?P<n1>[A-Z][a-z]+)"
-    r"|(?P<n2>[A-Z][a-z]+) (said|replied|answered|asked|rejoined|retorted))\b")
-# "..., Cephalus," / "Socrates, ..." : a name used in direct address.
-VOCATIVE = re.compile(r"(?:^|[,;:—!?]\s*|\bO )([A-Z][a-z]+)(?=[,;:?!—]|\.(?:\s|$))")
+    rf"\b((he|she|they) ({TAG_VERBS})"
+    rf"|({TAG_VERBS}) (he|she)"
+    rf"|({TAG_VERBS}) (?P<n1>[A-Z][a-z]+)"
+    # "Adeimantus, his brother, interposed"
+    rf"|(?P<n2>[A-Z][a-z]+)(?:, (?:his|her|the|a|an|who) [^,.;:?!]{{1,40}},)? ({TAG_VERBS}))\b")
+# "..., Cephalus," / "Socrates, ..." / "my dear Glaucon, ...": a name used in
+# direct address.
+VOCATIVE = re.compile(r"(?:^|[,;:—!?]\s*|\bO |\b(?:dear|good|excellent|noble|sweet) )"
+                      r"([A-Z][a-z]+)(?=[,;:?!—]|\.(?:\s|$))")
 # Attribution clauses removed from the training text of narrated turns.
 TAG_STRIP = re.compile(
-    r"(,\s*|\s+)(I|he|she|they) (said|replied|answered|rejoined|continued|added)(\s+to (me|him|her))?(?=[,;:.?!])"
-    r"|(,\s*|\s+)(said|replied|answered|rejoined) (I|he|she)(?=[,;:.?!])")
+    rf"(,\s*|\s+)(I|he|she|they) ({TAG_VERBS})(\s+to (me|him|her))?(?=[,;:.?!—])"
+    rf"|(,\s*|\s+)({TAG_VERBS}) (I|he|she|[A-Z][a-z]+)(?=[,;:.?!—])")
+
+
+# A persona named in narration; possessives ("Thrasymachus' retirement") are
+# not the subject of the next tag.
+NAME_MENTION = re.compile(r"\b([A-Z][a-z]+)\b(?![’'])")
+# "So he said to me: Socrates, do you ..." : narration up to a colon tag.
+COLON_TAG = re.compile(rf"\b(I|he|she|they|[A-Z][a-z]+) ({TAG_VERBS})( to (me|him|her|us))?:\s*")
 
 
 LEAD_TAG = re.compile(
-    r"^(I|[A-Z][a-z]+) (said|replied|answered|rejoined|added)( to (me|him|her))?:\s*")
+    rf"^(I|[A-Z][a-z]+) ({TAG_VERBS})( to (me|him|her))?:\s*")
 
 
 def strip_tags(text: str) -> str:
+    m = COLON_TAG.search(text)
+    if m and m.end() < len(text):
+        text = text[m.end():]                 # drop the narration before the speech
     t = LEAD_TAG.sub("", text)
     t = TAG_STRIP.sub("", t)
     t = re.sub(r"\s+([,;:.?!])", r"\1", t)
@@ -311,20 +349,22 @@ def parse_plato(work_id: str, meta: dict, xhtml: bytes) -> list[Turn]:
     for sec in text_sec.iter(XHTML + "section"):
         if "dramatis-personae" in sec.get(EPUB_TYPE, ""):
             for li in sec.iter(XHTML + "li"):
-                m = re.match(r"[A-Z][a-z]+", el_text(li))
-                if m:
-                    personae.add(m.group(0))
+                personae |= persona_names(el_text(li))
     mode = meta["mode"]
     narrator = meta.get("narrator", "Socrates")
     base = dict(work_id=work_id, work=meta["title"], author="Plato",
-                translator="Benjamin Jowett", source_url=SE_BASE + f"{work_id}.xhtml")
+                translator="Benjamin Jowett", source_url=SE_READ_BASE + f"{work_id}.xhtml")
     turns: list[Turn] = []
     last_partner = "Interlocutor"
     agree = [0, 0]
+    partner_agree = [0, 0]
+    exchange = None             # active entry of meta["exchanges"] (monologue mode)
 
     def add(speaker, kind, attribution, text, heading):
         if not text:
             return
+        if heading.startswith(meta["title"]):
+            heading = ""                      # the subtitle ("Lysis Or, Friendship") is not a section
         turns.append(Turn(**base, section=heading, idx=len(turns), speaker=speaker,
                           kind=kind, attribution=attribution, text=text))
 
@@ -346,7 +386,21 @@ def parse_plato(work_id: str, meta: dict, xhtml: bytes) -> list[Turn]:
                 add("Narrator", "narration", "narration", text, heading)
             continue
         if mode == "monologue":
-            add("Socrates", "speech", "explicit", text, heading)
+            if exchange and re.match(exchange["end"], text):
+                exchange = None
+            elif not exchange:
+                exchange = next((x for x in meta.get("exchanges", ())
+                                 if re.match(x["start"], text)), None)
+            if exchange:
+                # Socrates cross-examines someone: a short paragraph right
+                # after his is the other person's reply. Speakers are not
+                # labelled in the source, so the whole stretch is "inferred".
+                prev = turns[-1] if turns else None
+                answers = (prev is not None and prev.speaker == "Socrates"
+                           and len(text.split()) <= 30 and not text.rstrip().endswith("?"))
+                add(exchange["partner"] if answers else "Socrates", "speech", "inferred", text, heading)
+            else:
+                add("Socrates", "speech", "explicit", text, heading)
             continue
         if mode == "frame_only":
             add(narrator, "narration", "narration", text, heading)
@@ -365,16 +419,29 @@ def parse_plato(work_id: str, meta: dict, xhtml: bytes) -> list[Turn]:
         elif o:
             name = o.group("n1") or o.group("n2")
             if name and name != "Socrates":
+                # how often the tracked partner was already right when a tag
+                # names the speaker; a rough check on the partner names given
+                # to "he said" turns
+                partner_agree[0] += name == last_partner
+                partner_agree[1] += 1
                 last_partner = name
+            elif not name:
+                # "he said": prefer a speaker the narration names just before
+                # the tag ("For Glaucon ... was dissatisfied ... So he said")
+                named = [n for n in NAME_MENTION.findall(text[:o.start()])
+                         if n in personae and n != "Socrates" and n not in vocative]
+                if named:
+                    last_partner = named[-1]
             speaker, attr = last_partner, "tagged"
         elif "Socrates" in vocative:
             speaker, attr = last_partner, "inferred"     # someone addresses Socrates
         else:
+            # No tag. Long paragraphs are not assumed to be Socrates': many
+            # are the other speaker's speeches (Glaucon's ring of Gyges), so
+            # fall back to alternation and leave the turn "inferred".
             prev = turns[-1].speaker if turns else "Socrates"
-            if any(v in personae for v in vocative):
+            if any(v in personae and v != "Socrates" for v in vocative):
                 speaker, attr = "Socrates", "inferred"   # Socrates addresses someone
-            elif len(text.split()) > 120:
-                speaker, attr = "Socrates", "inferred"   # long stretch of narration/speech
             else:
                 speaker = last_partner if prev == "Socrates" else "Socrates"
                 attr = "inferred"
@@ -393,7 +460,24 @@ def parse_plato(work_id: str, meta: dict, xhtml: bytes) -> list[Turn]:
         add(speaker, "speech", attr, clean, heading)
     if agree[1]:
         AGREEMENT[work_id] = round(agree[0] / agree[1], 3)
+    if partner_agree[1]:
+        PARTNER_AGREEMENT[work_id] = round(partner_agree[0] / partner_agree[1], 3)
     return turns
+
+
+def persona_names(entry: str) -> set[str]:
+    """Speaker names in one dramatis personae entry.
+
+    "Socrates, who is the narrator" -> {"Socrates"}; "Nicias, Laches, Socrates"
+    -> all three; "Cleinias (a Cretan)" -> {"Cleinias"}; "And others who are
+    mute auditors." and "An Athenian Stranger" -> nothing.
+    """
+    names = set()
+    for part in re.sub(r"\([^)]*\)", "", entry).split(","):
+        part = part.strip().rstrip(".")
+        if re.fullmatch(r"[A-Z][a-z]+", part) and part not in NOT_A_NAME:
+            names.add(part)
+    return names
 
 
 # --------------------------------------------------------------------------
@@ -463,8 +547,13 @@ def parse_xenophon(work_id: str, meta: dict, raw: str, url: str) -> list[Turn]:
 
 
 def build_sft(turns: list[Turn], include_inferred: bool, context: int,
-              min_words: int) -> list[dict]:
-    """One example per Socrates turn; previous turns become the conversation."""
+              min_words: int, max_words: int = 200,
+              eval_works: tuple[str, ...] = EVAL_WORKS) -> list[dict]:
+    """One example per Socrates turn; previous turns become the conversation.
+
+    Targets longer than `max_words` (set speeches, not conversation) and
+    targets that still read as narration ("I replied that ...") are skipped.
+    """
     ok = {"explicit", "tagged"} | ({"inferred"} if include_inferred else set())
     examples = []
     by_work: dict[str, list[Turn]] = {}
@@ -474,8 +563,10 @@ def build_sft(turns: list[Turn], include_inferred: bool, context: int,
         for i, t in enumerate(work_turns):
             if t.speaker != "Socrates" or t.kind != "speech" or t.attribution not in ok:
                 continue
-            if t.words < min_words or i == 0:
+            if t.words < min_words or t.words > max_words or i == 0:
                 continue
+            if t.attribution != "explicit" and is_narration(t.text):
+                continue                      # only narrated works carry these
             hist = []
             for h in work_turns[max(0, i - context): i]:
                 if h.kind != "speech" or h.attribution not in ok:
@@ -497,31 +588,101 @@ def build_sft(turns: list[Turn], include_inferred: bool, context: int,
                 "meta": {"work": t.work, "work_id": t.work_id, "section": t.section,
                          "turn_idx": t.idx, "attribution": t.attribution,
                          "is_question": t.text.rstrip().endswith("?"),
+                         "split": "eval" if t.work_id in eval_works else "train",
                          "source_url": t.source_url},
             })
     return examples
+
+
+# First-person narration left in a Socrates turn: reported speech ("I asked
+# him whether", "I replied that") or scene-setting ("Upon entering we found").
+NARRATION = re.compile(
+    rf"\bI ({TAG_VERBS}) (that|whether|him|her|them|if)\b"
+    r"|\b(I|we) (went|came|found|saw|entered|sat down|turned|perceived|noticed)\b"
+    r"|^(Upon|On|When|After|Then|So) (entering|arriving|coming|we|I)\b")
+
+
+def is_narration(text: str) -> bool:
+    return bool(NARRATION.search(text) or SOC_TAG.search(text))
 
 
 def flag_sensitive(text: str) -> list[str]:
     return [k for k, pat in SENSITIVE_PATTERNS.items() if re.search(pat, text, re.I)]
 
 
+def split_words(text: str, limit: int) -> list[str]:
+    """Split text into pieces of at most `limit` words, at sentence ends
+    where possible (a single longer sentence is cut between words)."""
+    words = text.split()
+    if len(words) <= limit:
+        return [text]
+    pieces: list[str] = []
+    cur: list[str] = []
+    for sent in re.split(r"(?<=[.?!])\s+", text):
+        w = sent.split()
+        if cur and len(cur) + len(w) > limit:
+            pieces.append(" ".join(cur))
+            cur = []
+        while len(w) > limit:
+            pieces.append(" ".join(w[:limit]))
+            w = w[limit:]
+        cur += w
+    if cur:
+        pieces.append(" ".join(cur))
+    return pieces
+
+
+def speaker_label(t: Turn) -> str:
+    """Line prefix in a passage. Inferred speakers are not named, so that a
+    guessed attribution is never presented to the persona as fact."""
+    if t.kind == "narration":
+        return ""
+    if t.attribution == "inferred":
+        return "[speaker uncertain] "
+    return f"{t.speaker}: "
+
+
 def build_passages(turns: list[Turn], target_words: int) -> list[dict]:
+    """Group turns into passages of at most `target_words` words.
+
+    Turns longer than that are split at sentence ends, so every passage fits
+    the embedding model's input (all-MiniLM-L6-v2 reads ~256 tokens).
+    """
     passages = []
-    buf: list[Turn] = []
+    buf: list[tuple[Turn, int, str]] = []      # (turn, piece number, text)
+    size = 0                                   # words in buf, speaker labels included
+    used: set[str] = set()
 
     def flush():
         if not buf:
             return
-        lines = [t.text if t.kind == "narration" else f"{t.speaker}: {t.text}" for t in buf]
+        lines: list[str] = []
+        for j, (t, part, piece) in enumerate(buf):
+            if j and buf[j - 1][0] is t:
+                lines[-1] += " " + piece
+            else:
+                lines.append(speaker_label(t) + piece)
         text = "\n".join(lines)
-        f = buf[0]
+        f = buf[0][0]
+        # Content-based id: stays the same when the corpus is rebuilt and turn
+        # numbers shift; changes only when the passage text changes.
+        pid, n = None, 0
+        while pid is None or pid in used:     # identical text twice in a work: rehash
+            salt = f"\0{n}" if n else ""
+            pid = f"{f.work_id}-{hashlib.sha256((text + salt).encode('utf-8')).hexdigest()[:8]}"
+            n += 1
+        used.add(pid)
+        known = [(t, piece) for t, _, piece in buf
+                 if t.kind == "speech" and t.attribution != "inferred"]
         passages.append({
-            "id": f"{f.work_id}-{buf[0].idx:05d}-{buf[-1].idx:05d}",
+            "id": pid,
             "author": f.author, "work": f.work, "translator": f.translator,
-            "section": f.section, "turn_range": [buf[0].idx, buf[-1].idx],
-            "speakers": sorted({t.speaker for t in buf}),
-            "socrates_words": sum(t.words for t in buf if t.speaker == "Socrates"),
+            "section": f.section, "turn_range": [f.idx, buf[-1][0].idx],
+            # only speakers whose attribution is explicit or tagged
+            "speakers": sorted({t.speaker for t, _ in known} |
+                               {t.speaker for t, _, _ in buf if t.kind == "narration"}),
+            "socrates_words": sum(len(piece.split()) for t, piece in known if t.speaker == "Socrates"),
+            "speaker_uncertain": any(t.attribution == "inferred" for t, _, _ in buf),
             "sensitive": flag_sensitive(text),
             "source_url": f.source_url,
             "text": text,
@@ -529,11 +690,17 @@ def build_passages(turns: list[Turn], target_words: int) -> list[dict]:
         buf.clear()
 
     for t in turns:
-        if buf and (t.work_id != buf[0].work_id or t.section != buf[0].section):
+        if buf and (t.work_id != buf[0][0].work_id or t.section != buf[0][0].section):
             flush()
-        buf.append(t)
-        if sum(x.words for x in buf) >= target_words:
-            flush()
+            size = 0
+        label = len(speaker_label(t).split())
+        for part, piece in enumerate(split_words(t.text, target_words - label)):
+            n = len(piece.split()) + label
+            if buf and size + n > target_words:
+                flush()
+                size = 0
+            buf.append((t, part, piece))
+            size += n
     flush()
     return passages
 
@@ -554,22 +721,26 @@ def write_jsonl(path: Path, rows) -> int:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--out", type=Path, default=Path("output"))
-    ap.add_argument("--raw", type=Path, help="download cache (default: OUT/raw)")
+    ap.add_argument("--out", type=Path, default=Path("data/processed/socrates"))
+    ap.add_argument("--raw", type=Path, default=Path("data/raw/socrates"),
+                    help="download cache (git-ignored)")
     ap.add_argument("--works", nargs="*", help="Plato work ids to include (default: all with Socrates)")
-    ap.add_argument("--include-minor", action="store_true", default=True,
-                    help="include works where Socrates is a minor speaker (default on)")
-    ap.add_argument("--main-only", action="store_true", help="only works where Socrates leads")
+    ap.add_argument("--main-only", action="store_true",
+                    help="only works where Socrates leads (default: also those where he is minor)")
     ap.add_argument("--with-xenophon", action="store_true", help="also fetch Xenophon from Gutenberg")
     ap.add_argument("--include-inferred", action="store_true",
                     help="use speaker-inferred turns from narrated dialogues in SFT")
     ap.add_argument("--context-turns", type=int, default=6)
     ap.add_argument("--min-words", type=int, default=3, help="min words for a Socrates SFT target")
-    ap.add_argument("--passage-words", type=int, default=250)
+    ap.add_argument("--max-words", type=int, default=200, help="max words for a Socrates SFT target")
+    ap.add_argument("--eval-works", default=",".join(EVAL_WORKS),
+                    help="comma-separated work ids whose SFT examples get split=eval")
+    ap.add_argument("--passage-words", type=int, default=180,
+                    help="max words per RAG passage (the embedding model reads ~256 tokens)")
     args = ap.parse_args(argv)
 
     out: Path = args.out
-    raw_dir: Path = args.raw or out / "raw"
+    raw_dir: Path = args.raw
     out.mkdir(parents=True, exist_ok=True)
 
     turns: list[Turn] = []
@@ -592,6 +763,8 @@ def main(argv=None) -> int:
         report[wid] = summarize(wt)
         if wid in AGREEMENT:
             report[wid]["tag_vs_alternation_agreement"] = AGREEMENT[wid]
+        if wid in PARTNER_AGREEMENT:
+            report[wid]["partner_name_agreement"] = PARTNER_AGREEMENT[wid]
 
     if args.with_xenophon:
         for wid, meta in XENOPHON_WORKS.items():
@@ -614,11 +787,16 @@ def main(argv=None) -> int:
             report[wid] = summarize(wt)
 
     n_turns = write_jsonl(out / "turns.jsonl", (asdict(t) for t in turns))
-    sft = build_sft(turns, args.include_inferred, args.context_turns, args.min_words)
+    eval_works = tuple(w for w in args.eval_works.split(",") if w)
+    sft = build_sft(turns, args.include_inferred, args.context_turns, args.min_words,
+                    args.max_words, eval_works)
     n_sft = write_jsonl(out / "socrates_sft.jsonl", sft)
     n_pass = write_jsonl(out / "rag_passages.jsonl", build_passages(turns, args.passage_words))
     (out / "stats.json").write_text(json.dumps(
-        {"turns": n_turns, "sft_examples": n_sft, "passages": n_pass, "works": report},
+        {"source": {"standard_ebooks_repo": SE_REPO, "standard_ebooks_commit": SE_COMMIT},
+         "turns": n_turns, "sft_examples": n_sft,
+         "sft_split": {k: sum(e["meta"]["split"] == k for e in sft) for k in ("train", "eval")},
+         "passages": n_pass, "works": report},
         ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"turns={n_turns} sft={n_sft} passages={n_pass} -> {out}")
     return 0
