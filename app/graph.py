@@ -52,17 +52,24 @@ def build_graph(deps: Deps, checkpointer=None):
     return g.compile(checkpointer=checkpointer or InMemorySaver())
 
 
+def skipped_quotes(quotes) -> list[dict]:
+    """Quotes the check refused, for the trace (7.2 `skipped`); untagged ones are only measured."""
+    return [{"chunk_id": q["chunk_id"], "reason": q["reason"]}
+            for q in quotes if not q["ok"] and not q["reason"].startswith("untagged")]
+
+
 def run_turn(graph, thread_id: str, text: str, persona_id: str) -> Iterator[Event]:
     """Run one user turn and yield its UI events, ending with `done` or `error`."""
     config = {"configurable": {"thread_id": thread_id}}
     # Per-turn fields are reset here; messages and mode carry over in the checkpoint.
     turn = {"thread_id": thread_id, "persona_id": persona_id, "messages": [HumanMessage(text)],
-            "trace": [], "retrieved": [], "reply": "", "citations": []}
+            "trace": [], "retrieved": [], "reply": "", "citations": [], "quotes": []}
     try:
         yield from graph.stream(turn, config, stream_mode="custom")
         state = graph.get_state(config).values
         yield event("trace", nodes=state["trace"],
-                    retrieved=[c["chunk_id"] for c in state["retrieved"]], skipped=[])
+                    retrieved=[c["chunk_id"] for c in state["retrieved"]],
+                    skipped=skipped_quotes(state.get("quotes", [])))
         yield event("done")
     except Exception as e:
         yield event("error", code=type(e).__name__, message=str(e)[:500])

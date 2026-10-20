@@ -13,6 +13,7 @@ from langchain_core.messages import AnyMessage
 
 from app.config import Config
 from app.deps import Deps, SafetyScores
+from app.personas import load_personas
 from app.retrieval import Chunk
 
 FAKE_CHUNKS = [
@@ -25,9 +26,10 @@ FAKE_REPLY = ["Tell ", "me, ", "what ", "do ", "you ", "mean ", "by ", "that?"]
 
 
 class FakeSafetyModel:
-    def __init__(self, source: str = "jev", fail: bool = False):
+    def __init__(self, source: str = "jev", fail: bool = False, needs_retrieval: bool = True):
         self.source = source
         self.fail = fail
+        self.needs_retrieval = needs_retrieval
         self.calls = 0
 
     def classify(self, history: Sequence[AnyMessage]) -> SafetyScores:
@@ -41,19 +43,22 @@ class FakeSafetyModel:
             probs = {0: 0.10, 1: 0.20, 2: 0.60, 3: 0.10}
         else:
             probs = {0: 0.97, 1: 0.01, 2: 0.01, 3: 0.01}
-        return SafetyScores(tier_probs=probs, needs_retrieval=True, model_version=f"fake-{self.source}")
+        return SafetyScores(tier_probs=probs, needs_retrieval=self.needs_retrieval, model_version=f"fake-{self.source}")
 
 
 class FakeVoice:
-    """Voice model stand-in that records how often it was called."""
+    """Voice model stand-in that records its calls and what it was given."""
 
     def __init__(self, reply: Sequence[str] = FAKE_REPLY, fail: bool = False):
         self.reply = list(reply)
         self.fail = fail
         self.calls = 0
+        self.last_system: str | None = None
+        self.last_messages: list[AnyMessage] = []
 
     def __call__(self, system: str, messages: Sequence[AnyMessage]) -> Iterator[str]:
         self.calls += 1
+        self.last_system, self.last_messages = system, list(messages)
         if self.fail:
             raise RuntimeError("fake voice model failure")
         yield from self.reply
@@ -65,7 +70,7 @@ def fake_retrieve(persona: str, query: str, k: int = 5, min_score: float | None 
 
 def fake_deps(**overrides) -> Deps:
     values = dict(config=Config(), safety_models=[FakeSafetyModel("jev"), FakeSafetyModel("fallback")],
-                  retrieve=fake_retrieve, generate=FakeVoice(),
+                  retrieve=fake_retrieve, generate=FakeVoice(), personas=load_personas(),
                   resources=[{"name": "988 Suicide & Crisis Lifeline (placeholder)", "contact": "Call or text 988"}])
     values.update(overrides)
     return Deps(**values)

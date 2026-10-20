@@ -7,6 +7,7 @@ from typing import Annotated, Literal, TypedDict
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 
+from app.quotes import QuoteCheck
 from app.retrieval import Chunk
 
 
@@ -33,4 +34,5 @@ class TurnState(TypedDict, total=False):
     retrieved: list[Chunk]        # 7.1
     reply: str
     citations: list[str]          # chunk_ids actually quoted
+    quotes: list[QuoteCheck]      # every quote checked this turn (FR-12, NFR-05)
     trace: list[NodeTiming]       # node name + ms, for the debug panel

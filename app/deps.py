@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Literal, Protocol, TypedDict
 
 from langchain_core.messages import AnyMessage
 
 from app.config import Config, load_config
+from app.personas import PersonaConfig, load_personas
 from app.retrieval import Chunk
 from app.safety.log import DecisionLog
 
@@ -35,6 +36,7 @@ class Deps:
     safety_models: Sequence[SafetyModel]   # tried in order: Jev, then the fallback
     retrieve: Retrieve
     generate: Generate
+    personas: Mapping[str, PersonaConfig]
     resources: Sequence[dict] = ()         # crisis resources for the exit flow: {name, contact}
     decision_log: DecisionLog = field(default_factory=DecisionLog)
 
@@ -54,4 +56,5 @@ def default_deps(config: Config | None = None) -> Deps:
                 safety_models=[JevModel(config.safety), FallbackModel(config.safety)],
                 retrieve=retrieval.retrieve,
                 generate=ClaudeVoice(config.voice_model),
+                personas=load_personas(),
                 resources=load_resources())

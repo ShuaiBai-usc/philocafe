@@ -1,7 +1,8 @@
 """Voice model: streams the persona's reply from Claude.
 
 The system prompt is marked for prompt caching, since it is the same on every
-turn of a persona. The persona step adds the prompt, passages and quote check.
+turn of a persona. A SystemMessage becomes a mid-conversation system message,
+which the persona node uses for the turn's passages.
 """
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterator, Sequence
 
 import anthropic
-from langchain_core.messages import AnyMessage, HumanMessage
+from langchain_core.messages import AnyMessage, HumanMessage, SystemMessage
 
 from app.config import secret
 
@@ -19,8 +20,11 @@ class VoiceRefused(RuntimeError):
 
 
 def to_api_messages(messages: Sequence[AnyMessage]) -> list[dict]:
-    return [{"role": "user" if isinstance(m, HumanMessage) else "assistant", "content": m.content}
-            for m in messages]
+    def role(m):
+        if isinstance(m, HumanMessage):
+            return "user"
+        return "system" if isinstance(m, SystemMessage) else "assistant"
+    return [{"role": role(m), "content": m.content} for m in messages]
 
 
 class ClaudeVoice:
