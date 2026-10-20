@@ -12,3 +12,5 @@ data/*.db-*
 public/
 .cache/
 .vercel/
+# uv writes this when it locks; Vercel locks at build time, so it is not committed
+uv.lock

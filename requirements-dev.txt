@@ -1,4 +1,4 @@
-# Local development: the server runtime plus tests and the Streamlit debug UI.
--r requirements.txt
+# Local development extras on top of the server dependencies in pyproject.toml:
+#   uv pip install --python .venv/bin/python -r pyproject.toml -r requirements-dev.txt
 pytest==9.1.1
 streamlit==1.66.0

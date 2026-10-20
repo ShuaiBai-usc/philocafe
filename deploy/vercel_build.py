@@ -1,6 +1,6 @@
 """Vercel build step (pyproject.toml [tool.vercel.scripts] build; ADR-11).
 
-Runs after the dependencies in requirements.txt are installed:
+Runs after Vercel has installed the dependencies in pyproject.toml:
 1. builds data/philocafe.db from data/processed/ with the vector index, downloading the
    embedding model into .cache/fastembed so the function can load it offline;
 2. writes ui/web/index.html and copies the web app to public/, which Vercel serves from its CDN.

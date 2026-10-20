@@ -60,7 +60,7 @@ Modules talk only through these. Changing one means updating the design doc firs
 
 ```bash
 # app environment (Python 3.12; macOS system Python cannot load sqlite-vec)
-uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements-dev.txt
+uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r pyproject.toml -r requirements-dev.txt
 cp .env.example .env          # then fill in the keys
 .venv/bin/python -m pytest    # app tests; no network, no API calls
 .venv/bin/streamlit run ui/app.py             # midterm UI on the real services
@@ -85,7 +85,7 @@ python3 scripts/socrates_pipeline.py
 .venv/bin/python scripts/build_sqlite.py search --db data/philocafe.db --persona socrates "is virtue teachable"
 ```
 
-Settings live in `config.yaml` (thresholds, models, timeouts); secrets live in `.env` locally and in Vercel environment variables when deployed. Dependencies: `requirements.txt` is the server runtime (what Vercel installs, keep it lean); `requirements-dev.txt` adds tests and Streamlit.
+Settings live in `config.yaml` (thresholds, models, timeouts); secrets live in `.env` locally and in Vercel environment variables when deployed. Dependencies: `pyproject.toml` `[project].dependencies` is the server runtime (what Vercel installs with uv; keep it lean, under the 500 MB bundle limit); `requirements-dev.txt` adds tests and Streamlit for local work only.
 
 ## Working rules
 

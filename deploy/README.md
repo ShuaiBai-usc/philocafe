@@ -43,6 +43,6 @@ caches the embedding model in `.cache/fastembed`, writes `ui/web/index.html` and
 ## Limits worth knowing
 
 - The function bundle is about 315 MB (Vercel's Python limit is 500 MB): keep Streamlit and pytest in
-  `requirements-dev.txt`, not `requirements.txt`.
+  `requirements-dev.txt`, not in `pyproject.toml`, which Vercel installs from.
 - A cold start loads the embedding model; the first message after idle can take a few seconds longer.
 - Anyone with the access code can spend the API budget; change the code to cut access.

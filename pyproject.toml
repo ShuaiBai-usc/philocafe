@@ -1,5 +1,30 @@
-# Vercel configuration only (ADR-11). Dependencies live in requirements.txt (server)
-# and requirements-dev.txt (tests and the Streamlit debug UI).
+# The server's dependencies and the Vercel settings (ADR-11). Vercel installs these with uv.
+# Development extras (pytest, the Streamlit debug UI) are in requirements-dev.txt so they
+# never reach the deployed bundle (Vercel's Python limit is 500 MB).
+
+[project]
+name = "philocafe"
+version = "0.1.0"
+description = "PhiloCafe: talk with a philosopher persona; a safety node checks every turn first."
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic==1.15.0",
+    "fastapi==0.156.2",
+    "fastembed==0.9.0",
+    "httpx==0.28.1",
+    "langgraph==1.2.16",
+    "langgraph-checkpoint-postgres==3.2.0",
+    "psycopg[binary]==3.3.6",
+    "psycopg-pool==3.3.3",
+    "python-dotenv==1.2.4",
+    "pyyaml==6.0.3",
+    "sqlite-vec==0.1.9",
+    "starlette==1.9.0",
+    "uvicorn==0.54.0",
+]
+
+[tool.uv]
+package = false          # an app, not a library: install the dependencies, never build the project
 
 [tool.vercel]
 entrypoint = "asgi:app"
