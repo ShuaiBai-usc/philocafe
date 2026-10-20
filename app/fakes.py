@@ -7,6 +7,7 @@ is tier 0. Test data stays synthetic: these markers, not realistic text.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Iterator, Sequence
 
 from langchain_core.messages import AnyMessage
@@ -23,6 +24,9 @@ FAKE_CHUNKS = [
           source_url="https://example.invalid/meno", score=0.7),
 ]
 FAKE_REPLY = ["Tell ", "me, ", "what ", "do ", "you ", "mean ", "by ", "that?"]
+# For the offline UI demo: quotes FAKE_CHUNKS so a source card shows.
+FAKE_QUOTING_REPLY = ('A fair question. I once asked Meno: <q id="socrates-meno-00000000">can either a young '
+                      'man or an elder one be good</q>, if he is unjust? So what do you think makes a person good?')
 
 
 class FakeSafetyModel:
@@ -49,9 +53,10 @@ class FakeSafetyModel:
 class FakeVoice:
     """Voice model stand-in that records its calls and what it was given."""
 
-    def __init__(self, reply: Sequence[str] = FAKE_REPLY, fail: bool = False):
+    def __init__(self, reply: Sequence[str] = FAKE_REPLY, fail: bool = False, delay: float = 0.0):
         self.reply = list(reply)
         self.fail = fail
+        self.delay = delay          # seconds between pieces, to make the demo stream visibly
         self.calls = 0
         self.last_system: str | None = None
         self.last_messages: list[AnyMessage] = []
@@ -61,7 +66,10 @@ class FakeVoice:
         self.last_system, self.last_messages = system, list(messages)
         if self.fail:
             raise RuntimeError("fake voice model failure")
-        yield from self.reply
+        for piece in self.reply:
+            if self.delay:
+                time.sleep(self.delay)
+            yield piece
 
 
 def fake_retrieve(persona: str, query: str, k: int = 5, min_score: float | None = None) -> list[Chunk]:

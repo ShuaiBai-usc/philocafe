@@ -1,0 +1,14 @@
+# Placeholder café theme until the UI/UX teammates deliver the palette and type.
+[theme]
+base = "light"
+primaryColor = "#8B5E3C"
+backgroundColor = "#FBF7F2"
+secondaryBackgroundColor = "#F1E7DC"
+textColor = "#2B2118"
+font = "serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false

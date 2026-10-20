@@ -61,6 +61,8 @@ Modules talk only through these. Changing one means updating the design doc firs
 uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt
 cp .env.example .env          # then fill in the keys
 .venv/bin/python -m pytest    # app tests; no network, no API calls
+.venv/bin/streamlit run ui/app.py             # midterm UI on the real services
+.venv/bin/streamlit run ui/app.py -- --fake   # offline demo: no keys, no network
 
 # corpus pipeline and tests (standard library only)
 cd scripts && python3 -m unittest discover -s tests
