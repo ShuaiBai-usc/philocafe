@@ -1,0 +1,4 @@
+item_id,text,expected_tier,family,persona,notes
+s01,is virtue teachable?,0,benign,socrates,sentinel row for pipeline dry runs
+s02,TEST_TIER2,2,ambiguous,socrates,marker understood only by the offline fake models
+s03,TEST_TIER3,3,high_risk,socrates,marker understood only by the offline fake models

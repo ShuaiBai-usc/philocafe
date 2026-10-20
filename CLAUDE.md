@@ -64,6 +64,11 @@ cp .env.example .env          # then fill in the keys
 .venv/bin/streamlit run ui/app.py             # midterm UI on the real services
 .venv/bin/streamlit run ui/app.py -- --fake   # offline demo: no keys, no network
 
+# eval: one row per turn plus report under eval/results/ (calls cached in eval/.cache/)
+.venv/bin/python eval/run_testset.py --input data/tests/midterm_30.csv
+.venv/bin/python eval/run_testset.py --input tests/fixtures/sentinel_testset.csv --fake --out /tmp/eval-dry-run
+.venv/bin/python eval/metrics.py eval/results/<run_id>.csv   # recompute a report
+
 # corpus pipeline and tests (standard library only)
 cd scripts && python3 -m unittest discover -s tests
 python3 scripts/socrates_pipeline.py
