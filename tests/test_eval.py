@@ -134,3 +134,17 @@ def test_metrics_script_rereads_a_run(tmp_path):
     assert metrics.main([str(csv_path)]) == 0
     assert csv_path.with_suffix(".report.md").exists()
     assert json.loads(csv_path.with_suffix(".replies.jsonl").read_text().splitlines()[0])["item_id"] == "s01"
+
+
+def test_translation_is_cached(tmp_path):
+    calls = []
+
+    def translate(text):
+        calls.append(text)
+        return "is virtue teachable"
+
+    cache = cache_mod.DiskCache(tmp_path)
+    for _ in range(2):
+        cached = cache_mod.CachedTranslate(translate, cache, "haiku")
+        assert cached("美德可以教吗？") == "is virtue teachable"
+    assert calls == ["美德可以教吗？"] and (cached.calls, cached.hits) == (1, 1)

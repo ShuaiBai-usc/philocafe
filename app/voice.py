@@ -28,9 +28,11 @@ def to_api_messages(messages: Sequence[AnyMessage]) -> list[dict]:
 
 
 class ClaudeVoice:
-    def __init__(self, model: str, client: anthropic.Anthropic | None = None, max_tokens: int = 2048):
+    def __init__(self, model: str, client: anthropic.Anthropic | None = None, max_tokens: int = 2048,
+                 effort: str = "low"):
         self.model = model
         self.max_tokens = max_tokens
+        self.effort = effort
         self._client = client
 
     def _get_client(self) -> anthropic.Anthropic:
@@ -43,7 +45,7 @@ class ClaudeVoice:
             model=self.model,
             max_tokens=self.max_tokens,
             system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
-            output_config={"effort": "low"},   # conversational replies; keeps the first token fast
+            output_config={"effort": self.effort},
             messages=to_api_messages(messages),
         ) as stream:
             yield from stream.text_stream

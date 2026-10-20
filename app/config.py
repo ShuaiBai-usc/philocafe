@@ -33,8 +33,11 @@ class Config:
     safety: SafetyConfig = SafetyConfig()
     default_persona: str = "socrates"
     voice_model: str = "claude-sonnet-5-5"
+    voice_effort: str = "low"        # conversational replies; keeps the first token fast
     k: int = 5
     min_score: float | None = None   # None: the retrieval default
+    translate_model: str = "claude-haiku-5-5"   # for non-English retrieval queries
+    translate_timeout_s: float = 5.0
 
 
 def load_config(path: Path = CONFIG_PATH) -> Config:
@@ -45,8 +48,11 @@ def load_config(path: Path = CONFIG_PATH) -> Config:
         safety=SafetyConfig(**raw.get("safety", {})),
         default_persona=persona.get("default", Config.default_persona),
         voice_model=persona.get("voice_model", Config.voice_model),
+        voice_effort=persona.get("voice_effort", Config.voice_effort),
         k=retrieval.get("k", Config.k),
         min_score=retrieval.get("min_score"),
+        translate_model=retrieval.get("translate_model", Config.translate_model),
+        translate_timeout_s=retrieval.get("translate_timeout_s", Config.translate_timeout_s),
     )
 
 

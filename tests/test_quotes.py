@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.quotes import QuoteFilter
+from app.quotes import LeadingNotesFilter, QuoteFilter
 from app.retrieval import Chunk
 
 MENO = Chunk(chunk_id="socrates-meno-aaaa1111", persona="socrates", work="Meno", section="",
@@ -51,7 +51,7 @@ def test_quote_not_in_passages_becomes_paraphrase():
     assert text == "The unexamined life is not worth living"
     assert cited == []
     assert checks[0] == {"chunk_id": "socrates-meno-aaaa1111", "text": "The unexamined life is not worth living",
-                         "ok": False, "reason": "not_in_passages"}
+                         "translation": None, "ok": False, "reason": "not_in_passages"}
 
 
 def test_speaker_uncertain_line_is_not_quoted():
@@ -95,3 +95,48 @@ def test_untagged_quotes_are_measured_not_changed():
     assert text == reply and cited == []
     assert [(c["chunk_id"], c["reason"]) for c in checks] == [
         ("socrates-apology-bbbb2222", "untagged_found"), (None, "untagged_not_found")]
+
+
+@pytest.mark.parametrize("step", [None, 1, 5])
+def test_translated_quote_is_checked_on_src_and_shows_translation(step):
+    reply = ('我曾对美诺说：<q id="socrates-meno-aaaa1111" src="You must think me very fortunate">'
+             '你一定觉得我很幸运</q>。你怎么看？')
+    text, cited, checks = run(reply, step=step)
+    assert text == "我曾对美诺说：“你一定觉得我很幸运”。你怎么看？"
+    assert cited == ["socrates-meno-aaaa1111"]
+    assert checks == [{"chunk_id": "socrates-meno-aaaa1111", "text": "You must think me very fortunate",
+                       "translation": "你一定觉得我很幸运", "ok": True, "reason": "verified"}]
+
+
+def test_translated_quote_with_invented_src_becomes_paraphrase():
+    text, cited, checks = run('<q src="The unexamined life is not worth living" id="socrates-meno-aaaa1111">'
+                              '未经审视的人生不值得过</q>')
+    assert (text, cited) == ("未经审视的人生不值得过", [])
+    assert checks[0]["reason"] == "not_in_passages" and checks[0]["translation"] == "未经审视的人生不值得过"
+
+
+def test_translated_quote_cannot_use_speaker_uncertain_line():
+    _, cited, checks = run('<q src="let me ask a question of you">让我问你一个问题</q>')
+    assert cited == [] and checks[0]["reason"] == "speaker_uncertain"
+
+
+def notes_run(reply, step=None):
+    f = LeadingNotesFilter()
+    pieces = [reply] if step is None else [reply[i:i + step] for i in range(0, len(reply), step)]
+    return "".join(f.feed(p) for p in pieces) + f.close(), f.dropped
+
+
+@pytest.mark.parametrize("step", [None, 1, 4])
+def test_leading_notes_block_is_dropped(step):
+    reply = '<reasoning id="r1">Quote the Apology. Short.</reasoning_effort>\n\n我不敢说自己知道答案。'
+    assert notes_run(reply, step) == ("我不敢说自己知道答案。", True)
+
+
+@pytest.mark.parametrize("reply", ["Plain reply.", '<q id="x">a quote</q> then text', "3 < 5, surely?",
+                                   "  leading spaces kept"])
+def test_replies_without_leading_notes_pass_unchanged(reply):
+    assert notes_run(reply, 1) == (reply, False)
+
+
+def test_unclosed_leading_block_is_let_through():
+    assert notes_run("<draft>never closed but it is the reply") == ("<draft>never closed but it is the reply", False)

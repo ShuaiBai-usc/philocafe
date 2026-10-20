@@ -81,3 +81,20 @@ class CachedVoice:
             pieces.append(piece)
             yield piece
         self.cache.put(key, pieces)
+
+
+class CachedTranslate:
+    def __init__(self, translate, cache: DiskCache, tag: str):
+        self.translate, self.cache, self.tag = translate, cache, tag
+        self.calls = self.hits = 0
+
+    def __call__(self, text: str) -> str:
+        self.calls += 1
+        key = self.cache.key("translate", self.tag, text)
+        hit = self.cache.get(key)
+        if hit is not None:
+            self.hits += 1
+            return hit
+        result = self.translate(text)
+        self.cache.put(key, result)
+        return result

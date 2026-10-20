@@ -34,7 +34,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import metrics  # noqa: E402
-from cache import CachedSafetyModel, CachedVoice, DiskCache  # noqa: E402
+from cache import CachedSafetyModel, CachedTranslate, CachedVoice, DiskCache  # noqa: E402
 
 from app.deps import Deps  # noqa: E402
 from app.graph import build_graph, run_turn  # noqa: E402
@@ -97,6 +97,7 @@ def run_item(graph, item: dict, persona: str, thread_id: str) -> dict:
         "reply": "".join(e["data"]["text"] for e in events if e["type"] == "token"),
         "citations": [e["data"]["chunk_id"] for e in events if e["type"] == "citation"],
         "quotes": state.get("quotes", []),
+        "retrieval_query": state.get("retrieval_query", ""),
         "retrieved": [{"chunk_id": c["chunk_id"], "score": c["score"]} for c in state.get("retrieved", [])],
         "skipped": trace.get("skipped", []), "nodes": trace.get("nodes", []),
         "ttft_ms": ttft, "total_ms": total,
@@ -105,8 +106,7 @@ def run_item(graph, item: dict, persona: str, thread_id: str) -> dict:
 
 def _counts(deps: Deps) -> tuple[int, int]:
     wrappers = [m for m in deps.safety_models if isinstance(m, CachedSafetyModel)]
-    if isinstance(deps.generate, CachedVoice):
-        wrappers.append(deps.generate)
+    wrappers += [w for w in (deps.generate, deps.translate) if isinstance(w, (CachedVoice, CachedTranslate))]
     return sum(w.calls for w in wrappers), sum(w.hits for w in wrappers)
 
 
@@ -142,8 +142,8 @@ def run(items: list[dict], deps: Deps, run_id: str, commit: str,
         replies.append({"item_id": item["item_id"], "family": item["family"], "text": item["text"],
                         "persona": persona, "attempts": attempt + 1,
                         "cached": calls > 0 and calls == hits,
-                        **{k: res[k] for k in ("voice", "error", "reply", "citations", "quotes", "retrieved",
-                                               "skipped", "nodes", "ttft_ms", "total_ms")}})
+                        **{k: res[k] for k in ("voice", "error", "reply", "citations", "quotes", "retrieval_query",
+                                               "retrieved", "skipped", "nodes", "ttft_ms", "total_ms")}})
     return rows, replies
 
 
@@ -174,7 +174,9 @@ def build_deps(fake: bool, use_cache: bool, cache_dir: Path = CACHE_DIR) -> Deps
     tags = {"jev": _prompt_tag(cfg.safety.jev_model, jev_questions),
             "fallback": _prompt_tag(cfg.safety.fallback_model, fallback.SYSTEM)}
     models = [CachedSafetyModel(m, cache, tags.get(m.source, m.source)) for m in deps.safety_models]
-    return replace(deps, safety_models=models, generate=CachedVoice(deps.generate, cache, cfg.voice_model))
+    translate = CachedTranslate(deps.translate, cache, cfg.translate_model) if deps.translate else None
+    return replace(deps, safety_models=models, generate=CachedVoice(deps.generate, cache, cfg.voice_model),
+                   translate=translate)
 
 
 def run_meta(args, items, rows, deps: Deps, run_id: str, started: datetime, commit: str, dirty: bool) -> dict:
@@ -206,7 +208,7 @@ def run_meta(args, items, rows, deps: Deps, run_id: str, started: datetime, comm
                    f"voice={cfg.voice_model}"),
         "config": (f"theta3={s.theta3} theta2={s.theta2} history_turns={s.history_turns} "
                    f"jev_timeout_s={s.jev_timeout_s} fallback_timeout_s={s.fallback_timeout_s} "
-                   f"k={cfg.k} min_score={min_score}"),
+                   f"k={cfg.k} min_score={min_score} translate_model={cfg.translate_model}"),
         "mode": f"{'fake' if args.fake else 'real'} services; cache {'off' if args.no_cache else 'on'}; "
                 f"retries={args.retries}",
         "columns": "escalated = predicted_tier >= 2 (section 8); latency_ms = safety node time",

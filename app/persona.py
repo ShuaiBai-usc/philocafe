@@ -8,6 +8,7 @@ user's latest message.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
@@ -15,23 +16,30 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemM
 from app.deps import Deps
 from app.events import emit
 from app.personas import PersonaConfig
-from app.quotes import QuoteFilter
+from app.quotes import LeadingNotesFilter, QuoteFilter
 from app.retrieval import Chunk
 from app.state import TurnState
+from app.translate import needs_translation
+
+log = logging.getLogger(__name__)
 
 QUOTING_RULES = """Quoting the dialogues:
 - A turn may come with passages from Plato's dialogues, each with an id. Quote only from those passages, word for word, and keep each quote to a sentence or two.
 - Wrap every quote in a tag with its passage id: <q id="PASSAGE_ID">exact words</q>. Use the tag only for quotes, and don't put quotation marks around anything else.
 - Each passage line starts with its speaker ("Meno:", "Socrates:"). Leave the label out of the quote, and if the words are someone else's, say who said them.
 - Lines starting with [speaker uncertain] may not be your words; don't quote them as your own.
+- If you reply in a language other than English, still quote only from the passages: put the exact English words in src and your translation between the tags, like <q id="PASSAGE_ID" src="exact English words">your translation</q>. Don't use double quotation marks inside src.
 - If no passage fits what you want to say, don't quote; just talk."""
+
+REPLY_RULE = ("Write only what you say to the person. Never include notes to yourself, drafts, reasoning, "
+              "or any tags other than <q>.")
 
 SHORT_QUERY_WORDS = 6
 
 
 def system_prompt(persona: PersonaConfig) -> str:
     style = "\n".join(f"- {rule}" for rule in persona.style)
-    return f"{persona.prompt}\n\nHow you talk:\n{style}\n\n{QUOTING_RULES}"
+    return f"{persona.prompt}\n\nHow you talk:\n{style}\n- {REPLY_RULE}\n\n{QUOTING_RULES}"
 
 
 def passages_note(chunks: Sequence[Chunk], retrieved: bool) -> str:
@@ -63,12 +71,19 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
 
     wants_passages = state["safety"]["needs_retrieval"]
     chunks: list[Chunk] = []
+    query = ""
     if wants_passages:
-        chunks = deps.retrieve(persona.corpus, retrieval_query(state["messages"]),
+        query = retrieval_query(state["messages"])
+        if deps.translate is not None and needs_translation(query):
+            try:
+                query = deps.translate(query)
+            except Exception as e:   # search with the original words rather than fail the turn
+                log.warning("query translation failed: %s", type(e).__name__)
+        chunks = deps.retrieve(persona.corpus, query,
                                k=persona.k or deps.config.k,
                                min_score=persona.min_score if persona.min_score is not None else deps.config.min_score)
 
-    quotes = QuoteFilter(chunks)
+    notes, quotes = LeadingNotesFilter(), QuoteFilter(chunks)
     parts: list[str] = []
 
     def send(outputs):
@@ -82,9 +97,12 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
 
     messages = [*state["messages"], SystemMessage(passages_note(chunks, wants_passages))]
     for delta in deps.generate(system_prompt(persona), messages):
-        send(quotes.feed(delta))
+        send(quotes.feed(notes.feed(delta)))
+    send(quotes.feed(notes.close()))
     send(quotes.close())
+    if notes.dropped:
+        log.warning("dropped notes the voice model wrote before its reply")
 
     reply = "".join(parts)
     return {"retrieved": chunks, "reply": reply, "citations": quotes.cited, "quotes": quotes.checks,
-            "messages": [AIMessage(reply, name=persona.id)]}
+            "retrieval_query": query, "messages": [AIMessage(reply, name=persona.id)]}

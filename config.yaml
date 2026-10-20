@@ -14,7 +14,11 @@ safety:
 persona:
   default: socrates
   voice_model: claude-sonnet-5-5
+  voice_effort: low
 
 retrieval:
   k: 5
   min_score: null           # null: use the retrieval default (PHILOCAFE_MIN_SCORE, else 0.3)
+  # Non-English questions are translated into English before retrieval (the corpus is English).
+  translate_model: claude-haiku-5-5
+  translate_timeout_s: 5.0

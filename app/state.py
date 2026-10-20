@@ -35,4 +35,5 @@ class TurnState(TypedDict, total=False):
     reply: str
     citations: list[str]          # chunk_ids actually quoted
     quotes: list[QuoteCheck]      # every quote checked this turn (FR-12, NFR-05)
+    retrieval_query: str          # what was searched, translated into English if needed
     trace: list[NodeTiming]       # node name + ms, for the debug panel
