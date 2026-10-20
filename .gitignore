@@ -3,3 +3,7 @@ data/*.db
 __pycache__/
 *.pyc
 .DS_Store
+.env
+.venv/
+.pytest_cache/
+eval/.cache/
