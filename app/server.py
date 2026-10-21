@@ -75,12 +75,15 @@ def checkpoint_url() -> str | None:
 
 def postgres_checkpointer(url: str):
     """LangGraph's Postgres checkpointer on a small pool. Prepared statements are off so
-    a transaction-mode pooler (such as Neon's) works."""
+    a transaction-mode pooler (such as Neon's) works. Each connection is checked before
+    use: Neon suspends after 5 idle minutes and drops open connections, while the pool
+    keeps idle ones for 10, so the first turn after a pause got a dead connection."""
     from langgraph.checkpoint.postgres import PostgresSaver
     from psycopg.rows import dict_row
     from psycopg_pool import ConnectionPool
 
     pool = ConnectionPool(conninfo=url, min_size=0, max_size=4, open=True,
+                          check=ConnectionPool.check_connection,
                           kwargs={"autocommit": True, "prepare_threshold": None, "row_factory": dict_row})
     saver = PostgresSaver(pool)
     saver.setup()            # idempotent: creates or migrates the checkpoint tables

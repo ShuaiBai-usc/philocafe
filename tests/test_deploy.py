@@ -76,6 +76,31 @@ def test_postgres_is_used_when_configured(monkeypatch):
     assert saver.get_tuple({"configurable": {"thread_id": "t1"}}).checkpoint["channel_values"]["mode"] == "support"
 
 
+def test_postgres_pool_checks_connections_before_use(monkeypatch):
+    """A connection Neon dropped while idle must be replaced, not handed to a turn."""
+    import langgraph.checkpoint.postgres as lg_postgres
+    import psycopg_pool
+    made = {}
+
+    class Pool:
+        check_connection = psycopg_pool.ConnectionPool.check_connection
+
+        def __init__(self, **kwargs):
+            made.update(kwargs)
+
+    class Saver:
+        def __init__(self, pool):
+            pass
+
+        def setup(self):
+            pass
+
+    monkeypatch.setattr(psycopg_pool, "ConnectionPool", Pool)
+    monkeypatch.setattr(lg_postgres, "PostgresSaver", Saver)
+    server.postgres_checkpointer("postgres://neon.example/db")
+    assert made["check"] is psycopg_pool.ConnectionPool.check_connection
+
+
 def test_vercel_gets_the_same_web_app_mount(monkeypatch):
     """Vercel promotes the StaticFiles mount to its CDN; the function must still serve it, and
     the API routes must still win over the mount at "/"."""
