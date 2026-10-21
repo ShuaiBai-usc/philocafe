@@ -8,3 +8,9 @@ __pycache__/
 .pytest_cache/
 eval/.cache/
 data/*.db-*
+# Vercel build outputs (deploy/vercel_build.py)
+public/
+.cache/
+.vercel/
+# uv writes this when it locks; Vercel locks at build time, so it is not committed
+uv.lock

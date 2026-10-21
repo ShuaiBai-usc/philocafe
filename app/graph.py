@@ -31,10 +31,13 @@ def timed(name: str, fn: Callable[[TurnState], dict]) -> Callable[[TurnState], d
 
 
 def route_after_safety(state: TurnState) -> Literal["exit", "moderator"]:
-    # Midterm: support mode lasts for the rest of the thread; the persona's
-    # return when risk has dropped (FR-32) comes at the final.
-    if state["safety"]["tier"] == 3 or state.get("mode") == "support":
+    """Design doc 9.1: exit on tier 3, or in support mode unless the user asked for the
+    persona back (safety's `route`) and risk has dropped to tier 1 or below (FR-32)."""
+    safety = state["safety"]
+    if safety["tier"] == 3:
         return "exit"
+    if state.get("mode") == "support":
+        return "moderator" if safety["route"] and safety["tier"] <= 1 else "exit"
     return "moderator"
 
 
@@ -52,17 +55,24 @@ def build_graph(deps: Deps, checkpointer=None):
     return g.compile(checkpointer=checkpointer or InMemorySaver())
 
 
+def skipped_quotes(quotes) -> list[dict]:
+    """Quotes the check refused, for the trace (7.2 `skipped`); untagged ones are only measured."""
+    return [{"chunk_id": q["chunk_id"], "reason": q["reason"]}
+            for q in quotes if not q["ok"] and not q["reason"].startswith("untagged")]
+
+
 def run_turn(graph, thread_id: str, text: str, persona_id: str) -> Iterator[Event]:
     """Run one user turn and yield its UI events, ending with `done` or `error`."""
     config = {"configurable": {"thread_id": thread_id}}
     # Per-turn fields are reset here; messages and mode carry over in the checkpoint.
     turn = {"thread_id": thread_id, "persona_id": persona_id, "messages": [HumanMessage(text)],
-            "trace": [], "retrieved": [], "reply": "", "citations": []}
+            "trace": [], "retrieved": [], "reply": "", "citations": [], "quotes": [], "retrieval_query": ""}
     try:
         yield from graph.stream(turn, config, stream_mode="custom")
         state = graph.get_state(config).values
         yield event("trace", nodes=state["trace"],
-                    retrieved=[c["chunk_id"] for c in state["retrieved"]], skipped=[])
+                    retrieved=[c["chunk_id"] for c in state["retrieved"]],
+                    skipped=skipped_quotes(state.get("quotes", [])))
         yield event("done")
     except Exception as e:
         yield event("error", code=type(e).__name__, message=str(e)[:500])

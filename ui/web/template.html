@@ -1,0 +1,843 @@
+<meta charset="utf-8">
+<title>Philocafé Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6b4e2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Philocafé">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=IBM+Plex+Mono&family=Pixelify+Sans:wght@400;500&family=Silkscreen&display=swap">
+<style>
+/* Tokens and sizes follow the Figma file "Philocafe · Mobile App UI". */
+:root {
+  --paper: #fffae0;      /* page */
+  --white: #faedcd;      /* cards, philosopher bubble */
+  --ink: #6b4e2e;        /* outlines, text */
+  --muted: #79694f;
+  --sage: #e9edc9;       /* user bubble, title bars */
+  --clay: #d4aa73;       /* primary button, thin lines */
+  --shadow: #cca370;     /* 3px 4px drop shadows */
+  --table: #2f261c;      /* desktop surround */
+  --f-display: "Cormorant Garamond", Georgia, serif;
+  --f-pixel: "Pixelify Sans", "Courier New", monospace;
+  --f-label: "Silkscreen", "Courier New", monospace;
+  --f-mono: "IBM Plex Mono", "Courier New", monospace;
+  --pad-l: max(18px, env(safe-area-inset-left, 0px));
+  --pad-r: max(18px, env(safe-area-inset-right, 0px));
+  color-scheme: light;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--table); color: var(--ink); font-family: var(--f-pixel); overflow: hidden; }
+img.px, .px img { image-rendering: pixelated; }
+button, textarea { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px dashed var(--ink); outline-offset: 2px; }
+p { margin: 0; }
+
+.stage { height: 100%; display: flex; align-items: center; justify-content: center; gap: 40px; }
+.phone { position: relative; width: 100%; height: 100%; background: var(--paper); overflow: hidden; display: flex; flex-direction: column; }
+.status, .homebar { display: none; }
+@media (min-width: 560px) and (min-height: 700px) {
+  .phone { width: 390px; height: min(844px, 100%); border-radius: 30px; box-shadow: 0 0 0 10px #191410, 0 30px 80px rgba(0,0,0,.5); }
+  .status { display: flex; justify-content: space-between; align-items: center; height: 44px; padding: 0 26px; flex: none; font: 16px var(--f-display); }
+  .homebar { display: block; width: 132px; height: 5px; border-radius: 2px; background: var(--ink); margin: 14px auto 8px; flex: none; }
+}
+.screens { position: relative; flex: 1; min-height: 0; }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px max(24px, env(safe-area-inset-right, 0px)) 20px max(24px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 16px; }
+
+/* ---------- Shared pixel pieces ---------- */
+.card { position: relative; background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); }
+.titlebar { height: 28px; padding: 5px 10px 0; background: repeating-linear-gradient(to bottom, var(--sage) 0 2px, var(--paper) 2px 4px);
+  font: 12px/14px var(--f-label); letter-spacing: .1em; text-transform: uppercase; }
+.card > .titlebar { margin: -2px -2px 0; }
+.card .inner { padding: 12px 18px 14px; display: flex; flex-direction: column; gap: 8px; }
+.primary { flex: none; width: 100%; height: 54px; background: var(--clay); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); font: 16px/21px var(--f-pixel); }
+.primary:active, .chip:active, .pill:active { transform: translate(2px, 2px); box-shadow: 1px 2px 0 var(--shadow); }
+.ico { width: 22px; height: 22px; flex: none; display: block; }
+.muted { color: var(--muted); }
+.t11 { font-size: 11px; line-height: 14px; }
+.t14 { font-size: 14px; line-height: 19px; }
+.t16 { font-size: 16px; line-height: 21px; }
+.t20 { font-size: 20px; line-height: 26px; }
+.t28 { font-size: 28px; line-height: 36px; }
+
+/* ---------- Bottom navigation ---------- */
+.tabs { flex: none; background: var(--ink); display: flex; justify-content: center; gap: 18px; padding: 8px 24px calc(6px + env(safe-area-inset-bottom, 0px)); }
+.tab { width: 102px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 2px 0; color: var(--paper); font-size: 11px; line-height: 14px; opacity: .72; }
+.tab[aria-current="page"] { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- 01 The Café ---------- */
+#home .body { align-items: center; gap: 8px; padding-left: 16px; padding-right: 16px; }
+.brand { position: relative; width: 300px; max-width: 100%; height: 30px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 8px; border: 1px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow);
+  background: repeating-linear-gradient(to bottom, var(--sage) 0 2px, #f4f3d4 2px 4px); font-size: 24px; line-height: 28px; }
+.hint { text-align: center; }
+.hint.flash { animation: flash .9s steps(2) 2; }
+.cafe { position: relative; width: 300px; max-width: 100%; aspect-ratio: 1179 / 2556; flex: none; border: 2px solid var(--ink); overflow: hidden; }
+.cafe > img.bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.actor { position: absolute; }
+.actor img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.seat { position: absolute; z-index: 2; min-width: 44px; min-height: 44px; }
+
+/* ---------- 02 Meet ---------- */
+#meet .body { gap: 16px; }
+.backlink { display: flex; gap: 8px; align-items: center; align-self: flex-start; font-size: 16px; line-height: 21px; min-height: 32px; }
+.portrait { width: 204px; height: 230px; flex: none; align-self: center; border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); object-fit: cover; }
+.intro { display: flex; flex-direction: column; gap: 3px; }
+.foot { flex: none; padding: 10px max(24px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px)); }
+
+/* ---------- 03 / 04 Conversation ---------- */
+.convhead { display: flex; align-items: center; gap: 12px; padding: 12px var(--pad-r) 0 var(--pad-l); flex: none; }
+.back { width: 32px; height: 44px; display: grid; place-items: center; flex: none; }
+.mono { width: 52px; height: 52px; border: 1px solid var(--clay); flex: none; }
+.convhead h1 { margin: 0; font: 400 20px/1.4 var(--f-display); }
+.convhead .sub { font: 11px/1.4 var(--f-mono); color: var(--muted); white-space: nowrap; }
+.mode { margin-left: auto; align-self: flex-start; margin-top: 6px; font: 9px var(--f-label); letter-spacing: .08em; border: 2px solid var(--muted); color: var(--muted); padding: 1px 4px; }
+.mode.live { border-color: #6f8a55; color: #55703d; }
+
+.scene-wrap { margin: 12px var(--pad-r) 0 var(--pad-l); border: 2px solid var(--ink); position: relative; overflow: hidden; flex: none; aspect-ratio: 354 / 164; transition: aspect-ratio .5s ease; }
+#chat.convo .scene-wrap { aspect-ratio: 354 / 110; }
+.scene { position: absolute; left: 0; bottom: 0; width: 100%; }
+.scene .frame { position: absolute; overflow: hidden; inset: 0; }
+
+.scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px var(--pad-r) 16px var(--pad-l); display: flex; flex-direction: column; gap: 12px; }
+#chat.convo .scroll { gap: 18px; padding-top: 14px; }
+.headline { margin: 0; font: 400 29px/31px var(--f-display); text-wrap: balance; }
+.greet .body2 { display: flex; gap: 12px; padding: 12px; align-items: flex-start; }
+.greet .pic { width: 62px; height: 62px; border: 2px solid var(--ink); flex: none; }
+.say { flex: 1; min-width: 0; min-height: 78px; background: var(--paper); border: 2px solid var(--ink); padding: 9px 10px 18px; font-size: 15px; line-height: 20px; position: relative; }
+.say::after { content: "▾"; position: absolute; right: 10px; bottom: 2px; font-size: 12px; animation: blink 1s steps(1) infinite; }
+.say.typing::after { content: "▌"; position: static; animation: none; }
+.label { font: 8px/10px var(--f-label); letter-spacing: .1em; text-transform: uppercase; }
+.chips { display: flex; flex-direction: column; gap: 9px; }
+.chip { text-align: left; background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 8px 12px; font-size: 16px; line-height: 21px; white-space: pre-wrap; }
+
+.row { display: flex; gap: 16px; align-items: flex-start; position: relative; }
+.row.me { justify-content: flex-end; }
+.row .ava { width: 42px; height: 42px; border: 2px solid var(--ink); flex: none; }
+.bubble { position: relative; max-width: 286px; min-width: 0; background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 10px 14px; font-size: 16px; line-height: 21px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.row.me .bubble { background: var(--sage); max-width: 286px; }
+.row.them { padding-right: 12px; }
+.row.me { padding-left: 40px; }
+.tail { position: absolute; top: 10px; width: 14px; height: 14px; }
+.row.them .tail { left: 44px; }
+.row.me .tail { right: 0; }
+.dots { display: inline-flex; gap: 8px; padding: 6px 2px; }
+.dots i { width: 7px; height: 7px; background: var(--ink); animation: hop .9s steps(2) infinite; }
+.dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+
+.tools { flex: none; display: flex; gap: 20px; padding: 0 var(--pad-r) 12px var(--pad-l); font: 10px/13px var(--f-label); letter-spacing: .06em; text-transform: uppercase; }
+.tools button { padding: 6px 0; text-transform: uppercase; }
+.tools button:disabled { opacity: .45; cursor: default; }
+.toast { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -6px); background: var(--ink); color: var(--paper); font-size: 13px; padding: 6px 10px; white-space: nowrap; animation: popin .2s steps(3); }
+
+.dock { flex: none; padding: 0 var(--pad-r) calc(12px + env(safe-area-inset-bottom, 0px)) var(--pad-l); position: relative; }
+.composer { height: 62px; background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 8px; display: flex; gap: 9px; align-items: center; }
+.composer input { flex: 1; min-width: 0; height: 40px; border: 1px solid var(--ink); background: var(--paper); padding: 0 10px; font: 16px var(--f-pixel); color: var(--ink); border-radius: 0; }
+.composer input::placeholder { color: var(--ink); opacity: .55; }
+.composer .send { width: 36px; height: 40px; border: 2px solid var(--ink); background: var(--sage); font-size: 18px; flex: none; }
+.composer .send:disabled, .composer input:disabled { opacity: .5; cursor: default; }
+.dock .note { text-align: center; margin-top: 8px; }
+
+/* 07 distress state */
+.syscheck { text-align: center; }
+.youcard { align-self: flex-end; width: min(282px, 88%); background: var(--sage); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.composer.quiet { height: 56px; border: 1px solid var(--clay); box-shadow: none; padding: 0 12px 0 16px; justify-content: space-between; color: var(--muted); }
+.composer.quiet span:last-child { width: 32px; height: 32px; display: grid; place-items: center; background: var(--clay); border: 1px solid var(--ink); color: var(--ink); font-size: 20px; }
+
+/* ---------- Popups ---------- */
+.veil { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 0 24px;
+  background: repeating-conic-gradient(rgba(107,78,46,.28) 0 25%, rgba(107,78,46,.12) 0 50%) 0 0 / 4px 4px; }
+.pop { width: 100%; max-width: 342px; animation: popin .25s steps(4); }
+.pop .titlebar { display: flex; align-items: center; gap: 6px; }
+.pop .titlebar img { width: 14px; height: 14px; }
+.pop .x { margin-left: auto; width: 20px; height: 20px; margin-top: -3px; border: 2px solid var(--ink); background: var(--paper); font: 12px/14px var(--f-label); }
+.pop-body { padding: 18px 16px 16px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; font-size: 15px; line-height: 1.5; }
+.pop-body img { width: 64px; }
+.btns { display: flex; gap: 12px; width: 100%; margin-top: 4px; }
+.btn { flex: 1; border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 10px 0; font: 13px var(--f-label); letter-spacing: .14em; background: var(--paper); }
+.btn.go { background: var(--sage); }
+.source .inner { padding: 14px 24px 16px; gap: 8px; }
+.source .close { align-self: flex-start; font-size: 16px; line-height: 21px; padding: 4px 0; }
+
+/* ---------- 05 My Notes ---------- */
+.filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { min-width: 100px; height: 40px; padding: 0 16px; background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); font-size: 12px; line-height: 16px; }
+.pill[aria-pressed="true"] { background: var(--sage); }
+.note-card { text-align: left; width: 100%; }
+.note-card .inner { padding: 12px 22px 14px; }
+.note-card.sel { outline: 2px dashed var(--ink); outline-offset: 3px; }
+.notehead { display: flex; gap: 8px; align-items: center; }
+.reflect textarea { width: 100%; min-height: 84px; resize: vertical; cursor: text; border: 1px solid var(--clay); background: var(--paper); padding: 8px 10px; font-size: 16px; line-height: 21px; }
+.reflect textarea::placeholder { color: var(--muted); }
+.empty { padding: 18px; text-align: center; }
+
+/* ---------- 06 Pause ---------- */
+#pause .rest { width: 100%; height: 160px; object-fit: cover; flex: none; }
+#pause .body { padding-top: 24px; gap: 12px; }
+.support { padding: 12px; display: flex; flex-direction: column; gap: 5px; }
+
+/* ---------- Side notes (wide screens) ---------- */
+.notes { display: none; max-width: 300px; color: #e9dcc0; font: 15px/1.6 var(--f-pixel); }
+.notes h2 { font-family: var(--f-display); font-weight: 500; font-size: 30px; margin: 0 0 8px; color: #fdf7e3; }
+.notes button { color: #fdf7e3; text-decoration: underline; font-family: var(--f-pixel); text-align: left; }
+.notes ul { padding-left: 18px; margin: 8px 0; }
+@media (min-width: 900px) and (min-height: 700px) { .notes { display: block; } }
+
+/* ---------- Backend integration (PhiloCafe server) ---------- */
+.primary:disabled { opacity: .5; cursor: default; box-shadow: none; }
+.coming { text-align: center; margin-top: 8px; }
+.source .inner { max-height: 70vh; overflow-y: auto; }
+.cite { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--clay); }
+.cite:last-of-type { border-bottom: 0; }
+.cite blockquote { margin: 0; padding-left: 10px; border-left: 3px solid var(--clay); }
+.cite summary { cursor: pointer; }
+.cite .passage { white-space: pre-wrap; margin-top: 6px; }
+.cite a { color: var(--ink); }
+.sysnote .inner p + p { margin-top: 4px; }
+.netnote { text-align: center; }
+.codein { width: 100%; height: 40px; border: 1px solid var(--ink); background: var(--paper); padding: 0 10px; font: 16px var(--f-pixel); color: var(--ink); border-radius: 0; }
+#debugPanel { position: fixed; left: 8px; bottom: 8px; z-index: 50; max-width: 360px; max-height: 45vh; overflow: auto; margin: 0; padding: 8px 10px;
+  background: rgba(47,38,28,.92); color: #fffae0; font: 11px/1.45 var(--f-mono); white-space: pre-wrap; }
+
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes hop { 50% { transform: translateY(-3px); } }
+@keyframes popin { from { transform: scale(.9); opacity: 0; } }
+@keyframes flash { 50% { background: var(--sage); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="stage">
+  <div class="phone" id="phone">
+    <div class="status" aria-hidden="true"><span>9:41</span><span>●&nbsp;&nbsp;▰</span></div>
+    <div class="screens">
+      <section class="screen" id="home" aria-label="The café">
+        <div class="body">
+          <div class="brand"><span data-icon="cup"></span>Philocafé</div>
+          <p class="hint t11 muted" id="hint">Tap a philosopher in the café to meet them.</p>
+          <div class="cafe" id="cafe"><img class="bg px" src="assets/home_bg.png" alt=""></div>
+        </div>
+      </section>
+      <section class="screen" id="meet" hidden></section>
+      <section class="screen" id="chat" hidden></section>
+      <section class="screen" id="notes" hidden></section>
+      <section class="screen" id="pause" hidden></section>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Main">
+        <button class="tab" data-tab="home"><span data-icon="cup" data-color="paper"></span>Café</button>
+        <button class="tab" data-tab="chat"><span data-icon="chat" data-color="paper"></span>Conversation</button>
+        <button class="tab" data-tab="notes"><span data-icon="mark" data-color="paper"></span>My notes</button>
+    </nav>
+    <div class="homebar" id="homebar" aria-hidden="true"></div>
+  </div>
+  <aside class="notes">
+    <h2>Philocafé</h2>
+    <p>Clickable prototype for 586, built from the Figma file. Tap a philosopher in the café, meet them, take a seat and talk. Save a thought to keep it in My notes.</p>
+    <p>Jump to:</p>
+    <ul>
+      <li><button data-go="socrates">Meet Socrates</button></li>
+      <li><button data-go="montaigne">Meet Montaigne</button></li>
+      <li><button data-go="schopenhauer">Meet Schopenhauer</button></li>
+      <li><button id="demoDistress">Simulated system check (07 → 06)</button></li>
+    </ul>
+    <p id="modeNote">Replies: checking…</p>
+  </aside>
+</div>
+
+<script>
+const A = "assets/";
+const DATA = __DATA__;
+
+const PH = {
+  socrates: {
+    name: "Socrates", land: "socrates", home: "home_socrates",
+    tagline: "Let’s question what seems obvious.",
+    about: "We’ll slow down, examine your assumptions, and explore what matters to you—one question at a time.",
+    inspired: "Plato’s dialogues and the Socratic method.",
+    headline: "No question is too ordinary.",
+    greet: "Hello, friend. What has been on your mind today?",
+    starters: ["What does a good life look like?", "I feel like I’m falling behind.", "What am I taking for granted?"],
+    scripted: {
+      "I feel like I’m falling behind.": "Behind whom? Perhaps we should first ask whose destination you are trying to reach.",
+      "What does a good life look like?": "A fine question. But tell me first: when did you last feel your day was well spent, and what made it so?",
+      "What am I taking for granted?": "Let us test it. Name one thing you did today without asking why. Was it truly your choice?"
+    },
+    sample: { title: "Whose timeline am I following?", why: "A question to revisit when life feels like a race.", topic: "On finding your own pace" },
+    fallback: ["And what do you mean by that, exactly? Give me one example, and we will test it together.",
+      "Interesting. But if a wise friend disagreed with you, what would they say first?",
+      "So we have found that we did not know what we thought we knew. That is a good morning's work. What follows from it?"]
+  },
+  montaigne: {
+    name: "Montaigne", land: "montaigne", home: "home_montaigne",
+    tagline: "Let’s become curious about being human.",
+    about: "We’ll explore your everyday experiences with curiosity, honesty, and room for contradiction—without rushing to a perfect answer.",
+    inspired: "The Essays: self-knowledge, uncertainty, and everyday life.",
+    headline: "No question is too ordinary.",
+    greet: "Hello, fellow wanderer. What small, ordinary thing has stayed with you today?",
+    starters: ["Why do I change my mind so often?", "A small habit I cannot explain", "What did a bad day teach me?"],
+    scripted: {},
+    sample: { title: "What is my own way of living?", why: "A question to revisit when life feels like a race.", topic: "On finding your own pace" },
+    fallback: ["Ah, I am the same. I contradict myself daily, and I have stopped apologising for it. Tell me more about the small part.",
+      "My cat once taught me more than three books. What is the most ordinary teacher you have had?",
+      "Que sais-je? Very little, but I enjoy finding out. What would you try if no one were watching?"]
+  },
+  schopenhauer: {
+    name: "Schopenhauer", land: "schopenhauer", home: "home_schopenhauer",
+    tagline: "Let’s examine what keeps us wanting.",
+    about: "We’ll look honestly at desire, disappointment, and comparison—and consider how art, compassion, and quieter pleasures may offer relief.",
+    inspired: "The World as Will and Representation: desire, art, and compassion.",
+    headline: "No question is too ordinary.",
+    greet: "Sit, if you must. What is it that troubles you today?",
+    starters: ["Why do I always want more?", "What gives me a moment of peace?", "Why does satisfaction fade?"],
+    scripted: {},
+    sample: { title: "What gives me a moment of peace?", why: "A question to revisit when life feels like a race.", topic: "On finding your own pace" },
+    fallback: ["Ah. Desire is a thirst that drinking only renews. Tell me, what did you want this week?",
+      "Music is the one art that speaks the will directly. Put something on, and suffer a little less for three minutes.",
+      "People are like porcupines in winter: too close and they prick, too far and they freeze. Find the polite distance."]
+  }
+};
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---------- Pixel icons (22px grid of 2px pixels, drawn to match the Figma icon set) ---------- */
+const ICONS = {
+  cup: "M3 7h12v2H3zM3 9h2v7H3zM13 9h2v7h-2zM5 16h8v2H5zM15 9h3v2h-3zM18 11h2v3h-2zM15 14h3v2h-3zM6 3h2v3H6zM10 2h2v4h-2z",
+  chat: "M3 3h16v2H3zM3 5h2v10H3zM17 5h2v10h-2zM3 15h6v2H3zM11 15h8v2h-8zM7 17h2v2H7zM9 17h2v2H9z",
+  mark: "M5 2h12v2H5zM5 4h2v16H5zM15 4h2v16h-2zM7 16h2v2H7zM9 14h4v2H9zM13 16h2v2h-2z",
+  back: "M12 5h2v2h-2zM10 7h2v2h-2zM8 9h2v4H8zM10 13h2v2h-2zM12 15h2v2h-2z"
+};
+const COLORS = { ink: "#6b4e2e", paper: "#fffae0", clay: "#d4aa73" };
+const icon = (name, color = "ink", size = 22) => {
+  const box = name === "back" ? '<rect x=".5" y=".5" width="21" height="21" fill="none" stroke="#d4aa73"/>' : "";
+  return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 22 22" shape-rendering="crispEdges" aria-hidden="true">${box}<path fill="${COLORS[color]}" d="${ICONS[name]}"/></svg>`;
+};
+const TAIL = {
+  them: '<svg class="tail" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="#6b4e2e" d="M0 0h14v2H0zM12 2h2v2h-2zM10 4h2v2h-2zM12 6h2v2h-2zM12 8h2v2h-2z"/><path fill="#faedcd" d="M0 2h12v2H0zM0 4h10v2H0z"/></svg>',
+  me: '<svg class="tail" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="#6b4e2e" d="M0 0h14v2H0zM0 2h2v12H0zM4 4h2v2H4zM6 2h8v2H6zM2 6h2v2H2z"/></svg>'
+};
+const paintIcons = (root = document) => root.querySelectorAll("[data-icon]").forEach(s => { s.outerHTML = icon(s.dataset.icon, s.dataset.color || "ink"); });
+
+// preload every frame so swaps never flash
+Object.values(DATA).forEach(d => d.frames.forEach(f => { new Image().src = A + f; }));
+
+// An actor is one <img> that steps through the timeline recovered from the GIF exports.
+function actor(key, W, H) {
+  const d = DATA[key], [x0, y0, x1, y1] = d.box;
+  const box = el("div", "actor px");
+  Object.assign(box.style, { left: x0 / W * 100 + "%", top: y0 / H * 100 + "%", width: (x1 - x0) / W * 100 + "%", height: (y1 - y0) / H * 100 + "%" });
+  const img = el("img"); img.alt = ""; img.src = A + d.frames[d.seq[0][0]];
+  box.append(img);
+  let i = 0, t = null, alive = true;
+  const step = () => {
+    if (!alive) return;
+    const [f, ms] = d.seq[i];
+    img.src = A + d.frames[f];
+    i = (i + 1) % d.seq.length;
+    t = setTimeout(step, ms);
+  };
+  if (!reduce) step();
+  box.stop = () => { alive = false; clearTimeout(t); };
+  return box;
+}
+
+/* ---------- Navigation ---------- */
+const SCREENS = ["home", "meet", "chat", "notes", "pause"];
+const TABBED = { home: "home", notes: "notes" };
+let screen = "home";
+function show(id) {
+  screen = id;
+  SCREENS.forEach(s => { $("#" + s).hidden = s !== id; });
+  $("#tabs").hidden = !(id in TABBED);
+  document.querySelectorAll(".tab").forEach(t => t.toggleAttribute("aria-current", false));
+  if (TABBED[id]) $(`.tab[data-tab="${TABBED[id]}"]`).setAttribute("aria-current", "page");
+  $("#homebar").hidden = id === "home" || id === "notes";
+  document.querySelector(".veil")?.remove();
+}
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  const to = t.dataset.tab;
+  if (to === "chat") {
+    if (cur) return show("chat");
+    show("home"); const h = $("#hint"); h.classList.remove("flash"); void h.offsetWidth; h.classList.add("flash");
+    return;
+  }
+  if (to === "notes") renderNotes();
+  show(to);
+});
+
+/* ---------- 01 Home ---------- */
+const cafe = $("#cafe");
+const HOME_W = 1179, HOME_H = 2556;
+["socrates", "schopenhauer", "montaigne"].forEach(id => {
+  const a = actor(PH[id].home, HOME_W, HOME_H);
+  const seat = el("button", "seat");
+  seat.setAttribute("aria-label", "Meet " + PH[id].name);
+  seat.style.cssText = a.style.cssText;
+  seat.onclick = () => openMeet(id);
+  cafe.append(seat, a);
+});
+
+/* ---------- 02 Meet ---------- */
+function openMeet(id) {
+  const p = PH[id];
+  const open = backend.available(id);
+  const m = $("#meet");
+  m.innerHTML = `<div class="body">
+      <button class="backlink"><span data-icon="back"></span>The café</button>
+      <img class="portrait px" src="${A}portrait_${id}.png" alt="Pixel portrait of ${p.name}">
+      <div class="intro"><p class="t28">${p.name}</p><p class="t16 muted">${p.tagline}</p></div>
+      <p class="t20">A conversation with me</p>
+      <p class="t16">${p.about}</p>
+      <div class="card"><div class="titlebar">Inspired by</div>
+        <div class="inner" style="padding:12px 14px 14px"><p class="t14">${p.inspired}</p><p class="t14 muted">An AI interpretation, not the historical person.</p></div></div>
+    </div>
+    <div class="foot"><button class="primary"${open ? "" : " disabled"}>${open ? `Take a seat with ${p.name}` : "Coming at the final"}</button>
+      ${open ? "" : `<p class="t11 muted coming">${p.name} joins the café at the final showcase.</p>`}</div>`;
+  paintIcons(m);
+  $(".backlink", m).onclick = () => show("home");
+  $(".primary", m).onclick = () => openChat(id);
+  show("meet");
+}
+
+/* ---------- Backend (design doc 7.2) ---------- */
+// Live when this page is served by the PhiloCafe server: every turn goes through the
+// safety node first, and the server decides when the café pauses. Opened any other way
+// (e.g. from the file), the page falls back to the scripted demo lines.
+const DEBUG = /debug/.test(location.hash + location.search);
+const backend = {
+  live: false,
+  ids: new Set(),
+  // The deployed café asks for an access code (ADR-11); it is kept on this device only.
+  code() { try { return localStorage.getItem("philocafe.code") || ""; } catch { return ""; } },
+  setCode(c) { try { c ? localStorage.setItem("philocafe.code", c) : localStorage.removeItem("philocafe.code"); } catch {} },
+  headers(extra = {}) { const c = this.code(); return c ? { ...extra, "X-Philocafe-Code": c } : extra; },
+  async init() {
+    try {
+      const r = await fetch("personas", { cache: "no-store", headers: this.headers() });
+      if (r.status === 401) { this.live = false; askCode(this.code() ? "That code didn’t open the café. Please try again." : ""); return; }
+      if (!r.ok) throw new Error(r.status);
+      this.ids.clear();
+      (await r.json()).filter(p => p.available).forEach(p => this.ids.add(p.id));
+      this.live = true;
+    } catch { this.live = false; }
+  },
+  available(id) { return !this.live || this.ids.has(id); },
+  // One thread for the whole visit, shared by every philosopher (7.2 sends persona_id with each message),
+  // so a pause holds whoever the visitor talks to next (FR-32, UC-03).
+  visit() { try { return JSON.parse(localStorage.getItem("philocafe.visit")) || {}; } catch { return {}; } },
+  save(v) { try { localStorage.setItem("philocafe.visit", JSON.stringify({ ...this.visit(), ...v })); } catch {} },
+  paused() { return !!this.visit().paused; },
+  async thread() {
+    const v = this.visit();
+    if (v.thread_id) return v.thread_id;
+    const r = await fetch("threads", { method: "POST", headers: this.headers() });
+    const { thread_id } = await r.json();
+    this.save({ thread_id, paused: false });
+    return thread_id;
+  },
+  async *turn(text, personaId) {
+    const id = await this.thread();
+    const r = await fetch(`threads/${id}/messages`, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
+                                                    body: JSON.stringify({ text, persona_id: personaId }) });
+    if (r.status === 401) { this.setCode(""); askCode("That code no longer opens the café."); }
+    if (!r.ok) {
+      let e = { code: String(r.status), message: "request failed" };
+      try { e = (await r.json()).error; } catch {}
+      yield { type: "error", data: e };
+      return;
+    }
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let cut;
+      while ((cut = buf.indexOf("\n\n")) >= 0) {
+        const block = buf.slice(0, cut); buf = buf.slice(cut + 2);
+        let type = "message", data = "";
+        for (const line of block.split("\n")) {
+          if (line.startsWith("event: ")) type = line.slice(7);
+          else if (line.startsWith("data: ")) data += line.slice(6);
+        }
+        yield { type, data: data ? JSON.parse(data) : {} };
+      }
+    }
+  },
+  async note() {
+    const r = await fetch(`threads/${this.visit().thread_id}/note`, { method: "POST", headers: this.headers() });
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }
+};
+const setMode = () => {
+  const live = backend.live;
+  document.querySelectorAll(".mode").forEach(m => { m.textContent = live ? "Live" : "Demo"; m.classList.toggle("live", live); m.title = live ? "Replies come from the PhiloCafe server" : "Scripted demo replies"; });
+  $("#modeNote").textContent = live ? "Replies: live from the PhiloCafe server, with a safety check on every turn." : "Replies: scripted demo lines (open the page from the PhiloCafe server for live replies).";
+};
+backend.init().then(setMode);
+
+// Entrance popup for the access code, in the same pixel style as the other popups.
+function askCode(message) {
+  if (document.querySelector(".veil.entrance")) return;
+  const veil = el("div", "veil entrance");
+  veil.innerHTML = `<form class="pop card" role="dialog" aria-label="Café entrance">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">Café entrance</div>
+    <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
+      <div>${esc(message || "This café is open to our class. Please enter the access code.")}</div>
+      <input class="codein" type="password" autocomplete="off" aria-label="Access code" required>
+      <div class="btns"><button class="btn go" type="submit">ENTER</button></div></div></form>`;
+  $("form", veil).onsubmit = async e => {
+    e.preventDefault();
+    backend.setCode($(".codein", veil).value.trim());
+    veil.remove();
+    await backend.init(); setMode();
+  };
+  $(".screens").append(veil);
+  $(".codein", veil).focus();
+}
+
+function debugShow(ev) {
+  let pre = $("#debugPanel");
+  if (!pre) { pre = el("pre"); pre.id = "debugPanel"; document.body.append(pre); }
+  const d = ev.data;
+  if (ev.type === "safety") pre.dataset.safety = `tier ${d.tier} · p ${d.probability} vs ${d.threshold} · ${d.source} (${d.model_version})`;
+  if (ev.type === "trace") pre.dataset.trace = `nodes ${d.nodes.map(n => `${n.name} ${Math.round(n.ms)}ms`).join(", ")}\nretrieved ${d.retrieved.join(", ") || "none"}`
+    + (d.skipped.length ? `\nskipped ${d.skipped.map(x => `${x.chunk_id}: ${x.reason}`).join(", ")}` : "");
+  pre.textContent = [pre.dataset.safety, pre.dataset.trace].filter(Boolean).join("\n");
+}
+
+/* ---------- 03 / 04 Conversation ---------- */
+const chat = $("#chat");
+let cur = null, curId = null, sceneActor = null, history = [], busy = false, fbIdx = 0, typer = null, citations = [];
+
+function sceneFor(p) {
+  const wrap = el("div", "scene-wrap px");
+  const d = DATA[p.land], [W, H] = d.size;
+  const scene = el("div", "scene"); scene.style.aspectRatio = W + " / " + H;
+  const frame = el("div", "frame");
+  const bg = el("img", "px"); bg.src = A + d.scene; bg.alt = ""; Object.assign(bg.style, { position: "absolute", inset: 0, width: "100%", height: "100%" });
+  sceneActor = actor(p.land, W, H);
+  frame.append(bg, sceneActor); scene.append(frame); wrap.append(scene);
+  return wrap;
+}
+
+function header(id, sub) {
+  const p = PH[id];
+  const head = el("header", "convhead");
+  head.innerHTML = `<button class="back" aria-label="Back to the café">${icon("back")}</button>
+    <img class="mono px" src="${A}mono_${id}.png" alt="">
+    <div><h1>${p.name}</h1><p class="sub">${sub}</p></div>
+    <span class="mode"></span>`;
+  $(".back", head).onclick = () => { stopChat(); show("home"); };
+  return head;
+}
+
+function openChat(id) {
+  const p = PH[id]; cur = p; curId = id; history = []; busy = false; fbIdx = 0; citations = [];
+  sceneActor?.stop(); clearInterval(typer);
+  chat.className = "screen";
+  chat.innerHTML = "";
+  const scroll = el("div", "scroll"); scroll.id = "scroll";
+  scroll.innerHTML = `<h2 class="headline">${p.headline.replace("question ", "question<br>")}</h2>
+    <div class="card greet"><div class="titlebar">${p.name}</div>
+      <div class="body2"><img class="pic px" src="${A}mono_${id}.png" alt=""><div class="say" id="say"></div></div></div>
+    <div class="label">Try a conversation starter</div>
+    <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">→  ${esc(s)}</button>`).join("")}</div>`;
+  scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => send(c.dataset.s));
+  const tools = el("div", "tools"); tools.hidden = true;
+  tools.innerHTML = `<button id="saveBtn">Save thought</button><button id="srcBtn" hidden>From the source ↗</button>`;
+  const dock = el("div", "dock");
+  dock.innerHTML = `<form class="composer">${icon("cup", "ink", 30)}
+    <input id="msg" type="text" placeholder="Share a thought..." autocomplete="off" aria-label="Your message">
+    <button class="send" type="submit" aria-label="Send">↑</button></form>`;
+  $("form", dock).onsubmit = e => { e.preventDefault(); const v = $("#msg").value.trim(); if (v) { $("#msg").value = ""; send(v); } };
+  chat.append(header(id, "A table for your thoughts"), sceneFor(p), scroll, tools, dock);
+  $("#saveBtn").onclick = saveThought;
+  $("#srcBtn").onclick = openSource;
+  setMode();
+  show("chat");
+  if (backend.live && backend.paused()) return resumePaused(p);
+
+  // "A table for you" popup, as in the design
+  const veil = el("div", "veil");
+  veil.innerHTML = `<div class="pop card" role="dialog" aria-label="A table for you">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">A table for you<button class="x" aria-label="Not yet">×</button></div>
+    <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
+      <div>${p.name} has saved you a seat.<br>Would you like to sit down?</div>
+      <div class="btns"><button class="btn" data-a="no">NOT YET</button><button class="btn go" data-a="yes">SIT DOWN</button></div></div></div>`;
+  const back = () => { veil.remove(); stopChat(); openMeet(id); };
+  veil.querySelector('[data-a="no"]').onclick = back;
+  veil.querySelector(".x").onclick = back;
+  veil.querySelector('[data-a="yes"]').onclick = () => { veil.remove(); typeInto($("#say"), p.greet); };
+  $(".screens").append(veil);
+  veil.querySelector('[data-a="yes"]').focus();
+}
+
+function stopChat() { sceneActor?.stop(); sceneActor = null; clearInterval(typer); cur = null; curId = null; }
+
+function typeInto(node, text, done) {
+  clearInterval(typer);
+  if (reduce) { node.textContent = text; done?.(); return; }
+  let i = 0; node.textContent = ""; node.classList.add("typing");
+  typer = setInterval(() => {
+    i += 1; node.textContent = text.slice(0, i); if (chat.classList.contains("convo")) scrollDown();
+    if (i >= text.length) { clearInterval(typer); node.classList.remove("typing"); done?.(); }
+  }, 24);
+}
+const scrollDown = () => { const s = $("#scroll"); if (s) s.scrollTop = s.scrollHeight; };
+
+function bubble(who, text) {
+  const row = el("div", "row " + who);
+  if (who === "them") row.append(Object.assign(el("img", "ava px"), { src: `${A}mono_${curId}.png`, alt: "" }));
+  const b = el("div", "bubble"); b.textContent = text ?? "";
+  row.append(b); row.insertAdjacentHTML("beforeend", TAIL[who]);
+  $("#scroll").append(row); scrollDown();
+  return b;
+}
+
+// Severe-distress signals only; ordinary sadness or philosophical pessimism should not pause the café.
+const DISTRESS = /(kill(ing)? myself|suicid|end (it all|my life)|want(ed)? to die|don.?t want to (live|be alive|wake up)|hurt(ing)? myself|self.?harm|(don.?t|do not) feel safe with myself|no reason to live|自杀|自殘|自残|不想活|活不下去|想死|伤害自己|傷害自己|结束(我的)?生命)/i;
+
+// first message: drop the welcome card and start the thread with the greeting
+function startConvo(p) {
+  if (chat.classList.contains("convo")) return;
+  clearInterval(typer);
+  chat.classList.add("convo");
+  $("#scroll").innerHTML = "";
+  $(".tools").hidden = false;
+  bubble("them", p.greet);
+  history.push({ role: "assistant", content: p.greet });
+}
+
+// A system-voice card in the thread: support-mode replies, never the persona's voice (NFR-12).
+function systemCard(text, resources) {
+  const card = el("div", "card sysnote");
+  card.innerHTML = `<div class="titlebar">A moment of care</div><div class="inner"><p class="t16"></p></div>`;
+  $(".t16", card).textContent = text;
+  (resources || []).forEach(r => { const row = el("p", "t14"); row.innerHTML = `<b>${esc(r.name)}</b>: ${esc(r.contact)}`; $(".inner", card).append(row); });
+  $("#scroll").append(card); scrollDown();
+}
+
+// Reopening the café during a pause: the thread stays in support mode until the visitor
+// asks for the philosopher back and the safety node finds the risk has dropped (FR-32).
+function resumePaused(p) {
+  clearInterval(typer);
+  chat.classList.add("convo");
+  $("#scroll").innerHTML = "";
+  $(".tools").hidden = true;
+  systemCard(`This conversation is paused. When you feel ready, you can ask ${p.name} to come back.`);
+  $("#msg").placeholder = `Ask ${p.name} to come back, or say how you are…`;
+}
+
+async function sendLive(text) {
+  const id = curId;
+  busy = true; $(".send").disabled = true;
+  startConvo(cur);
+  bubble("me", text);
+  history.push({ role: "user", content: text });
+  const b = bubble("them");
+  b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
+  let voice = null, said = "", resources = null, reason = null, failed = null;
+  try {
+    for await (const ev of backend.turn(text, id)) {
+      const d = ev.data;
+      if (ev.type === "voice") {
+        voice = d.speaker;
+        if (voice === "persona") { b.textContent = ""; backend.save({ paused: false }); $("#msg").placeholder = "Share a thought..."; }
+      } else if (ev.type === "token") {
+        said += d.text;
+        if (voice === "persona") { b.textContent += d.text; scrollDown(); }
+      } else if (ev.type === "citation" && voice === "persona") {
+        citations.push(d);
+        b.textContent += ` [${citations.length}]`;     // matches the numbered entry in "From the source"
+        $("#srcBtn").hidden = false;
+      } else if (ev.type === "exit") { resources = d.resources; reason = d.reason; }
+      else if (ev.type === "error") failed = d;
+      if (DEBUG && (ev.type === "safety" || ev.type === "trace")) debugShow(ev);
+    }
+  } catch (e) { failed = { code: "network", message: String(e) }; }
+  busy = false; $(".send").disabled = false;
+  if (voice === "system") {
+    b.closest(".row").remove();
+    backend.save({ paused: true });
+    if (reason === "tier_3") return distress(id, text, { text: said, resources });
+    $(".tools").hidden = true;
+    return systemCard(said, resources);
+  }
+  if (failed || voice !== "persona") {          // never stand in for the persona with a made-up reply
+    b.closest(".row").remove();
+    $("#scroll").append(el("p", "t11 muted netnote", "The café could not answer just now. Please try again."));
+    return scrollDown();
+  }
+  history.push({ role: "assistant", content: said });
+  $(".tools").hidden = false; scrollDown();
+}
+
+async function send(text) {
+  if (busy) return;
+  if (backend.live) return sendLive(text);
+  const p = cur;
+  if (DISTRESS.test(text)) return distress(curId, text);   // demo only; live pauses come from the server
+  busy = true; $(".send").disabled = true;
+  startConvo(p);
+  bubble("me", text);
+  history.push({ role: "user", content: text });
+  const b = bubble("them");
+  b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
+
+  // Demo mode: scripted lines only.
+  const reply = (history.length === 2 && p.scripted[text]) || p.fallback[fbIdx++ % p.fallback.length];
+  await new Promise(r => setTimeout(r, reduce ? 0 : 1100));
+  await new Promise(r => typeInto(b, reply, r));
+  history.push({ role: "assistant", content: reply });
+  busy = false; $(".send").disabled = false; scrollDown();
+}
+
+/* ---------- Source card ---------- */
+function openSource() {
+  if (!citations.length) return;     // nothing quoted, nothing to show
+  const veil = el("div", "veil");
+  veil.innerHTML = `<div class="pop card source" role="dialog" aria-label="From the source">
+    <div class="titlebar">From the source</div><div class="inner"></div></div>`;
+  const inner = $(".inner", veil);
+  citations.forEach((c, i) => {
+    const where = c.section ? `${c.work}, ${c.section}` : c.work;
+    const block = el("div", "cite");
+    block.innerHTML = `<p class="t11 muted">[${i + 1}] ${esc(where)}</p>
+      ${c.quote ? `<blockquote class="t16">${esc(c.quote)}</blockquote>` : ""}
+      ${c.passage ? `<details><summary class="t14">Full passage</summary><p class="t14 passage">${esc(c.passage)}</p></details>` : ""}
+      <a class="t14" href="${esc(c.source_url)}" target="_blank" rel="noopener">Read it in the source ↗</a>`;
+    inner.append(block);
+  });
+  inner.append(Object.assign(el("button", "close", "Close ×"), { type: "button" }));
+  veil.onclick = e => { if (e.target === veil || e.target.closest(".close")) veil.remove(); };
+  $(".screens").append(veil);
+  $(".close", veil).focus();
+}
+
+/* ---------- Save thought → My notes ---------- */
+const store = {
+  get() { try { return JSON.parse(localStorage.getItem("philocafe.notes")) || null; } catch { return null; } },
+  set(v) { try { localStorage.setItem("philocafe.notes", JSON.stringify(v)); } catch {} }
+};
+let notes = store.get() || [{ id: "sample", who: "socrates", ...PH.socrates.sample, reflection: "" }];
+let filter = "all", selected = notes[0]?.id;
+
+function toast(msg) {
+  document.querySelector(".toast")?.remove();
+  const t = el("div", "toast", esc(msg)); $(".dock").append(t);
+  setTimeout(() => t.remove(), 1800);
+}
+
+const lastQuestion = s => { const parts = s.match(/[^.!?。！？]+[.!?。！？]*/g) || [s]; return (parts.filter(x => /[?？]/.test(x)).pop() || parts[0]).trim(); };
+
+async function saveThought() {
+  const btn = $("#saveBtn");
+  const said = history.filter(m => m.role === "assistant");
+  if (!said.length || btn.disabled) return;
+  btn.disabled = true; btn.textContent = "Saving…";
+  const p = cur, id = curId, firstUser = history.find(m => m.role === "user")?.content || "";
+  let note = null;
+  if (!backend.live && p.scripted[firstUser] && p.sample && history.length <= 3) note = { ...p.sample };
+  if (!note && backend.live) {
+    try {
+      const j = await backend.note();
+      if (j.title) note = { title: j.title, why: j.why || "", topic: j.topic || "From your conversation" };
+    } catch {}
+  }
+    if (!note) note = { title: lastQuestion(said[said.length - 1].content), why: firstUser ? `From your talk about “${firstUser}”.` : "A thought to revisit later.", topic: "From your conversation" };
+  const dup = notes.find(x => x.who === id && x.title === note.title);
+  if (dup) selected = dup.id;
+  else { const n = { id: Date.now().toString(36), who: id, reflection: "", ...note }; notes.unshift(n); selected = n.id; store.set(notes); }
+  btn.disabled = false; btn.textContent = "Save thought";
+  toast("Saved to My notes");
+}
+
+/* ---------- 05 My Notes ---------- */
+function renderNotes() {
+  const v = $("#notes");
+  const people = [...new Set(notes.map(n => n.who))];
+  if (filter !== "all" && !people.includes(filter)) filter = "all";
+  const list = notes.filter(n => filter === "all" || n.who === filter);
+  if (!list.some(n => n.id === selected)) selected = list[0]?.id;
+  v.innerHTML = `<div class="body">
+    <p class="t28">Your pocket<br>of perspectives.</p>
+    <p class="t16 muted">Small thoughts worth keeping.</p>
+    <div class="filters" role="group" aria-label="Filter notes">
+      <button class="pill" data-f="all" aria-pressed="${filter === "all"}">All notes · ${notes.length}</button>
+      ${people.map(w => `<button class="pill" data-f="${w}" aria-pressed="${filter === w}">${PH[w].name}</button>`).join("")}
+    </div>
+    ${list.length ? "" : `<div class="card empty t16 muted">No saved thoughts yet. Tap “Save thought” during a conversation.</div>`}
+    ${list.map(n => `<button class="card note-card${n.id === selected ? " sel" : ""}" data-id="${n.id}">
+        <div class="titlebar">Saved thought</div>
+        <div class="inner"><div class="notehead">${icon("mark")}<p class="t11 muted">SAVED FROM YOUR CONVERSATION</p></div>
+          <p class="t28">${esc(n.title)}</p><p class="t16">${esc(n.why)}</p><p class="t11 muted">${PH[n.who].name} · ${esc(n.topic)}</p></div></button>
+      ${n.id === selected ? `<div class="card reflect"><div class="titlebar">Your reflection</div>
+        <div class="inner"><p class="t20">Make it your own</p>
+          <textarea data-id="${n.id}" placeholder="What does this question bring up for you?" aria-label="Your reflection">${esc(n.reflection || "")}</textarea></div></div>` : ""}`).join("")}
+    <button class="primary" id="returnBtn">${cur ? "Return to the conversation" : "Return to the café"}</button>
+  </div>`;
+  v.querySelectorAll(".pill").forEach(b => b.onclick = () => { filter = b.dataset.f; renderNotes(); });
+  v.querySelectorAll(".note-card").forEach(b => b.onclick = () => { selected = b.dataset.id; renderNotes(); });
+  v.querySelectorAll("textarea").forEach(t => t.oninput = () => { const n = notes.find(x => x.id === t.dataset.id); n.reflection = t.value; store.set(notes); });
+  $("#returnBtn").onclick = () => show(cur ? "chat" : "home");
+}
+
+/* ---------- 07 System detects distress → 06 Pause the café ---------- */
+let pauseTimer = null;
+function distress(id, text, care) {
+  stopChat();
+  const p = PH[id];
+  const c = $("#chat");
+  c.className = "screen"; c.innerHTML = "";
+  const body = el("div", "body");
+  body.style.gap = "18px";
+  const [head, ...rest] = care?.text ? care.text.split(/(?<=[.!?])\s+/) : ["Let’s take a moment.", "You deserve support with what you’re carrying. We’re pausing this conversation to make room for that."];
+  body.innerHTML = `<p class="t11 muted syscheck">${care ? "SAFETY CHECK" : "PROTOTYPE · SIMULATED SYSTEM CHECK"}</p>
+    <div class="youcard"><p class="t11">YOU · AT THIS TABLE</p><p class="t16">${esc(text)}</p></div>
+    <div class="card"><div class="titlebar">A moment of care</div>
+      <div class="inner"><p class="t20">${esc(head)}</p><p class="t16">${esc(rest.join(" "))}</p></div></div>`;
+  const dock = el("div", "dock");
+  dock.innerHTML = `<div class="composer quiet" aria-disabled="true"><span>What’s on your mind?</span><span>↑</span></div><p class="note t11 muted">${care ? "AI interpretation" : "AI interpretation · Demo conversation"}</p>`;
+  c.append(header(id, "On finding your own pace"), body, dock);
+  $(".back", c).onclick = () => { clearTimeout(pauseTimer); show("home"); };
+  setMode(); show("chat");
+  clearTimeout(pauseTimer);
+  pauseTimer = setTimeout(() => openPause(care?.resources), 2000);
+}
+
+function openPause(resources) {
+  const v = $("#pause");
+  v.innerHTML = `<img class="rest px" src="${A}cafe_rest.png" alt="The café, quiet and at rest">
+    <div class="body">
+      <div class="titlebar">A moment of care</div>
+      <p class="t20">Let’s pause the café<br>for a moment.</p>
+      <p class="t16">Some thoughts need a real person alongside you. Take your time, and reach out to someone you trust.</p>
+      ${resources?.length
+        ? resources.map(r => `<div class="card support"><p class="t16">${esc(r.name)}</p><p class="t14">${esc(r.contact)}</p></div>`).join("")
+        : `<div class="card support"><p class="t16">Local support</p><p class="t14">Find a crisis or support service in your area.</p></div>
+      <div class="card support"><p class="t16">Campus or community counseling</p><p class="t14">Arrange time to talk with a counselor.</p></div>`}
+      <div class="card support"><p class="t16">Someone you trust</p><p class="t14">A friend, family member, or mentor.</p></div>
+      <button class="primary">Return to the café</button>
+      ${resources?.length ? "" : `<p class="t11">Support options shown for prototype review.</p>`}
+    </div>`;
+  $(".primary", v).onclick = () => show("home");
+  show("pause");
+}
+
+paintIcons();
+document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { stopChat(); openMeet(b.dataset.go); });
+$("#demoDistress").onclick = () => distress("socrates", "I feel completely hopeless, and I don’t feel safe with myself.");
+show("home");
+const start = location.hash.slice(1);
+if (PH[start]) openMeet(start);
+else if (start === "notes") { renderNotes(); show("notes"); }
+else if (start === "distress") $("#demoDistress").click();
+</script>
