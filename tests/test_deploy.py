@@ -1,12 +1,18 @@
 """Deployment settings (ADR-11): access code, Postgres checkpoints, cron purge, CDN-served web app.
 No network and no database: Postgres itself is replaced where it would be opened."""
 
+import json
+import sqlite3
+import sys
+import types
+
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from starlette.testclient import TestClient
 
-from app import server
+from app import retrieval, server
+from app.config import ROOT
 from app.fakes import FAKE_QUOTING_REPLY, FakeVoice, fake_deps
 from app.graph import build_graph, run_turn
 from app.server import create_app
@@ -75,6 +81,31 @@ def test_vercel_serves_the_web_app_from_the_cdn_not_the_function(monkeypatch):
     assert TestClient(create_app(quoting_deps(), access_code="")).get("/").status_code == 404
     monkeypatch.delenv("VERCEL")
     assert TestClient(create_app(quoting_deps(), access_code="")).get("/").status_code == 200
+
+
+def test_redirects_point_at_files_the_build_publishes():
+    """vercel.json sends / and /favicon.ico to the CDN copy of ui/web (deploy/vercel_build.py)."""
+    redirects = json.loads((ROOT / "vercel.json").read_text())["redirects"]
+    assert {r["source"] for r in redirects} == {"/", "/favicon.ico"}
+    for r in redirects:
+        assert (ROOT / "ui" / "web" / r["destination"].lstrip("/")).is_file(), r
+
+
+def test_sqlite_without_extension_loading_is_replaced_by_pysqlite3(monkeypatch):
+    """Vercel's runtime Python cannot load extensions, so sqlite-vec would fail in open_db()."""
+    no_extensions = types.ModuleType("sqlite3")
+    no_extensions.Connection = type("Connection", (), {})
+    bundled = types.ModuleType("pysqlite3")
+    bundled.Connection = type("Connection", (), {"enable_load_extension": lambda self, on: None})
+    monkeypatch.setitem(sys.modules, "sqlite3", no_extensions)
+    monkeypatch.setitem(sys.modules, "pysqlite3", bundled)
+    retrieval.use_sqlite_with_extensions()
+    assert sys.modules["sqlite3"] is bundled
+
+
+def test_sqlite_with_extension_loading_is_kept():
+    retrieval.use_sqlite_with_extensions()
+    assert sys.modules["sqlite3"] is sqlite3
 
 
 def test_turn_state_survives_the_checkpoint_serializer():

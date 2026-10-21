@@ -29,9 +29,12 @@ in Postgres so a thread, and its support mode, survives across function instance
 ## Check a deployment
 
 - `GET /personas` without the code returns 401; the page asks for the code, then shows **Live**.
+- The bare URL redirects to `/index.html` (`vercel.json` redirects, so the CDN answers without starting
+  the function).
 - One message comes back with a citation, and the function logs show no `enable_load_extension` or
-  sqlite-vec error. That error would mean Vercel's Python cannot load the vector extension; the corpus
-  side (retrieval) would then need another plan.
+  sqlite-vec error. Vercel's runtime Python is built without SQLite extension loading, so
+  `app/retrieval.py` swaps in `pysqlite3-binary` (a Linux-only dependency in `pyproject.toml`) before
+  `scripts/retrieval.py` is imported; that error means the swap did not happen.
 - On an iPhone: open the URL in Safari, Share, Add to Home Screen.
 
 ## Build locally

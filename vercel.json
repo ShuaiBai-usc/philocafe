@@ -8,5 +8,9 @@
       "excludeFiles": "{public/**,ui/**,tests/**,eval/**,docs/**,data/processed/**,data/raw/**,scripts/tests/**,.venv/**,**/*.md}"
     }
   },
+  "redirects": [
+    { "source": "/", "destination": "/index.html", "permanent": false },
+    { "source": "/favicon.ico", "destination": "/icons/icon-192.png", "permanent": false }
+  ],
   "crons": [{ "path": "/internal/purge", "schedule": "0 10 * * *" }]
 }
