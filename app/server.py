@@ -181,7 +181,8 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
               Route("/threads/{thread_id}/messages", messages, methods=["POST"]),
               Route("/threads/{thread_id}/note", note, methods=["POST"]),
               Route("/internal/purge", purge)]
-    # On Vercel the web app is copied to public/ at build time and served by the CDN.
-    if WEB_DIR.exists() and not os.environ.get("VERCEL"):
+    # The same mount on Vercel: it promotes StaticFiles mounts to its CDN at build time, and the
+    # function serves the files itself if it does not. Declared last, so the API routes win.
+    if WEB_DIR.exists():
         routes.append(Mount("/", StaticFiles(directory=WEB_DIR, html=True)))
     return FastAPI(routes=routes, docs_url=None, redoc_url=None, openapi_url=None)

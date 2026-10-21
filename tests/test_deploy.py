@@ -76,11 +76,16 @@ def test_postgres_is_used_when_configured(monkeypatch):
     assert saver.get_tuple({"configurable": {"thread_id": "t1"}}).checkpoint["channel_values"]["mode"] == "support"
 
 
-def test_vercel_serves_the_web_app_from_the_cdn_not_the_function(monkeypatch):
+def test_vercel_gets_the_same_web_app_mount(monkeypatch):
+    """Vercel promotes the StaticFiles mount to its CDN; the function must still serve it, and
+    the API routes must still win over the mount at "/"."""
     monkeypatch.setenv("VERCEL", "1")
-    assert TestClient(create_app(quoting_deps(), access_code="")).get("/").status_code == 404
-    monkeypatch.delenv("VERCEL")
-    assert TestClient(create_app(quoting_deps(), access_code="")).get("/").status_code == 200
+    client = TestClient(create_app(quoting_deps(), access_code="sesame"))
+    page = client.get("/index.html")
+    assert page.status_code == 200 and "<title>" in page.text
+    assert client.get("/").status_code == 200
+    assert client.get("/manifest.webmanifest").headers["content-type"].startswith("application/manifest+json")
+    assert client.get("/personas").json()["error"]["code"] == "access_code"
 
 
 def test_redirects_point_at_files_the_build_publishes():

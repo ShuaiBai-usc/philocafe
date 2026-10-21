@@ -4,8 +4,8 @@
   "functions": {
     "asgi.py": {
       "maxDuration": 60,
-      "includeFiles": "{data/philocafe.db,data/resources.yaml,.cache/fastembed/**,personas/**,config.yaml}",
-      "excludeFiles": "{public/**,ui/**,tests/**,eval/**,docs/**,data/processed/**,data/raw/**,scripts/tests/**,.venv/**,**/*.md}"
+      "includeFiles": "{data/philocafe.db,data/resources.yaml,.cache/fastembed/**,personas/**,config.yaml,ui/web/**}",
+      "excludeFiles": "{public/**,ui/app.py,ui/web/tools/**,tests/**,eval/**,docs/**,data/processed/**,data/raw/**,scripts/tests/**,.venv/**,**/*.md}"
     }
   },
   "redirects": [

@@ -1,8 +1,9 @@
 # Deploying the café to Vercel (ADR-11)
 
 The API runs as one Python function (entrypoint `asgi.py`, set in `pyproject.toml`), the web app
-is served from Vercel's CDN (`public/`, written at build time), and conversation checkpoints live
-in Postgres so a thread, and its support mode, survives across function instances.
+in `ui/web` is mounted with StaticFiles as it is locally (Vercel promotes that mount to its CDN at
+build time; the function serves the files if it does not), and conversation checkpoints live in
+Postgres so a thread, and its support mode, survives across function instances.
 
 ## One-time setup
 
@@ -40,8 +41,7 @@ in Postgres so a thread, and its support mode, survives across function instance
 ## Build locally
 
 `.venv/bin/python deploy/vercel_build.py` does what Vercel's build step does: builds `data/philocafe.db`,
-caches the embedding model in `.cache/fastembed`, writes `ui/web/index.html` and copies the web app to
-`public/` (all git-ignored).
+caches the embedding model in `.cache/fastembed` (both git-ignored) and rewrites `ui/web/index.html`.
 
 ## Limits worth knowing
 

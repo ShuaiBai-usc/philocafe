@@ -6,7 +6,8 @@ Runs after Vercel has installed the dependencies in pyproject.toml:
 2. flattens that cache: Hugging Face stores the model behind chained symlinks, and the
    bundler copies every link's target, which put the 87 MB model in the bundle two or
    three times (526 MB, over Vercel's 500 MB limit). One real copy is enough to load it;
-3. writes ui/web/index.html and copies the web app to public/, which Vercel serves from its CDN.
+3. writes ui/web/index.html. app/server.py mounts ui/web with StaticFiles, which Vercel promotes
+   to its CDN; the function serves the files itself otherwise.
 
 Run it locally to check a deployment build: .venv/bin/python deploy/vercel_build.py
 """
@@ -53,12 +54,6 @@ def main() -> None:
             "--processed", f"data/processed/{persona}", "--db", str(db), "--embed")
     flatten_model_cache(CACHE)
     run("ui/web/tools/build_index.py")
-
-    public = ROOT / "public"
-    shutil.rmtree(public, ignore_errors=True)
-    shutil.copytree(ROOT / "ui" / "web", public,
-                    ignore=shutil.ignore_patterns("tools", "template.html", "data.json", "*.md"))
-    print(f"public/: {sum(1 for _ in public.rglob('*') if _.is_file())} files")
 
 
 if __name__ == "__main__":
