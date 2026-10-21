@@ -9,8 +9,13 @@ The design doc is the source of truth for scope, contracts and decisions. Read t
 
 ## Current state
 
-- `main` holds the Socrates corpus pipeline (`scripts/socrates_pipeline.py`, fixed for issue #2 in PR #3), the SQLite builder (`scripts/build_sqlite.py`), the processed data in `data/processed/socrates/` and the corpus notes in `docs/socrates.md`. App code is built on stacked feature branches (`setup` merged; then `safety` → `persona` → `ui` → `eval` → `web-ui`).
-- `retrieve()` matches design doc 7.1 v0.2 and lives in PR #1 (`retrieval-contract`, `scripts/retrieval.py`), not yet merged. Call `retrieval.open_db()` once at startup; `retrieval.corpus_version(persona)` goes in eval headers.
+- `main` holds the Socrates corpus pipeline (`scripts/socrates_pipeline.py`, fixed for issue #2 in PR #3), the SQLite builder (`scripts/build_sqlite.py`), the processed data in `data/processed/socrates/` and the corpus notes in `docs/socrates.md`.
+- `main` also holds the midterm app (setup in PR #4; safety, persona, Streamlit UI, eval and the web café app in PR #6): the graph, the safety node (Jev plus fallback, FR-32 return to the persona), the Socrates persona with checked quotes, the Streamlit debug UI, the eval harness, and the web app as a PWA.
+- Deployed on Vercel (ADR-11, `deploy/README.md`). Production follows `main`; every branch push gets a preview deployment behind Vercel login.
+- `retrieve()` matches design doc 7.1 v0.2 (`scripts/retrieval.py`, merged in PR #1). Call `retrieval.open_db()` once at startup; `retrieval.corpus_version(persona)` goes in eval headers.
+- Still open:
+  - the 30 test messages from UI/UX, which the eval run (midterm step 5) and the `min_score` calibration wait on;
+  - the Montaigne and Schopenhauer corpora (final; the web app shows them as "Coming at the final").
 - Corpus notes that affect the persona:
   - Passage lines whose speaker was inferred are prefixed `[speaker uncertain]`; the persona must not quote them as Socrates' own words.
   - Phaedo and Symposium passages have `socrates_words` = 0 (Socrates is reported by a narrator); never filter retrieval by it.
