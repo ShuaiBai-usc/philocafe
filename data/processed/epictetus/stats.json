@@ -1,0 +1,57 @@
+{
+  "source": {
+    "discourses": {
+      "repo": "standardebooks/epictetus_discourses_george-long",
+      "commit": "a50e918ff19c48e94e274bf55ad3d8a5209e0471"
+    },
+    "short-works": {
+      "repo": "standardebooks/epictetus_short-works_george-long",
+      "commit": "8c154d40a6f85e32a5711001a28c1b55ab56d3c8"
+    }
+  },
+  "turns": 661,
+  "passages": 1108,
+  "sft_examples": 0,
+  "passage_flags": {
+    "violence": 23,
+    "death": 123,
+    "suicide": 16,
+    "sexuality": 34
+  },
+  "caution_candidates": 16,
+  "max_passage_words": 180,
+  "works": {
+    "discourses": {
+      "turns": 416,
+      "chapters": 95,
+      "epictetus_turns": 397,
+      "epictetus_words": 114684,
+      "total_words": 117154,
+      "attribution": {
+        "explicit": 385,
+        "narration": 19,
+        "tagged": 12
+      }
+    },
+    "enchiridion": {
+      "turns": 67,
+      "chapters": 53,
+      "epictetus_turns": 67,
+      "epictetus_words": 8110,
+      "total_words": 8110,
+      "attribution": {
+        "explicit": 67
+      }
+    },
+    "fragments": {
+      "turns": 178,
+      "chapters": 178,
+      "epictetus_turns": 178,
+      "epictetus_words": 7279,
+      "total_words": 7279,
+      "attribution": {
+        "attributed": 178
+      }
+    }
+  }
+}
