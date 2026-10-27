@@ -1,0 +1,125 @@
+{
+ "_comment": "User turns rewritten by hand (Claude, 2026-10-25) from places where Seneca reports what Lucilius or an interlocutor wrote or asked, without quotation marks. `anchor` is the exact source text of the report; Seneca's answer is the text that follows it. The rewrite turns the report into first person and adds nothing that is not in the source. Used by seneca_pipeline.py; examples get attribution 'rewritten_report'.",
+ "prompts": [
+  {
+   "work_id": "letters",
+   "section": "Letter XXIV:",
+   "anchor": "You write me that you are anxious about the result of a lawsuit, with which an angry opponent is threatening you; and you expect me to advise you to picture to yourself a happier issue, and to rest in the allurements of hope.",
+   "user": "Lucilius: I am anxious about a lawsuit an angry opponent is threatening me with. Tell me to picture a happier outcome and to rest in hope."
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter XXXVIII:",
+   "anchor": "You are right when you urge that we increase our mutual traffic in letters.",
+   "user": "Lucilius: We should write to each other more often."
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter XLIV:",
+   "anchor": "You are again insisting to me that you are a nobody, and saying that nature in the first place, and fortune in the second, have treated you too scurvily, and this in spite of the fact that you have it in your power to separate yourself from the crowd and rise to the highest human happiness!",
+   "user": "Lucilius: I am a nobody. Nature first, and then fortune, have treated me too meanly."
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter XLV:",
+   "anchor": "You complain that in your part of the world there is a scant supply of books.",
+   "user": "Lucilius: There are hardly any books to be had where I live."
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter LXXV:",
+   "anchor": "You have been complaining that my letters to you are rather carelessly written.",
+   "user": "Lucilius: Your letters to me are rather carelessly written."
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter LXXV:",
+   "anchor": "You ask what this freedom is?",
+   "user": "Lucilius: What is this freedom?"
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter LXXVI:",
+   "anchor": "You ask, do you, what I can teach?",
+   "user": "Lucilius: And what can you teach, then?"
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter LXXXI:",
+   "anchor": "You complain that you have met with an ungrateful person.",
+   "user": "Lucilius: I have met with an ungrateful person."
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter LXXXVIII:",
+   "anchor": "You have been wishing to know my views with regard to liberal studies.",
+   "user": "Lucilius: What are your views on liberal studies?"
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter C:",
+   "anchor": "You write me that you have read with the greatest eagerness the work by Fabianus Papirius entitled The Duties of a Citizen, and that it did not come up to your expectations; then, forgetting that you are dealing with a philosopher, you proceed to criticize his style.",
+   "user": "Lucilius: I read Fabianus Papirius' The Duties of a Citizen with great eagerness, and it did not come up to my expectations. His style, for one thing, is poor."
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter CII:",
+   "anchor": "You say, again, that renown is the praise rendered to a good man by good men.",
+   "user": "Lucilius: Renown is the praise rendered to a good man by good men."
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter CXIII:",
+   "anchor": "You wish me to write to you my opinion concerning this question, which has been mooted by our school—whether justice, courage, foresight, and the other virtues, are living things.",
+   "user": "Lucilius: What is your opinion on the question your school has raised: are justice, courage, foresight and the other virtues living things?"
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter CXIV:",
+   "anchor": "You have been asking me why, during certain periods, a degenerate style of speech comes to the fore, and how it is that men’s wits have gone downhill into certain vices—in such a way that exposition at one time has taken on a kind of puffed-up strength, and at another has become mincing and modulated like the music of a concert piece.",
+   "user": "Lucilius: Why does a degenerate style of speech come to the fore in certain periods, and how do men's wits go downhill into such vices, puffed up at one time and mincing at another?"
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter CXX:",
+   "anchor": "Your letter roamed over several little problems, but finally dwelt upon this alone, asking for explanation: “How do we acquire a knowledge of that which is good and that which is honourable?”",
+   "user": "Lucilius: How do we acquire a knowledge of that which is good and that which is honourable?"
+  },
+  {
+   "work_id": "letters",
+   "section": "Letter CXXII:",
+   "anchor": "You ask me how this depravity comes upon the soul—this habit of reversing the daylight and giving over one’s whole existence to the night?",
+   "user": "Lucilius: How does this depravity come upon the soul, this habit of reversing day and night and giving one's whole existence over to the night?"
+  },
+  {
+   "work_id": "anger",
+   "section": "Book II, Chapter XXXVI",
+   "anchor": "You say, that you do not believe that anyone was ever scared out of anger by a mirror: and why not?",
+   "user": "Interlocutor: I do not believe that anyone was ever scared out of anger by a mirror."
+  },
+  {
+   "work_id": "anger",
+   "section": "Book III, Chapter V",
+   "anchor": "You ask me, whither does all this tend?",
+   "user": "Interlocutor: Where does all this tend?"
+  },
+  {
+   "work_id": "happy_life",
+   "section": "Chapter XI",
+   "anchor": "You will say that these men live in the midst of pleasures.",
+   "user": "Interlocutor: But these men live in the midst of pleasures."
+  },
+  {
+   "work_id": "peace_of_mind",
+   "section": "Chapter III",
+   "anchor": "You ask me what I think we had better make use of to help us to support this ennui.",
+   "user": "Serenus: What do you think we had better make use of to help us bear this ennui?"
+  },
+  {
+   "work_id": "benefits",
+   "section": "Book VII, Chapter XVI",
+   "anchor": "You say that you have done all in your power to repay your debt;",
+   "user": "Interlocutor: I have done all in my power to repay my debt."
+  }
+ ]
+}
