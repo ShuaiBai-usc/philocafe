@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=IBM+Plex+Mono&family=Pixelify+Sans:wght@400;500&family=Silkscreen&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500&family=Silkscreen&display=swap">
 <style>
 /* Tokens and sizes follow the Figma file "Philocafe · Mobile App UI". */
 :root {
@@ -22,10 +22,10 @@
   --clay: #d4aa73;       /* primary button, thin lines */
   --shadow: #cca370;     /* 3px 4px drop shadows */
   --table: #2f261c;      /* desktop surround */
-  --f-display: "Cormorant Garamond", Georgia, serif;
+  --f-display: "Pixelify Sans", "Courier New", monospace;   /* headings: pixel face like the rest of the app */
   --f-pixel: "Pixelify Sans", "Courier New", monospace;
   --f-label: "Silkscreen", "Courier New", monospace;
-  --f-mono: "IBM Plex Mono", "Courier New", monospace;
+  --f-mono: "Pixelify Sans", "Courier New", monospace;
   --pad-l: max(18px, env(safe-area-inset-left, 0px));
   --pad-r: max(18px, env(safe-area-inset-right, 0px));
   color-scheme: light;
@@ -94,7 +94,7 @@ p { margin: 0; }
 .convhead { display: flex; align-items: center; gap: 12px; padding: 12px var(--pad-r) 0 var(--pad-l); flex: none; }
 .back { width: 32px; height: 44px; display: grid; place-items: center; flex: none; }
 .mono { width: 52px; height: 52px; border: 1px solid var(--clay); flex: none; }
-.convhead h1 { margin: 0; font: 400 20px/1.4 var(--f-display); }
+.convhead h1 { margin: 0; font: 400 20px/1.3 var(--f-display); }
 .convhead .sub { font: 11px/1.4 var(--f-mono); color: var(--muted); white-space: nowrap; }
 .mode { margin-left: auto; align-self: flex-start; margin-top: 6px; font: 9px var(--f-label); letter-spacing: .08em; border: 2px solid var(--muted); color: var(--muted); padding: 1px 4px; }
 .mode.live { border-color: #6f8a55; color: #55703d; }
@@ -106,7 +106,7 @@ p { margin: 0; }
 
 .scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px var(--pad-r) 16px var(--pad-l); display: flex; flex-direction: column; gap: 12px; }
 #chat.convo .scroll { gap: 18px; padding-top: 14px; }
-.headline { margin: 0; font: 400 29px/31px var(--f-display); text-wrap: balance; }
+.headline { margin: 0; font: 400 26px/32px var(--f-display); text-wrap: balance; }
 .greet .body2 { display: flex; gap: 12px; padding: 12px; align-items: flex-start; }
 .greet .pic { width: 62px; height: 62px; border: 2px solid var(--ink); flex: none; }
 .say { flex: 1; min-width: 0; min-height: 78px; background: var(--paper); border: 2px solid var(--ink); padding: 9px 10px 18px; font-size: 15px; line-height: 20px; position: relative; }
@@ -201,7 +201,7 @@ p { margin: 0; }
 .sysnote .inner p + p { margin-top: 4px; }
 .netnote { text-align: center; }
 #debugPanel { position: fixed; left: 8px; bottom: 8px; z-index: 50; max-width: 360px; max-height: 45vh; overflow: auto; margin: 0; padding: 8px 10px;
-  background: rgba(47,38,28,.92); color: #fffae0; font: 11px/1.45 var(--f-mono); white-space: pre-wrap; }
+  background: rgba(47,38,28,.92); color: #fffae0; font: 11px/1.45 ui-monospace, Menlo, monospace; white-space: pre-wrap; }   /* developer panel, not app text */
 
 @keyframes blink { 50% { opacity: 0; } }
 @keyframes hop { 50% { transform: translateY(-3px); } }
@@ -241,6 +241,8 @@ p { margin: 0; }
       <li><button data-go="socrates">Meet Socrates</button></li>
       <li><button data-go="montaigne">Meet Montaigne</button></li>
       <li><button data-go="schopenhauer">Meet Schopenhauer</button></li>
+      <li><button data-go="seneca">Meet Seneca</button></li>
+      <li><button data-go="epictetus">Meet Epictetus</button></li>
       <li><button id="demoDistress">Simulated system check (07 → 06)</button></li>
     </ul>
     <p id="modeNote">Replies: checking…</p>
@@ -249,7 +251,7 @@ p { margin: 0; }
 
 <script>
 const A = "assets/";
-const DATA = {"socrates": {"scene": "scene_socrates.png", "box": [377, 313, 598, 535], "size": [1242, 662], "frames": ["socrates_01_rest.png", "socrates_02_rest_closed.png", "socrates_03_ponder_up_hmm.png", "socrates_04_rest_right.png", "socrates_05_reach_right.png", "socrates_06_carry.png", "socrates_07_hold.png", "socrates_08_raise.png", "socrates_09_sip_closed.png", "socrates_10_raise_happy_smile.png", "socrates_11_hold_happy_smile_blush.png", "socrates_12_hold_smile.png", "socrates_13_carry_smile.png", "socrates_14_reach_smile.png", "socrates_15_rest_smile.png"], "seq": [[0, 2000], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 600], [7, 200], [8, 1400], [9, 200], [10, 800], [6, 400], [7, 200], [8, 1000], [7, 200], [11, 600], [12, 200], [13, 200], [14, 1000], [1, 100], [0, 600]]}, "montaigne": {"scene": "scene_montaigne.png", "box": [377, 313, 598, 535], "size": [1242, 662], "frames": ["montaigne_01_rest_left.png", "montaigne_02_rest_right.png", "montaigne_03_rest_closed.png", "montaigne_04_rest_hmm_raised.png", "montaigne_05_ponder_up_hmm.png", "montaigne_06_reach_right.png", "montaigne_07_carry.png", "montaigne_08_hold.png", "montaigne_09_raise.png", "montaigne_10_sip_closed.png", "montaigne_11_raise_o_raised.png", "montaigne_12_hold_o_raised.png", "montaigne_13_hold_happy_smile_blush.png", "montaigne_14_hold_smile.png", "montaigne_15_carry_smile.png", "montaigne_16_reach_smile.png", "montaigne_17_rest_smile.png", "montaigne_18_rest.png"], "seq": [[0, 1900], [1, 600], [2, 100], [3, 800], [4, 1200], [5, 200], [6, 200], [7, 400], [8, 200], [9, 1200], [10, 300], [11, 400], [12, 800], [8, 200], [9, 800], [8, 200], [13, 600], [14, 200], [15, 200], [16, 1000], [2, 100], [17, 400]]}, "schopenhauer": {"scene": "scene_schopenhauer.png", "box": [377, 313, 598, 535], "size": [1242, 662], "frames": ["schopenhauer_01_rest_stern.png", "schopenhauer_02_rest_closed_stern.png", "schopenhauer_03_ponder_up_hmm_stern.png", "schopenhauer_04_rest_right_stern.png", "schopenhauer_05_reach_right_stern.png", "schopenhauer_06_carry_stern.png", "schopenhauer_07_hold_stern.png", "schopenhauer_08_raise_stern.png", "schopenhauer_09_sip_closed.png", "schopenhauer_10_raise_closed.png", "schopenhauer_11_hold_closed_hmm.png", "schopenhauer_12_hold_smile.png", "schopenhauer_13_raise.png", "schopenhauer_14_hold_hmm_stern.png", "schopenhauer_15_reach_stern.png"], "seq": [[0, 2200], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 400], [7, 200], [8, 1400], [9, 200], [10, 600], [11, 600], [6, 400], [7, 200], [8, 800], [12, 200], [13, 600], [5, 200], [14, 200], [0, 1000], [1, 100], [0, 400]]}, "home_socrates": {"box": [54, 876, 429, 1248], "frames": ["home_socrates_01_rest.png", "home_socrates_02_rest_closed.png", "home_socrates_03_ponder_up_hmm.png", "home_socrates_04_rest_right.png", "home_socrates_05_reach_right.png", "home_socrates_06_carry.png", "home_socrates_07_hold.png", "home_socrates_08_raise.png", "home_socrates_09_sip_closed.png", "home_socrates_10_raise_happy_smile.png", "home_socrates_11_hold_happy_smile_blush.png", "home_socrates_12_hold_smile.png", "home_socrates_13_carry_smile.png", "home_socrates_14_reach_smile.png", "home_socrates_15_rest_smile.png"], "seq": [[0, 800], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 600], [7, 200], [8, 1400], [9, 200], [10, 800], [6, 400], [7, 200], [8, 1000], [7, 200], [11, 600], [12, 200], [13, 200], [14, 1000], [1, 100], [0, 7800]]}, "home_montaigne": {"box": [750, 2136, 1125, 2508], "frames": ["home_montaigne_01_rest_left.png", "home_montaigne_02_rest_right.png", "home_montaigne_03_rest_closed.png", "home_montaigne_04_rest_hmm_raised.png", "home_montaigne_05_ponder_up_hmm.png", "home_montaigne_06_reach_right.png", "home_montaigne_07_carry.png", "home_montaigne_08_hold.png", "home_montaigne_09_raise.png", "home_montaigne_10_sip_closed.png", "home_montaigne_11_raise_o_raised.png", "home_montaigne_12_hold_o_raised.png", "home_montaigne_13_hold_happy_smile_blush.png", "home_montaigne_14_hold_smile.png", "home_montaigne_15_carry_smile.png", "home_montaigne_16_reach_smile.png", "home_montaigne_17_rest_smile.png", "home_montaigne_18_rest.png"], "seq": [[7, 400], [8, 200], [9, 1200], [10, 300], [11, 400], [12, 800], [8, 200], [9, 800], [8, 200], [13, 600], [14, 200], [15, 200], [16, 1000], [2, 100], [17, 400], [0, 6200], [0, 1900], [1, 600], [2, 100], [3, 800], [4, 1200], [5, 200], [6, 200]]}, "home_schopenhauer": {"box": [564, 1632, 939, 2004], "frames": ["home_schopenhauer_01_rest_stern.png", "home_schopenhauer_02_rest_closed_stern.png", "home_schopenhauer_03_ponder_up_hmm_stern.png", "home_schopenhauer_04_rest_right_stern.png", "home_schopenhauer_05_reach_right_stern.png", "home_schopenhauer_06_carry_stern.png", "home_schopenhauer_07_hold_stern.png", "home_schopenhauer_08_raise_stern.png", "home_schopenhauer_09_sip_closed.png", "home_schopenhauer_10_raise_closed.png", "home_schopenhauer_11_hold_closed_hmm.png", "home_schopenhauer_12_hold_smile.png", "home_schopenhauer_13_raise.png", "home_schopenhauer_14_hold_hmm_stern.png", "home_schopenhauer_15_reach_stern.png"], "seq": [[7, 200], [8, 1400], [9, 200], [10, 600], [11, 600], [6, 400], [7, 200], [8, 800], [12, 200], [13, 600], [5, 200], [14, 200], [0, 1000], [1, 100], [0, 400], [0, 5400], [0, 2200], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 400]]}};
+const DATA = {"socrates": {"scene": "scene_socrates.png", "box": [377, 313, 598, 535], "size": [1242, 662], "frames": ["socrates_01_rest.png", "socrates_02_rest_closed.png", "socrates_03_ponder_up_hmm.png", "socrates_04_rest_right.png", "socrates_05_reach_right.png", "socrates_06_carry.png", "socrates_07_hold.png", "socrates_08_raise.png", "socrates_09_sip_closed.png", "socrates_10_raise_happy_smile.png", "socrates_11_hold_happy_smile_blush.png", "socrates_12_hold_smile.png", "socrates_13_carry_smile.png", "socrates_14_reach_smile.png", "socrates_15_rest_smile.png"], "seq": [[0, 2000], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 600], [7, 200], [8, 1400], [9, 200], [10, 800], [6, 400], [7, 200], [8, 1000], [7, 200], [11, 600], [12, 200], [13, 200], [14, 1000], [1, 100], [0, 600]]}, "montaigne": {"scene": "scene_montaigne.png", "box": [377, 313, 598, 535], "size": [1242, 662], "frames": ["montaigne_01_rest_left.png", "montaigne_02_rest_right.png", "montaigne_03_rest_closed.png", "montaigne_04_rest_hmm_raised.png", "montaigne_05_ponder_up_hmm.png", "montaigne_06_reach_right.png", "montaigne_07_carry.png", "montaigne_08_hold.png", "montaigne_09_raise.png", "montaigne_10_sip_closed.png", "montaigne_11_raise_o_raised.png", "montaigne_12_hold_o_raised.png", "montaigne_13_hold_happy_smile_blush.png", "montaigne_14_hold_smile.png", "montaigne_15_carry_smile.png", "montaigne_16_reach_smile.png", "montaigne_17_rest_smile.png", "montaigne_18_rest.png"], "seq": [[0, 1900], [1, 600], [2, 100], [3, 800], [4, 1200], [5, 200], [6, 200], [7, 400], [8, 200], [9, 1200], [10, 300], [11, 400], [12, 800], [8, 200], [9, 800], [8, 200], [13, 600], [14, 200], [15, 200], [16, 1000], [2, 100], [17, 400]]}, "schopenhauer": {"scene": "scene_schopenhauer.png", "box": [377, 313, 598, 535], "size": [1242, 662], "frames": ["schopenhauer_01_rest_stern.png", "schopenhauer_02_rest_closed_stern.png", "schopenhauer_03_ponder_up_hmm_stern.png", "schopenhauer_04_rest_right_stern.png", "schopenhauer_05_reach_right_stern.png", "schopenhauer_06_carry_stern.png", "schopenhauer_07_hold_stern.png", "schopenhauer_08_raise_stern.png", "schopenhauer_09_sip_closed.png", "schopenhauer_10_raise_closed.png", "schopenhauer_11_hold_closed_hmm.png", "schopenhauer_12_hold_smile.png", "schopenhauer_13_raise.png", "schopenhauer_14_hold_hmm_stern.png", "schopenhauer_15_reach_stern.png"], "seq": [[0, 2200], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 400], [7, 200], [8, 1400], [9, 200], [10, 600], [11, 600], [6, 400], [7, 200], [8, 800], [12, 200], [13, 600], [5, 200], [14, 200], [0, 1000], [1, 100], [0, 400]]}, "home_socrates": {"box": [54, 876, 429, 1248], "frames": ["home_socrates_01_rest.png", "home_socrates_02_rest_closed.png", "home_socrates_03_ponder_up_hmm.png", "home_socrates_04_rest_right.png", "home_socrates_05_reach_right.png", "home_socrates_06_carry.png", "home_socrates_07_hold.png", "home_socrates_08_raise.png", "home_socrates_09_sip_closed.png", "home_socrates_10_raise_happy_smile.png", "home_socrates_11_hold_happy_smile_blush.png", "home_socrates_12_hold_smile.png", "home_socrates_13_carry_smile.png", "home_socrates_14_reach_smile.png", "home_socrates_15_rest_smile.png"], "seq": [[0, 800], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 600], [7, 200], [8, 1400], [9, 200], [10, 800], [6, 400], [7, 200], [8, 1000], [7, 200], [11, 600], [12, 200], [13, 200], [14, 1000], [1, 100], [0, 7800]]}, "home_montaigne": {"box": [750, 2136, 1125, 2508], "frames": ["home_montaigne_01_rest_left.png", "home_montaigne_02_rest_right.png", "home_montaigne_03_rest_closed.png", "home_montaigne_04_rest_hmm_raised.png", "home_montaigne_05_ponder_up_hmm.png", "home_montaigne_06_reach_right.png", "home_montaigne_07_carry.png", "home_montaigne_08_hold.png", "home_montaigne_09_raise.png", "home_montaigne_10_sip_closed.png", "home_montaigne_11_raise_o_raised.png", "home_montaigne_12_hold_o_raised.png", "home_montaigne_13_hold_happy_smile_blush.png", "home_montaigne_14_hold_smile.png", "home_montaigne_15_carry_smile.png", "home_montaigne_16_reach_smile.png", "home_montaigne_17_rest_smile.png", "home_montaigne_18_rest.png"], "seq": [[7, 400], [8, 200], [9, 1200], [10, 300], [11, 400], [12, 800], [8, 200], [9, 800], [8, 200], [13, 600], [14, 200], [15, 200], [16, 1000], [2, 100], [17, 400], [0, 6200], [0, 1900], [1, 600], [2, 100], [3, 800], [4, 1200], [5, 200], [6, 200]]}, "home_schopenhauer": {"box": [564, 1632, 939, 2004], "frames": ["home_schopenhauer_01_rest_stern.png", "home_schopenhauer_02_rest_closed_stern.png", "home_schopenhauer_03_ponder_up_hmm_stern.png", "home_schopenhauer_04_rest_right_stern.png", "home_schopenhauer_05_reach_right_stern.png", "home_schopenhauer_06_carry_stern.png", "home_schopenhauer_07_hold_stern.png", "home_schopenhauer_08_raise_stern.png", "home_schopenhauer_09_sip_closed.png", "home_schopenhauer_10_raise_closed.png", "home_schopenhauer_11_hold_closed_hmm.png", "home_schopenhauer_12_hold_smile.png", "home_schopenhauer_13_raise.png", "home_schopenhauer_14_hold_hmm_stern.png", "home_schopenhauer_15_reach_stern.png"], "seq": [[7, 200], [8, 1400], [9, 200], [10, 600], [11, 600], [6, 400], [7, 200], [8, 800], [12, 200], [13, 600], [5, 200], [14, 200], [0, 1000], [1, 100], [0, 400], [0, 5400], [0, 2200], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 400]]}, "seneca": {"scene": "scene_seneca.png", "box": [644.6, 306.0, 862.8, 531.2], "size": [1242, 662], "frames": ["seneca_01_rest_left.png", "seneca_02_rest_right.png", "seneca_03_rest_closed.png", "seneca_04_rest_hmm_raised.png", "seneca_05_reach_right.png", "seneca_06_carry.png", "seneca_07_hold.png", "seneca_08_raise.png", "seneca_09_sip_closed.png", "seneca_10_raise_o_raised.png", "seneca_11_hold_o_raised.png", "seneca_12_hold_happy_smile_blush.png", "seneca_13_carry_smile.png", "seneca_14_reach_smile.png", "seneca_15_rest_happy_smile_blush.png", "seneca_16_hold_smile.png", "seneca_17_rest_smile.png"], "seq": [[14, 400], [0, 600], [4, 200], [5, 200], [6, 400], [7, 200], [8, 1400], [7, 200], [15, 800], [12, 200], [13, 200], [16, 800], [2, 100], [0, 6900], [1, 600], [2, 100], [3, 600], [4, 200], [5, 200], [6, 300], [7, 200], [8, 800], [9, 400], [10, 400], [11, 800], [12, 200], [13, 200], [14, 400]]}, "home_seneca": {"box": [762, 1116, 1137, 1500], "frames": ["home_seneca_01_rest_left.png", "home_seneca_02_rest_right.png", "home_seneca_03_rest_closed.png", "home_seneca_04_rest_hmm_raised.png", "home_seneca_05_reach_right.png", "home_seneca_06_carry.png", "home_seneca_07_hold.png", "home_seneca_08_raise.png", "home_seneca_09_sip_closed.png", "home_seneca_10_raise_o_raised.png", "home_seneca_11_hold_o_raised.png", "home_seneca_12_hold_happy_smile_blush.png", "home_seneca_13_carry_smile.png", "home_seneca_14_reach_smile.png", "home_seneca_15_rest_happy_smile_blush.png", "home_seneca_16_hold_smile.png", "home_seneca_17_rest_smile.png"], "seq": [[14, 400], [0, 600], [4, 200], [5, 200], [6, 400], [7, 200], [8, 1400], [7, 200], [15, 800], [12, 200], [13, 200], [16, 800], [2, 100], [0, 6900], [1, 600], [2, 100], [3, 600], [4, 200], [5, 200], [6, 300], [7, 200], [8, 800], [9, 400], [10, 400], [11, 800], [12, 200], [13, 200], [14, 400]]}, "epictetus": {"scene": "scene_epictetus.png", "box": [341.8, 313.0, 595.2, 531.2], "size": [1242, 662], "frames": ["epictetus_01_rest_closed.png", "epictetus_02_rest_closed_smile.png", "epictetus_03_rest.png", "epictetus_04_reach.png", "epictetus_05_carry.png", "epictetus_06_hold_closed.png", "epictetus_07_raise.png", "epictetus_08_sip_closed.png", "epictetus_09_raise_closed_smile.png", "epictetus_10_hold_closed_smile.png", "epictetus_11_ponder_up_hmm.png", "epictetus_12_reach_right.png", "epictetus_13_hold.png", "epictetus_14_hold_happy_smile.png", "epictetus_15_carry_smile.png", "epictetus_16_reach_smile.png", "epictetus_17_rest_happy_smile.png"], "seq": [[13, 500], [14, 200], [15, 200], [16, 800], [0, 5900], [1, 800], [2, 400], [3, 200], [4, 200], [5, 600], [6, 200], [7, 1600], [8, 200], [9, 1000], [4, 200], [3, 200], [2, 600], [0, 100], [10, 1000], [2, 400], [11, 200], [4, 200], [12, 400], [6, 200], [7, 1200], [6, 200], [13, 300]]}, "home_epictetus": {"box": [30, 1884, 465, 2256], "frames": ["home_epictetus_01_rest_closed.png", "home_epictetus_02_rest_closed_smile.png", "home_epictetus_03_rest.png", "home_epictetus_04_reach.png", "home_epictetus_05_carry.png", "home_epictetus_06_hold_closed.png", "home_epictetus_07_raise.png", "home_epictetus_08_sip_closed.png", "home_epictetus_09_raise_closed_smile.png", "home_epictetus_10_hold_closed_smile.png", "home_epictetus_11_ponder_up_hmm.png", "home_epictetus_12_reach_right.png", "home_epictetus_13_hold.png", "home_epictetus_14_hold_happy_smile.png", "home_epictetus_15_carry_smile.png", "home_epictetus_16_reach_smile.png", "home_epictetus_17_rest_happy_smile.png"], "seq": [[13, 500], [14, 200], [15, 200], [16, 800], [0, 5900], [1, 800], [2, 400], [3, 200], [4, 200], [5, 600], [6, 200], [7, 1600], [8, 200], [9, 1000], [4, 200], [3, 200], [2, 600], [0, 100], [10, 1000], [2, 400], [11, 200], [4, 200], [12, 400], [6, 200], [7, 1200], [6, 200], [13, 300]]}};
 
 const PH = {
   socrates: {
@@ -297,6 +299,42 @@ const PH = {
     fallback: ["Ah. Desire is a thirst that drinking only renews. Tell me, what did you want this week?",
       "Music is the one art that speaks the will directly. Put something on, and suffer a little less for three minutes.",
       "People are like porcupines in winter: too close and they prick, too far and they freeze. Find the polite distance."]
+  },
+  seneca: {
+    name: "Seneca", land: "seneca", home: "home_seneca",
+    tagline: "Let’s make good use of the time we have.",
+    about: "We’ll look at how you spend your days, what you fear, and what you can let go of—like letters between friends, one honest line at a time.",
+    inspired: "Letters to Lucilius and On the Shortness of Life.",
+    headline: "No question is too ordinary.",
+    greet: "Greetings, friend. Sit down and tell me: how have you been spending your days?",
+    starters: ["Where does my time go?", "I worry about things that haven’t happened.", "How do I stay calm when I’m angry?"],
+    scripted: {
+      "Where does my time go?": "Most of it slips away while we are busy with other things. Tell me: which hour yesterday did you truly spend as your own?",
+      "I worry about things that haven’t happened.": "We suffer more often in imagination than in reality. Which of these fears has actually arrived so far?",
+      "How do I stay calm when I’m angry?": "The best cure for anger is delay. Before you answer the next thing that angers you, what could you do with the first minute?"
+    },
+    sample: { title: "Which hour today was truly mine?", why: "A question to revisit when the days feel rushed.", topic: "On the shortness of life" },
+    fallback: ["Life is long enough, if you know how to use it. What would you stop doing if you counted your hours?",
+      "Hold on to each hour, and you will depend less on tomorrow. What is one thing you can do today, not later?",
+      "While we wait for life, life passes. What are you waiting for before you begin?"]
+  },
+  epictetus: {
+    name: "Epictetus", land: "epictetus", home: "home_epictetus",
+    tagline: "Let’s sort what’s up to us from what isn’t.",
+    about: "We’ll separate what you can control from what you can’t, and put your effort where it actually counts—calmly, one situation at a time.",
+    inspired: "The Discourses and the Enchiridion (the Handbook).",
+    headline: "No question is too ordinary.",
+    greet: "Welcome. Tell me what is troubling you, and we will see which part of it is truly yours.",
+    starters: ["What is actually up to me?", "Someone said something that hurt me.", "How do I stop worrying about others’ opinions?"],
+    scripted: {
+      "What is actually up to me?": "Your judgments, your choices, your desires and aversions—these are yours. Name the part of today’s trouble that belongs to that list.",
+      "Someone said something that hurt me.": "It is not the words that disturb us, but our judgment about them. What did you tell yourself those words meant?",
+      "How do I stop worrying about others’ opinions?": "Their opinions are their business; your character is yours. What would you do differently if no one could ever know?"
+    },
+    sample: { title: "Is this up to me?", why: "A question to revisit when something feels out of your hands.", topic: "On what we can control" },
+    fallback: ["Some things are up to us, and some are not. Which is this one?",
+      "Don’t ask for things to happen as you wish. Wish for them to happen as they do. What would that look like here?",
+      "First say to yourself what you would be, then do what you have to do. Who do you want to be in this situation?"]
   }
 };
 
@@ -361,11 +399,7 @@ function show(id) {
 }
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
   const to = t.dataset.tab;
-  if (to === "chat") {
-    if (cur) return show("chat");
-    show("home"); const h = $("#hint"); h.classList.remove("flash"); void h.offsetWidth; h.classList.add("flash");
-    return;
-  }
+  if (to === "chat") return resumeChat();
   if (to === "notes") renderNotes();
   show(to);
 });
@@ -373,7 +407,7 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
 /* ---------- 01 Home ---------- */
 const cafe = $("#cafe");
 const HOME_W = 1179, HOME_H = 2556;
-["socrates", "schopenhauer", "montaigne"].forEach(id => {
+["socrates", "schopenhauer", "montaigne", "seneca", "epictetus"].forEach(id => {
   const a = actor(PH[id].home, HOME_W, HOME_H);
   const seat = el("button", "seat");
   seat.setAttribute("aria-label", "Meet " + PH[id].name);
@@ -507,13 +541,15 @@ function header(id, sub) {
     <img class="mono px" src="${A}mono_${id}.png" alt="">
     <div><h1>${p.name}</h1><p class="sub">${sub}</p></div>
     <span class="mode"></span>`;
-  $(".back", head).onclick = () => { stopChat(); show("home"); };
+  $(".back", head).onclick = leaveChat;
   return head;
 }
 
 function openChat(id) {
+  // Kept aside until the visitor sits down, so "Not yet" leaves the last conversation as it was.
+  const prev = cur ? { nodes: [...chat.childNodes], cls: chat.className, cur, curId, history, fbIdx, citations } : null;
   const p = PH[id]; cur = p; curId = id; history = []; busy = false; fbIdx = 0; citations = [];
-  sceneActor?.stop(); clearInterval(typer);
+  pauseScene(); clearInterval(typer);
   chat.className = "screen";
   chat.innerHTML = "";
   const scroll = el("div", "scroll"); scroll.id = "scroll";
@@ -544,7 +580,16 @@ function openChat(id) {
     <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
       <div>${p.name} has saved you a seat.<br>Would you like to sit down?</div>
       <div class="btns"><button class="btn" data-a="no">NOT YET</button><button class="btn go" data-a="yes">SIT DOWN</button></div></div></div>`;
-  const back = () => { veil.remove(); stopChat(); openMeet(id); };
+  const back = () => {
+    veil.remove();
+    if (prev) {
+      pauseScene();
+      chat.replaceChildren(...prev.nodes); chat.className = prev.cls;
+      ({ cur, curId, history, fbIdx, citations } = prev);
+      busy = false; const s = $(".send", chat); if (s) s.disabled = false;
+    } else stopChat();
+    openMeet(id);
+  };
   veil.querySelector('[data-a="no"]').onclick = back;
   veil.querySelector(".x").onclick = back;
   veil.querySelector('[data-a="yes"]').onclick = () => { veil.remove(); typeInto($("#say"), p.greet); };
@@ -552,7 +597,29 @@ function openChat(id) {
   veil.querySelector('[data-a="yes"]').focus();
 }
 
-function stopChat() { sceneActor?.stop(); sceneActor = null; clearInterval(typer); cur = null; curId = null; }
+function stopChat() { pauseScene(); clearInterval(typer); cur = null; curId = null; }
+function pauseScene() { sceneActor?.stop(); sceneActor = null; }
+
+// Leaving for the café keeps the conversation; the Conversation tab brings it back.
+function leaveChat() { pauseScene(); show("home"); }
+function resumeChat() {
+  if (!cur || !$(".dock", chat)) return noChatYet();
+  const wrap = $(".scene-wrap", chat);
+  if (wrap && !sceneActor) wrap.replaceWith(sceneFor(cur));      // restart the scene animation
+  show("chat"); scrollDown();
+}
+function noChatYet() {
+  show("home");
+  const veil = el("div", "veil");
+  veil.innerHTML = `<div class="pop card" role="dialog" aria-label="No conversation yet">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">No conversation yet<button class="x" aria-label="Close">×</button></div>
+    <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
+      <div>Tap a philosopher in the café<br>and take a seat to start talking.</div>
+      <div class="btns"><button class="btn go">OK</button></div></div></div>`;
+  veil.onclick = e => { if (e.target === veil || e.target.closest(".x, .btn")) veil.remove(); };
+  $(".screens").append(veil);
+  $(".btn", veil).focus();
+}
 
 function typeInto(node, text, done) {
   clearInterval(typer);
@@ -759,7 +826,7 @@ function renderNotes() {
   v.querySelectorAll(".pill").forEach(b => b.onclick = () => { filter = b.dataset.f; renderNotes(); });
   v.querySelectorAll(".note-card").forEach(b => b.onclick = () => { selected = b.dataset.id; renderNotes(); });
   v.querySelectorAll("textarea").forEach(t => t.oninput = () => { const n = notes.find(x => x.id === t.dataset.id); n.reflection = t.value; store.set(notes); });
-  $("#returnBtn").onclick = () => show(cur ? "chat" : "home");
+  $("#returnBtn").onclick = () => cur ? resumeChat() : show("home");
 }
 
 /* ---------- 07 System detects distress → 06 Pause the café ---------- */
@@ -805,7 +872,7 @@ function openPause(resources) {
 }
 
 paintIcons();
-document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { stopChat(); openMeet(b.dataset.go); });
+document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { pauseScene(); openMeet(b.dataset.go); });
 $("#demoDistress").onclick = () => distress("socrates", "I feel completely hopeless, and I don’t feel safe with myself.");
 show("home");
 const start = location.hash.slice(1);
