@@ -1,0 +1,169 @@
+{
+  "source": {
+    "wwi1": {
+      "repo": "GITenberg/The-World-As-Will-And-Idea--Vol.-1-of-3-_38427",
+      "commit": "153d1323fa5943b6da2233d10e91c06a586e409f",
+      "file": "38427-0.txt"
+    },
+    "wwi2": {
+      "repo": "GITenberg/The-World-As-Will-And-Idea--Vol.-2-of-3-_40097",
+      "commit": "ea47b6cf0437bd2ec8b53308da9300c1386373f0",
+      "file": "40097-0.txt"
+    },
+    "wwi3": {
+      "repo": "GITenberg/The-World-As-Will-And-Idea--Vol.-3-of-3-_40868",
+      "commit": "f17690ffb0c4d0d633bbc0e510d0d530dcb4287b",
+      "file": "40868-0.txt"
+    },
+    "wisdom_of_life": {
+      "repo": "GITenberg/The-Essays-of-Arthur-Schopenhauer--the-Wisdom-of-Life_10741",
+      "commit": "0d0f490624db4f8265f3d4f23bc5fb02e88ada81",
+      "file": "10741-8.txt"
+    },
+    "counsels": {
+      "repo": "GITenberg/The-Essays-of-Arthur-Schopenhauer--Counsels-and-Maxims_10715",
+      "commit": "1302cc710181db7111873dd0487d3a5a30287077",
+      "file": "10715-8.txt"
+    },
+    "pessimism": {
+      "repo": "GITenberg/The-Essays-of-Arthur-Schopenhauer--Studies-in-Pessimism_10732",
+      "commit": "73e5702baefa1f0c0c9294fdbe21da25b6920d15",
+      "file": "10732-8.txt"
+    },
+    "controversy": {
+      "repo": "GITenberg/The-Essays-of-Arthur-Schopenhauer--the-Art-of-Controversy_10731",
+      "commit": "4462063888e5e5c0f3bbd6bfdefe40b571d6124d",
+      "file": "10731-8.txt"
+    },
+    "literature": {
+      "repo": "GITenberg/The-Essays-of-Arthur-Schopenhauer--The-Art-of-Literature_10714",
+      "commit": "8e2bb98ba91164391af3c03953e3bd60e328c9d7",
+      "file": "10714-8.txt"
+    },
+    "human_nature": {
+      "repo": "GITenberg/The-Essays-of-Arthur-Schopenhauer--On-Human-Nature_10739",
+      "commit": "bff647e8f9134fad10e907f34b9088fed3d57bcf",
+      "file": "10739-8.txt"
+    },
+    "religion": {
+      "repo": "GITenberg/The-Essays-of-Arthur-Schopenhauer--Religion-a-Dialogue-Etc._10833",
+      "commit": "c9b1195f4799e92e966d22fa3c60f58bc9700518",
+      "file": "10833-8.txt"
+    }
+  },
+  "turns": 3030,
+  "sft_examples": 38,
+  "sft_split": {
+    "train": 32,
+    "eval": 6
+  },
+  "sft_source": {
+    "dialogue": 37,
+    "objection": 1
+  },
+  "passages": 5306,
+  "passage_flags": {
+    "suicide": 57,
+    "despair": 50,
+    "death": 462,
+    "violence": 100,
+    "grief": 40,
+    "sexuality": 162,
+    "prejudice": 137,
+    "suicide_context": 349
+  },
+  "caution_candidates": 497,
+  "suicide_context_sections": [
+    "controversy|On the Wisdom of Life: Aphorisms",
+    "controversy|The Art of Controversy, Stratagem XVI",
+    "human_nature|Government",
+    "pessimism|On Suicide",
+    "pessimism|On the Sufferings of the World",
+    "pessimism|Psychological Observations",
+    "pessimism|The Vanity of Existence",
+    "wisdom_of_life|Chapter II: Personality, or What a Man Is",
+    "wisdom_of_life|Chapter IV: Position, or a Man's Place in the Estimation of Others, Section 4: Honor",
+    "wwi|First Book: The World as Idea, § 16",
+    "wwi|Fourth Book: The World as Will, § 54",
+    "wwi|Fourth Book: The World as Will, § 55",
+    "wwi|Fourth Book: The World as Will, § 57",
+    "wwi|Fourth Book: The World as Will, § 59",
+    "wwi|Fourth Book: The World as Will, § 65",
+    "wwi|Fourth Book: The World as Will, § 68",
+    "wwi|Fourth Book: The World as Will, § 69",
+    "wwi|Second Book: The World as Will, § 23",
+    "wwi|Supplements to the Fourth Book, Chapter XLIII: On Heredity",
+    "wwi|Supplements to the Fourth Book, Chapter XLIV: The Metaphysics of the Love of the Sexes",
+    "wwi|Supplements to the Fourth Book, Chapter XLVI: On the Vanity and Suffering of Life",
+    "wwi|Supplements to the Fourth Book, Chapter XLVIII: On the Doctrine of the Denial of the Will to Live",
+    "wwi|Supplements to the Second Book, Chapter XIX: On the Primacy of the Will in Self-Consciousness",
+    "wwi|Supplements to the Second Book, Chapter XXVIII: Characterisation of the Will to Live",
+    "wwi|Supplements to the Third Book, Chapter XXXII: On Madness"
+  ],
+  "works": {
+    "wwi": {
+      "work": "The World as Will and Idea",
+      "translator": "R. B. Haldane and J. Kemp",
+      "sections": 124,
+      "paragraphs": 1351,
+      "schopenhauer_words": 507680,
+      "total_words": 507680
+    },
+    "wisdom_of_life": {
+      "work": "The Wisdom of Life",
+      "translator": "T. Bailey Saunders",
+      "sections": 9,
+      "paragraphs": 197,
+      "schopenhauer_words": 35958,
+      "total_words": 35958
+    },
+    "counsels": {
+      "work": "Counsels and Maxims",
+      "translator": "T. Bailey Saunders",
+      "sections": 55,
+      "paragraphs": 351,
+      "schopenhauer_words": 42452,
+      "total_words": 42452
+    },
+    "pessimism": {
+      "work": "Studies in Pessimism",
+      "translator": "T. Bailey Saunders",
+      "sections": 9,
+      "paragraphs": 234,
+      "schopenhauer_words": 28756,
+      "total_words": 29139
+    },
+    "controversy": {
+      "work": "The Art of Controversy",
+      "translator": "T. Bailey Saunders",
+      "sections": 44,
+      "paragraphs": 261,
+      "schopenhauer_words": 27864,
+      "total_words": 27864
+    },
+    "literature": {
+      "work": "The Art of Literature",
+      "translator": "T. Bailey Saunders",
+      "sections": 8,
+      "paragraphs": 266,
+      "schopenhauer_words": 33822,
+      "total_words": 33822
+    },
+    "human_nature": {
+      "work": "On Human Nature",
+      "translator": "T. Bailey Saunders",
+      "sections": 6,
+      "paragraphs": 207,
+      "schopenhauer_words": 31484,
+      "total_words": 31484
+    },
+    "religion": {
+      "work": "Religion: A Dialogue, Etc.",
+      "translator": "T. Bailey Saunders",
+      "sections": 6,
+      "paragraphs": 163,
+      "schopenhauer_words": 22452,
+      "total_words": 27880
+    }
+  }
+}
