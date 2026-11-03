@@ -1,0 +1,86 @@
+{
+  "source": {
+    "repo": "GITenberg/Essays-of-Michel-de-Montaigne---Complete_3600",
+    "commit": "a538bae9d1e50ebf51938c73c484ee6ab3824c18",
+    "path": "3600-h/3600-h.htm",
+    "gutenberg_ebook": 3600
+  },
+  "turns": 2280,
+  "sft_examples": 6,
+  "sft_split": {
+    "train": 5,
+    "eval": 1
+  },
+  "sft_source": {
+    "objection": 6,
+    "essay_topic": 0
+  },
+  "passages": 3490,
+  "passage_flags": {
+    "suicide": 104,
+    "death": 581,
+    "violence": 199,
+    "grief": 76,
+    "illness": 458,
+    "sexuality": 56,
+    "suicide_context": 355
+  },
+  "suicide_context_sections": [
+    "essays|Book I, Chapter LVII: Of Age",
+    "essays|Book I, Chapter XIX: That to Study Philosophy Is to Learn to Die",
+    "essays|Book I, Chapter XL: That the Relish for Good and Evil Depends in Great Measure upon the Opinion We Have of Them",
+    "essays|Book I, Chapter XLIV: Of Sleep",
+    "essays|Book I, Chapter XLIX: Of Ancient Customs",
+    "essays|Book I, Chapter XLVIII: Of War Horses, or Destriers",
+    "essays|Book I, Chapter XVII: Of Fear",
+    "essays|Book I, Chapter XXX: Of Cannibals",
+    "essays|Book I, Chapter XXXV: Of the Custom of Wearing Clothes",
+    "essays|Book I, Chapter XXXVI: Of Cato the Younger",
+    "essays|Book II, Chapter II: Of Drunkenness",
+    "essays|Book II, Chapter III: A Custom of the Isle of Cea",
+    "essays|Book II, Chapter VIII: Of the Affection of Fathers to Their Children",
+    "essays|Book II, Chapter XI: Of Cruelty",
+    "essays|Book II, Chapter XII: Apology for Raimond Sebond",
+    "essays|Book II, Chapter XIII: Of Judging of the Death of Another",
+    "essays|Book II, Chapter XXI: Against Idleness",
+    "essays|Book II, Chapter XXIX: Of Virtue",
+    "essays|Book II, Chapter XXVII: Cowardice the Mother of Cruelty",
+    "essays|Book II, Chapter XXVIII: All Things Have Their Season",
+    "essays|Book II, Chapter XXXII: Defence of Seneca and Plutarch",
+    "essays|Book II, Chapter XXXIV: Observation on the Means to Carry on a War According to Julius Caesar",
+    "essays|Book II, Chapter XXXV: Of Three Good Women",
+    "essays|Book III, Chapter I: Of Profit and Honesty",
+    "essays|Book III, Chapter IV: Of Diversion",
+    "essays|Book III, Chapter IX: Of Vanity",
+    "essays|Book III, Chapter V: Upon Some Verses of Virgil",
+    "essays|Book III, Chapter X: Of Managing the Will",
+    "essays|Book III, Chapter XII: Of Physiognomy",
+    "essays|Book III, Chapter XIII: Of Experience",
+    "letters|Letter I: To Monsieur de Montaigne"
+  ],
+  "caution_candidates": 104,
+  "cleaning": {
+    "notes_removed": 337,
+    "foreign_dropped": 88,
+    "translations_inserted": 9,
+    "verse_blocks": 1212,
+    "verse_blocks_dropped": 92,
+    "quotes_translated": 6
+  },
+  "works": {
+    "letters": {
+      "work": "Letters",
+      "translator": "Charles Cotton (rev. William Carew Hazlitt)",
+      "sections": 16,
+      "paragraphs": 63,
+      "montaigne_words": 12177
+    },
+    "essays": {
+      "work": "Essays",
+      "translator": "Charles Cotton (rev. William Carew Hazlitt)",
+      "sections": 107,
+      "paragraphs": 2217,
+      "montaigne_words": 457107
+    }
+  }
+}
