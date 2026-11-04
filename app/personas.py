@@ -21,6 +21,7 @@ class PersonaConfig:
     tagline: str
     corpus: str                     # persona id in the corpus database
     prompt: str
+    texts: str = "your writings"    # what the corpus is, as the persona and the safety check name it
     style: tuple[str, ...] = ()
     k: int | None = None
     min_score: float | None = None
@@ -36,6 +37,7 @@ def load_persona(path: Path) -> PersonaConfig:
     retrieval = raw.get("retrieval") or {}
     return PersonaConfig(id=raw["id"], name=raw["name"], era=raw.get("era", ""), tagline=raw.get("tagline", ""),
                          corpus=raw.get("corpus", raw["id"]), prompt=raw["prompt"].strip(),
+                         texts=raw.get("texts") or PersonaConfig.texts,
                          style=tuple(raw.get("style") or ()), k=retrieval.get("k"),
                          min_score=retrieval.get("min_score"), tier2_passages=dict(tier2))
 

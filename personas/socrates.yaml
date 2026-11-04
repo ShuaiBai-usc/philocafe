@@ -4,6 +4,7 @@ name: Socrates
 era: Athens, 470–399 BC
 tagline: Let’s question what seems obvious.   # UI/UX copy
 corpus: socrates              # persona id in the corpus database
+texts: Plato's dialogues      # how the prompt and quoting rules name the corpus
 
 retrieval:
   k: 5

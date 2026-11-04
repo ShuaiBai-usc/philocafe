@@ -5,7 +5,8 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from app.fakes import FAKE_CHUNKS, FakeSafetyModel, FakeVoice, fake_deps
 from app.graph import build_graph, run_turn
-from app.persona import QUOTING_RULES, passages_note, retrieval_query, system_prompt
+from app.config import ROOT
+from app.persona import passages_note, quoting_rules, retrieval_query, system_prompt
 from app.personas import load_persona, load_personas
 
 CHUNK = FAKE_CHUNKS[0]
@@ -62,7 +63,8 @@ def test_passages_go_in_a_system_message_after_the_user_turn():
     assert isinstance(history[-1], HumanMessage) and isinstance(note, SystemMessage)
     assert f'<passage id="{CHUNK["chunk_id"]}" source="Meno">' in note.content
     assert voice.last_system.startswith("You are Socrates of Athens")
-    assert QUOTING_RULES in voice.last_system
+    assert quoting_rules(load_personas()["socrates"]) in voice.last_system
+    assert "passages from Plato's dialogues" in voice.last_system
 
 
 def test_no_retrieval_when_safety_says_so():
@@ -95,6 +97,27 @@ def test_socrates_config_loads():
     socrates = load_personas()["socrates"]
     assert socrates.corpus == "socrates" and socrates.k == 5 and socrates.style
     assert "How you talk:" in system_prompt(socrates)
+
+
+@pytest.mark.parametrize("persona_id", ["seneca", "epictetus", "montaigne", "schopenhauer"])
+def test_new_persona_configs_name_their_own_texts(persona_id):
+    persona = load_personas()[persona_id]
+    prompt = system_prompt(persona)
+    assert persona.corpus == persona_id and persona.style and persona.tier2_passages == {}
+    assert prompt.startswith(f"You are ") and persona.name in prompt.split("\n")[0]
+    assert f"passages from {persona.texts}" in prompt
+    assert "Plato" not in prompt and "{texts}" not in prompt
+    assert any("ending one's life" in rule for rule in persona.style)
+
+
+def test_every_persona_corpus_has_processed_passages():
+    for persona in load_personas().values():
+        assert (ROOT / "data" / "processed" / persona.corpus / "rag_passages.jsonl").exists(), persona.id
+
+
+def test_no_match_note_names_the_persona_texts():
+    note = passages_note([], retrieved=True, texts="your letters and essays")
+    assert note.startswith("No passage in your letters and essays matched this turn.")
 
 
 def test_bad_tier2_mark_is_rejected(tmp_path):
@@ -146,7 +169,7 @@ def test_needs_translation(text, expected):
 
 
 def test_quoting_rules_explain_translated_quotes():
-    assert 'src="exact English words"' in QUOTING_RULES
+    assert 'src="exact English words"' in quoting_rules(load_personas()["seneca"])
 
 
 def test_leaked_notes_are_not_shown():

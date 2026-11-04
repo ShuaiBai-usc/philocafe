@@ -13,7 +13,7 @@ import anthropic
 from app.config import secret
 
 LATIN_SHARE = 0.5
-SYSTEM = ("Translate the user's text into English, to be used as a search query over Plato's dialogues. "
+SYSTEM = ("Translate the user's text into English, to be used as a search query over a philosopher's writings. "
           "Reply with the translation only.")
 
 

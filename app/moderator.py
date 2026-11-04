@@ -1,4 +1,4 @@
-"""Moderator (M-02). At the midterm it keeps the selected persona (Socrates);
+"""Moderator (M-02). It keeps the persona the user selected in the café;
 routing between personas (FR-13) comes at the final. Whether to retrieve is
 taken from the safety decision by the persona node."""
 

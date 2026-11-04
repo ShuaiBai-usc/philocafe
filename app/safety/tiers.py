@@ -29,7 +29,7 @@ TIER_INSTRUCTIONS = (
 )
 
 RETRIEVAL_INSTRUCTIONS = (
-    "Would quoting passages from Plato's dialogues help the philosopher answer latest_user_message?"
+    "Would quoting passages from the philosopher's own writings help the philosopher answer latest_user_message?"
 )
 # FR-32: in support mode the persona returns only if the user asks for it and risk has dropped.
 RETURN_INSTRUCTIONS = "Is the user asking to go back to talking with the philosopher in latest_user_message?"
@@ -39,7 +39,7 @@ RETURN_CRITERIA = {
 }
 
 RETRIEVAL_CRITERIA = {
-    "true": "The message raises a question, idea or dilemma that Socrates discusses, or asks what he said or thought.",
+    "true": "The message raises a question, idea or dilemma the philosopher could discuss, or asks what they said or thought.",
     "false": "A greeting, thanks, small talk, or a question about the app itself.",
 }
 
