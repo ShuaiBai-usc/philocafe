@@ -23,13 +23,18 @@ from app.translate import needs_translation
 
 log = logging.getLogger(__name__)
 
-QUOTING_RULES = """Quoting the dialogues:
-- A turn may come with passages from Plato's dialogues, each with an id. Quote only from those passages, word for word, and keep each quote to a sentence or two.
+QUOTING_RULES = """Quoting {texts}:
+- A turn may come with passages from {texts}, each with an id. Quote only from those passages, word for word, and keep each quote to a sentence or two.
 - Wrap every quote in a tag with its passage id: <q id="PASSAGE_ID">exact words</q>. Use the tag only for quotes, and don't put quotation marks around anything else.
-- Each passage line starts with its speaker ("Meno:", "Socrates:"). Leave the label out of the quote, and if the words are someone else's, say who said them.
+- When a passage line starts with its speaker ("Meno:", "Socrates:"), leave the label out of the quote, and if the words are someone else's, say who said them.
 - Lines starting with [speaker uncertain] may not be your words; don't quote them as your own.
 - If you reply in a language other than English, still quote only from the passages: put the exact English words in src and your translation between the tags, like <q id="PASSAGE_ID" src="exact English words">your translation</q>. Don't use double quotation marks inside src.
 - If no passage fits what you want to say, don't quote; just talk."""
+
+
+def quoting_rules(persona: PersonaConfig) -> str:
+    return QUOTING_RULES.format(texts=persona.texts)
+
 
 REPLY_RULE = ("Write only what you say to the person. Never include notes to yourself, drafts, reasoning, "
               "or any tags other than <q>.")
@@ -43,15 +48,15 @@ SHORT_QUERY_WORDS = 6
 
 def system_prompt(persona: PersonaConfig) -> str:
     style = "\n".join(f"- {rule}" for rule in persona.style)
-    return f"{persona.prompt}\n\nHow you talk:\n{style}\n- {REPLY_RULE}\n\n{QUOTING_RULES}"
+    return f"{persona.prompt}\n\nHow you talk:\n{style}\n- {REPLY_RULE}\n\n{quoting_rules(persona)}"
 
 
-def passages_note(chunks: Sequence[Chunk], retrieved: bool) -> str:
+def passages_note(chunks: Sequence[Chunk], retrieved: bool, texts: str = "your writings") -> str:
     if not retrieved:
         return "No passages come with this turn. Don't quote."
     if not chunks:
         # UC-01 extension: nothing relevant in the corpus.
-        return ("No passage in the dialogues matched this turn. Don't quote; if you draw on the dialogues, "
+        return (f"No passage in {texts} matched this turn. Don't quote; if you draw on {texts}, "
                 "say you are speaking from memory rather than from the texts.")
     blocks = []
     for c in chunks:
@@ -101,7 +106,7 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
                      source_url=value["source_url"], quote=value["quote"], passage=value["text"])
 
     returning = state.get("mode") == "support"      # FR-32: safety let the persona back in
-    notes_for_turn = ([SystemMessage(REENTRY_NOTE)] if returning else []) + [SystemMessage(passages_note(chunks, wants_passages))]
+    notes_for_turn = ([SystemMessage(REENTRY_NOTE)] if returning else []) + [SystemMessage(passages_note(chunks, wants_passages, persona.texts))]
     messages = [*state["messages"], *notes_for_turn]
     for delta in deps.generate(system_prompt(persona), messages):
         send(quotes.feed(notes.feed(delta)))

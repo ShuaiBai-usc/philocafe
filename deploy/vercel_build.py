@@ -20,7 +20,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / ".cache" / "fastembed"
-PERSONAS = ["socrates"]               # one corpus per persona config that ships
+
+
+def shipped_corpora() -> list[str]:
+    """One corpus per persona config under personas/, so a new config is indexed without a code change."""
+    import yaml
+    configs = [yaml.safe_load(p.read_text(encoding="utf-8")) for p in sorted((ROOT / "personas").glob("*.yaml"))]
+    return sorted({c.get("corpus", c["id"]) for c in configs})
 
 
 def run(*args: str) -> None:
@@ -49,7 +55,7 @@ def flatten_model_cache(cache: Path) -> None:
 def main() -> None:
     db = ROOT / "data" / "philocafe.db"
     db.unlink(missing_ok=True)
-    for persona in PERSONAS:
+    for persona in shipped_corpora():
         run("scripts/build_sqlite.py", "build", "--persona", persona,
             "--processed", f"data/processed/{persona}", "--db", str(db), "--embed")
     flatten_model_cache(CACHE)

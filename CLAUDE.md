@@ -13,9 +13,10 @@ The design doc is the source of truth for scope, contracts and decisions. Read t
 - `main` also holds the midterm app (setup in PR #4; safety, persona, Streamlit UI, eval and the web café app in PR #6): the graph, the safety node (Jev plus fallback, FR-32 return to the persona), the Socrates persona with checked quotes, the Streamlit debug UI, the eval harness, and the web app as a PWA.
 - Deployed on Vercel (ADR-11, `deploy/README.md`). Production follows `main`; every branch push gets a preview deployment behind Vercel login.
 - `retrieve()` matches design doc 7.1 v0.2 (`scripts/retrieval.py`, merged in PR #1). Call `retrieval.open_db()` once at startup; `retrieval.corpus_version(persona)` goes in eval headers.
+- Five personas ship: Socrates plus Seneca, Epictetus, Montaigne and Schopenhauer (corpora from Jiayue's `data/*-corpus` branches, café art from `demo-ui`). Each has a `personas/<id>.yaml`; its `texts` field names the corpus in the prompt and quoting rules. `deploy/vercel_build.py` indexes every persona config's corpus.
 - Still open:
   - the 30 test messages from UI/UX, which the eval run (midterm step 5) and the `min_score` calibration wait on;
-  - the Montaigne and Schopenhauer corpora (final; the web app shows them as "Coming at the final").
+  - `tier2_passages` for the four new personas: hand-review each corpus's `caution_candidates.csv` (Seneca: `suicide_context` sections in `stats.json`) before tier-2 handling lands at the final.
 - Corpus notes that affect the persona:
   - Passage lines whose speaker was inferred are prefixed `[speaker uncertain]`; the persona must not quote them as Socrates' own words.
   - Phaedo and Symposium passages have `socrates_words` = 0 (Socrates is reported by a narrator); never filter retrieval by it.
@@ -30,7 +31,7 @@ The design doc is the source of truth for scope, contracts and decisions. Read t
 4. Streamlit UI: chat, debug panel (tier, probability, route, retrieved chunk IDs, node timings) and a source card for cited passages.
 5. Run the 30 test messages and record results.
 
-Decided, do not reopen without asking: midterm persona is Socrates; final personas are Montaigne and Schopenhauer (D6, public domain); no plain-language toggle (replies use everyday words by default via the persona prompt); corpus is the repo's Jowett dialogues, no Stephanus page numbers; storage is one SQLite file (FTS5 + sqlite-vec).
+Decided, do not reopen without asking: midterm persona is Socrates; final personas are Montaigne and Schopenhauer (D6, public domain), with Seneca and Epictetus added by the team after the midterm; no plain-language toggle (replies use everyday words by default via the persona prompt); corpus is the repo's Jowett dialogues, no Stephanus page numbers; storage is one SQLite file (FTS5 + sqlite-vec).
 
 ## Layout
 

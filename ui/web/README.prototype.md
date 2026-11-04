@@ -17,4 +17,4 @@
 - 想接自己的后端，把 template.html 里 `send()` 函数中的 `await sample(prompt, ...)` 换成 `fetch` 调用你的 API 就行，其余逻辑不用改。注意不要把 API key 写在前端代码里。
 
 ## 快捷入口
-在网址后面加 `#socrates`、`#montaigne`、`#schopenhauer`、`#notes` 或 `#distress`，可以直接跳到对应页面。
+在网址后面加 `#socrates`、`#montaigne`、`#schopenhauer`、`#seneca`、`#epictetus`、`#notes` 或 `#distress`，可以直接跳到对应页面。

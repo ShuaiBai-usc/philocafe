@@ -6,7 +6,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from app.fakes import FAKE_QUOTING_REPLY, FakeVoice, fake_deps, fake_distill_note
-from app.server import create_app
+from app.server import WEB_DIR as WEB, create_app
 
 
 @pytest.fixture
@@ -32,9 +32,12 @@ def send(client, thread, text, persona="socrates"):
 
 def test_personas_and_threads(client):
     personas = client.get("/personas").json()
-    assert personas == [{"id": "socrates", "name": "Socrates", "era": "Athens, 470–399 BC",
-                         "tagline": "Let’s question what seems obvious.",
-                         "avatar_url": "assets/mono_socrates.png", "available": True}]
+    assert [p["id"] for p in personas] == ["epictetus", "montaigne", "schopenhauer", "seneca", "socrates"]
+    assert personas[-1] == {"id": "socrates", "name": "Socrates", "era": "Athens, 470–399 BC",
+                            "tagline": "Let’s question what seems obvious.",
+                            "avatar_url": "assets/mono_socrates.png", "available": True}
+    for p in personas:   # every avatar the café asks for is shipped
+        assert (WEB / p["avatar_url"]).exists(), p["avatar_url"]
     r = client.post("/threads")
     assert r.status_code == 201 and len(r.json()["thread_id"]) == 32
 
