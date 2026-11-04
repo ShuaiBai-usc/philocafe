@@ -1,0 +1,164 @@
+{
+  "source": {
+    "letters": {
+      "standard_ebooks_repo": "standardebooks/seneca_moral-letters-to-lucilius_richard-m-gummere",
+      "standard_ebooks_commit": "f5bc9a761005af19c4948d1611bfa2e607443b20"
+    },
+    "dialogues": {
+      "standard_ebooks_repo": "standardebooks/seneca_dialogues_aubrey-stewart",
+      "standard_ebooks_commit": "b950b7cb47d81377ab7d66ce7a14fbb9e1d11f5c"
+    }
+  },
+  "turns": 1634,
+  "sft_examples": 208,
+  "sft_split": {
+    "train": 196,
+    "eval": 12
+  },
+  "sft_source": {
+    "objection": 188,
+    "reported": 20,
+    "letter_topic": 0
+  },
+  "passages": 3232,
+  "passage_flags": {
+    "suicide": 53,
+    "death": 464,
+    "violence": 187,
+    "grief": 172,
+    "sexuality": 82,
+    "suicide_context": 282
+  },
+  "suicide_context_sections": [
+    "anger|Book II, Chapter XXXVI",
+    "anger|Book III, Chapter V",
+    "anger|Book III, Chapter XV",
+    "anger|Book III, Chapter XVI",
+    "benefits|Book III, Chapter IX",
+    "letters|Letter CIV: On Care of Health and Peace of Mind",
+    "letters|Letter CVII: On Obedience to the Universal Will",
+    "letters|Letter CXVII: On Real Ethics as Superior to Syllogistic Subtleties",
+    "letters|Letter IV: On the Terrors of Death",
+    "letters|Letter LVIII: On Being",
+    "letters|Letter LXX: On the Proper Time to Slip the Cable",
+    "letters|Letter LXXVII: On Taking One’s Own Life",
+    "letters|Letter LXXVIII: On the Healing Power of the Mind",
+    "letters|Letter LXXXIII: On Drunkenness",
+    "letters|Letter XCIX: On Consolation to the Bereaved",
+    "letters|Letter XII: On Old Age",
+    "letters|Letter XXIV: On Despising Death",
+    "letters|Letter XXX: On Conquering the Conqueror",
+    "marcia|Chapter X",
+    "marcia|Chapter XX",
+    "marcia|Chapter XXII",
+    "providence|Chapter II",
+    "providence|Chapter VI",
+    "shortness_of_life|Chapter VI"
+  ],
+  "works": {
+    "letters": {
+      "work": "Moral Letters to Lucilius",
+      "translator": "Richard M. Gummere",
+      "sections": 124,
+      "paragraphs": 1011,
+      "seneca_words": 208102,
+      "total_words": 208102
+    },
+    "providence": {
+      "work": "On Providence",
+      "translator": "Aubrey Stewart",
+      "sections": 6,
+      "paragraphs": 13,
+      "seneca_words": 6813,
+      "total_words": 6813
+    },
+    "firmness": {
+      "work": "On the Firmness of the Wise Person",
+      "translator": "Aubrey Stewart",
+      "sections": 19,
+      "paragraphs": 21,
+      "seneca_words": 8782,
+      "total_words": 8782
+    },
+    "anger": {
+      "work": "On Anger",
+      "translator": "Aubrey Stewart",
+      "sections": 100,
+      "paragraphs": 107,
+      "seneca_words": 38867,
+      "total_words": 38867
+    },
+    "marcia": {
+      "work": "To Marcia, on Consolation",
+      "translator": "Aubrey Stewart",
+      "sections": 26,
+      "paragraphs": 30,
+      "seneca_words": 14695,
+      "total_words": 14695
+    },
+    "happy_life": {
+      "work": "On a Happy Life",
+      "translator": "Aubrey Stewart",
+      "sections": 28,
+      "paragraphs": 30,
+      "seneca_words": 12594,
+      "total_words": 12594
+    },
+    "leisure": {
+      "work": "On Leisure",
+      "translator": "Aubrey Stewart",
+      "sections": 8,
+      "paragraphs": 9,
+      "seneca_words": 3370,
+      "total_words": 3370
+    },
+    "peace_of_mind": {
+      "work": "On Peace of Mind",
+      "translator": "Aubrey Stewart",
+      "sections": 17,
+      "paragraphs": 20,
+      "seneca_words": 11704,
+      "total_words": 13232
+    },
+    "shortness_of_life": {
+      "work": "On the Shortness of Life",
+      "translator": "Aubrey Stewart",
+      "sections": 20,
+      "paragraphs": 22,
+      "seneca_words": 10596,
+      "total_words": 10596
+    },
+    "polybius": {
+      "work": "To Polybius, on Consolation",
+      "translator": "Aubrey Stewart",
+      "sections": 18,
+      "paragraphs": 20,
+      "seneca_words": 9227,
+      "total_words": 9227
+    },
+    "helvia": {
+      "work": "To Helvia, on Consolation",
+      "translator": "Aubrey Stewart",
+      "sections": 20,
+      "paragraphs": 20,
+      "seneca_words": 11249,
+      "total_words": 11249
+    },
+    "clemency": {
+      "work": "On Clemency",
+      "translator": "Aubrey Stewart",
+      "sections": 33,
+      "paragraphs": 38,
+      "seneca_words": 14323,
+      "total_words": 14323
+    },
+    "benefits": {
+      "work": "On Benefits",
+      "translator": "Aubrey Stewart",
+      "sections": 228,
+      "paragraphs": 293,
+      "seneca_words": 80693,
+      "total_words": 80693
+    }
+  }
+}
