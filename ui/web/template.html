@@ -371,6 +371,7 @@ function actor(key, W, H) {
   const box = el("div", "actor px");
   Object.assign(box.style, { left: x0 / W * 100 + "%", top: y0 / H * 100 + "%", width: (x1 - x0) / W * 100 + "%", height: (y1 - y0) / H * 100 + "%" });
   const img = el("img"); img.alt = ""; img.src = A + d.frames[d.seq[0][0]];
+  if (d.flip) img.style.transform = "scaleX(-1)";   // face the table on the seat's left
   box.append(img);
   let i = 0, t = null, alive = true;
   const step = () => {
