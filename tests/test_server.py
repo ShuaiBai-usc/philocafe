@@ -72,6 +72,7 @@ def test_note_endpoint(client):
     ({"text": "  ", "persona_id": "socrates"}, 400, "empty_text"),
     ({"text": "x" * 2001, "persona_id": "socrates"}, 400, "text_too_long"),
     ({"text": "hi", "persona_id": "camus"}, 404, "unknown_persona"),
+    ({"text": "hi", "persona_id": "socrates", "intent": "leave"}, 400, "bad_intent"),
 ])
 def test_bad_messages(client, body, status, code):
     r = client.post("/threads/t1/messages", json=body)
@@ -81,3 +82,10 @@ def test_bad_messages(client, body, status, code):
 def test_bad_json(client):
     r = client.post("/threads/t1/messages", content=b"not json", headers={"content-type": "application/json"})
     assert r.status_code == 400 and r.json()["error"]["code"] == "bad_json"
+
+
+def test_return_intent_brings_the_persona_back(client):
+    send(client, "t1", "TEST_TIER3")
+    r = client.post("/threads/t1/messages", json={"text": "I'm safe right now.", "persona_id": "socrates",
+                                                  "intent": "return"})
+    assert [d["speaker"] for e, d in events(r) if e == "voice"] == ["persona"]

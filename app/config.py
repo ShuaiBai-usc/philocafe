@@ -30,6 +30,7 @@ class SafetyConfig:
     jev_model: str = "jev-latest"
     jev_timeout_s: float = 2.0
     history_turns: int = 4
+    return_theta2: float = 0.5   # FR-32: P(2) + P(3) must stay below this for the persona to return
     fallback_model: str = "claude-haiku-5-5"
     fallback_timeout_s: float = 5.0
 

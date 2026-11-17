@@ -8,6 +8,9 @@ safety:
   jev_model: jev-latest
   jev_timeout_s: 2.0
   history_turns: 4          # previous turns sent to Jev as state
+  # FR-32: in support mode the persona comes back only below this P(2) + P(3), judged on what
+  # the user said since the pause (not the message that caused it). theta3 still applies.
+  return_theta2: 0.5
   fallback_model: claude-haiku-5-5
   fallback_timeout_s: 5.0
 
