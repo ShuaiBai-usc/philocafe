@@ -1,213 +1,205 @@
-# PhiloCafe
+# ☕ PhiloCafé
 
-A café where you sit down with a philosopher and talk. PhiloCafe answers in the voice of **Socrates, Seneca, Epictetus, Montaigne or Schopenhauer**, quotes only from public-domain translations of their own writing, and shows the passage behind every quote. A safety node checks every turn before the philosopher speaks and steps the persona aside when a conversation turns risky.
+**Sit down with a philosopher and talk through what's on your mind.**
 
-PhiloCafe is a group project for COMM-586 (Advanced Applied AI). The software design doc is the source of truth for scope, contracts and decisions; [`CLAUDE.md`](CLAUDE.md) links to it and summarizes the current state.
+PhiloCafé is a pixel-art café where you can talk with **Socrates, Seneca, Epictetus, Montaigne and Schopenhauer**. Each philosopher answers in plain, everyday language, quotes only from their own public-domain writings, and shows you the exact passage behind every quote. A safety check runs on every message *before* the philosopher speaks, so the café knows when to step aside and point you to real support.
 
-## How it works
+<p align="center">
+  <img src="docs/images/cafe-home.png" width="250" alt="The café home screen with five philosophers in armchairs">
+  &nbsp;
+  <img src="docs/images/chat.png" width="250" alt="A conversation with Socrates">
+  &nbsp;
+  <img src="docs/images/from-the-source.png" width="250" alt="The From the source card showing the quoted passage">
+</p>
+<p align="center"><sub>The café, a conversation with Socrates, and "From the source". Screenshots from the offline demo mode, so the reply is a stand-in.</sub></p>
 
-No model is trained or fine-tuned. Each persona is a **prompt plus retrieval (RAG)** over a cleaned corpus.
+PhiloCafé is our group project for COMM-586 (Advanced Applied AI) at USC. It runs as a web app that can be installed on a phone, and it is deployed on Vercel.
 
-```
-user message
-   │
-   ▼
-safety ──tier 3, or support mode──► exit       fixed hand-over text + crisis resources
-   │
-   ▼
-moderator ──► persona ──► reply with <q id="…"> quotes, each checked against the retrieved passages
-                 │
-                 └── retrieve(persona, query) ──► SQLite (FTS5 + sqlite-vec)
-```
+---
 
-The graph is built with LangGraph (`app/graph.py`): `START → safety → (exit | moderator → persona) → END`.
+## Why we built it
 
-| Step | What it does | Code |
-|---|---|---|
-| Safety | Scores the latest message, in the context of the last few turns, into risk tiers 0–3 with Jev (TypeSafe AI). If Jev fails, a small Claude model returns the same decision. If every call fails, it escalates (fail closed). | `app/safety/` |
-| Exit | On tier 3 the persona steps aside. The reply is fixed text, never generated, followed by the resources in `data/resources.yaml`. The conversation stays in support mode until the user asks for the persona back and risk has dropped. | `app/exit.py` |
-| Moderator | Keeps the persona the user picked. | `app/moderator.py` |
-| Persona | Translates non-English questions into English for the search only, retrieves passages, streams the reply from Claude, and checks every quote word for word against the retrieved passages before it reaches the user. | `app/persona.py`, `app/translate.py`, `app/voice.py`, `app/quotes.py` |
-| Notes | "Save thought": distils one thought from a conversation. The note is stored only in the browser. | `app/notes.py` |
+Most AI chatbots are generic assistants. We wanted something more humanistic: bring the thinkers from the books we read into everyday life. You can bring them a question you're stuck on, or a small, silly thought, without any pressure.
 
-Models and thresholds are set in [`config.yaml`](config.yaml): the persona voice is `claude-sonnet-5-5`; the safety fallback, query translation and notes use `claude-haiku-5-5`; the safety thresholds `theta2` and `theta3` are 0.5 until the threshold sweep.
+We chose a pixel style on purpose. People may arrive with something heavy on their mind, so the café should feel cozy and low-pressure, more like a little game than a mental-health app. And you should leave with something: **Save thought** keeps one idea from the conversation in **My notes**.
 
-## Personas and corpora
+Three design tensions shaped the system:
 
-All texts are public-domain English translations. Modern translations and all Chinese translations are still under copyright and are not used; a persona can still reply in Chinese, because only the search query is translated and quotes keep the English source.
+| Tension | Our answer |
+|---|---|
+| **Immersion vs. safety.** A philosopher who never breaks character can miss distress. | A safety node runs first on every turn, and only it can end the persona. |
+| **Faithful quotes vs. fluent replies.** Language models invent plausible quotes. | The persona may quote only passages retrieved for this turn, and every quote is checked word for word before it is shown. |
+| **Ambition vs. a small team and a $100 budget.** | No model training: personas are prompts plus retrieval over our own corpus, and every persona is one config file. |
 
-| Persona | Works | Translation | Passages |
-|---|---|---|---:|
-| Socrates | 23 Platonic dialogues (Apology, Crito, Phaedo, Meno, Republic, …) | Benjamin Jowett, 1892 (Standard Ebooks) | 3,531 |
-| Epictetus | Discourses, Enchiridion, Fragments | George Long, 1877 (Standard Ebooks) | 1,108 |
-| Seneca | Moral Letters to Lucilius (124 letters) and 12 Dialogues | Richard M. Gummere (Letters); Aubrey Stewart (Dialogues) (Standard Ebooks) | 3,232 |
-| Montaigne | Essays, Books I–III, and 16 letters | Charles Cotton, revised by W. C. Hazlitt (Gutenberg #3600 via GITenberg) | 3,490 |
-| Schopenhauer | The World as Will and Idea; seven volumes of Parerga and Paralipomena essays | Haldane and Kemp; T. Bailey Saunders (GITenberg) | 5,306 |
+## Meet the philosophers
 
-Each source is pinned to a commit. The per-persona notes in [`docs/`](docs/) cover copyright status, every cleaning step, the output fields, known limits and the passages flagged for caution.
+| | Philosopher | Style | Good for | Corpus (public-domain translation) | Passages |
+|:-:|---|---|---|---|--:|
+| <img src="ui/web/assets/portrait_socrates.png" width="56" alt=""> | **Socrates**<br><sub>Athens, 470–399 BC</sub><br><sub>*Let's question what seems obvious.*</sub> | The questioner: answers with a question | Things you can't think through, self-knowledge, friendship | 23 Platonic dialogues, tr. Benjamin Jowett (1892) | 3,531 |
+| <img src="ui/web/assets/portrait_epictetus.png" width="56" alt=""> | **Epictetus**<br><sub>c. AD 50–135</sub><br><sub>*Let's sort what's up to us from what isn't.*</sub> | The coach: direct and practical | Stress, anxiety, other people's opinions | Discourses, Enchiridion, Fragments, tr. George Long (1877) | 1,108 |
+| <img src="ui/web/assets/portrait_seneca.png" width="56" alt=""> | **Seneca**<br><sub>Rome, c. 4 BC–AD 65</sub><br><sub>*Let's make good use of the time we have.*</sub> | The mentor writing to a young friend | Time, friendship, anger, feeling lost | 124 Moral Letters (tr. Gummere) and 12 Dialogues (tr. Aubrey Stewart) | 3,232 |
+| <img src="ui/web/assets/portrait_montaigne.png" width="56" alt=""> | **Montaigne**<br><sub>Bordeaux, 1533–1592</sub><br><sub>*Let's become curious about being human.*</sub> | The friend: casual, loves talking about himself | Self-exploration, uncertainty, everyday things | All 107 Essays and 16 letters, tr. Cotton, rev. Hazlitt | 3,490 |
+| <img src="ui/web/assets/portrait_schopenhauer.png" width="56" alt=""> | **Schopenhauer**<br><sub>Frankfurt, 1788–1860</sub><br><sub>*Let's examine what keeps us wanting.*</sub> | The sharp-tongued pessimist | Happiness, what others think, solitude | The World as Will and Idea (tr. Haldane & Kemp) and seven volumes of essays (tr. Saunders) | 5,306 |
 
-Each persona is one YAML file in [`personas/`](personas/): name, era, tagline, the corpus id, how the prompt names the texts, the voice prompt and style rules, retrieval settings, and the tier-2 passage list. Adding a persona means adding a corpus and one such file; the build indexes every persona's corpus without a code change.
+**16,667 passages** in total, each tagged with its work, section and a link to the pinned edition. Modern translations and all Chinese translations are still under copyright, so they are not used. You can still talk in Chinese or any other language: only the search query is translated into English, and the philosopher replies in your language with the English source shown next to each quote.
 
-## Data pipeline
+## How one message flows
 
-```
-data/raw/<persona>/            downloaded source texts (git-ignored)
-   │  scripts/<persona>_pipeline.py      standard library only
-   ▼
-data/processed/<persona>/      committed
-   ├── rag_passages.jsonl      passages of at most 180 words, never crossing a chapter: the retrieval corpus
-   ├── turns.jsonl             the text as an ordered sequence of turns or paragraphs
-   ├── <persona>_sft.jsonl     prompt/reply pairs (Socrates, Seneca, Montaigne, Schopenhauer); not used, since there is no fine-tuning
-   ├── caution_candidates.csv  passages flagged for hand review (Epictetus, Montaigne, Schopenhauer)
-   └── stats.json              counts, source commits, flag totals
-   │  scripts/build_sqlite.py build --embed
-   ▼
-data/philocafe.db              one SQLite file: FTS5 keyword index + sqlite-vec vector index (git-ignored)
+```mermaid
+flowchart LR
+    U([Your message]) --> S{Safety<br/>Jev, with a<br/>Claude Haiku fallback}
+    S -- "tier 3, or paused" --> E[Exit flow<br/>fixed system text<br/>+ support resources]
+    S -- "tier 0–2" --> M[Moderator]
+    M --> P[Persona]
+    P <--> R[(retrieve<br/>SQLite: FTS5 + sqlite-vec)]
+    P --> Q[Quote check]
+    Q --> O([Streamed reply<br/>with sources])
 ```
 
-- **Embeddings:** fastembed with `sentence-transformers/all-MiniLM-L6-v2` (ONNX, no PyTorch).
-- **Search:** hybrid. Keyword and vector results are fused by reciprocal rank, then re-scored by cosine similarity.
-- **Passage ids** are stable content hashes, for example `socrates-meno-3fa9c2e1`.
-- **Sensitive flags** (`sensitive` field and `caution_candidates.csv`) are for analysis and hand review only. Retrieval never filters on them; which passages a persona may quote at tier 2 is decided by hand in the persona config.
-- **Dialogue speakers:** lines whose speaker was inferred start with `[speaker uncertain]`, and the persona is told not to quote them as its own words.
+1. **Safety first.** Jev, a model from TypeSafe AI, reads the message with the last four turns and returns a risk tier with its probability. If Jev is unavailable, Claude Haiku returns the same kind of decision. If every check fails, the system fails closed and treats the turn as high risk.
+2. **Retrieve.** The persona searches its own corpus for the five closest passages, combining keyword and vector search. A non-English question is translated into English for the search only.
+3. **Reply.** Claude writes the reply in the philosopher's voice, in short everyday sentences, usually ending with a question back to you. Quotes are tagged with their passage id.
+4. **Check every quote.** A quote that does not match a retrieved passage word for word never reaches the screen. The rest become **From the source** cards with the full passage and a link.
 
-## Retrieval contract (design doc 7.1, v0.2)
+### Risk tiers
+
+| Tier | Meaning | What the café does |
+|:-:|---|---|
+| 0 | Everyday question or curiosity | The philosopher answers. |
+| 1 | Stress, sadness or a setback, no sign of harm | The philosopher answers. |
+| 2 | Lasting hopelessness or isolation, vague talk of not going on, or a philosopher's idea used to justify harm | The philosopher answers, and the tier shows in the debug trace. |
+| 3 | Intent, plan or means to harm oneself or others, or immediate danger | The philosopher steps aside. Only a fixed system message replies, with support resources. The persona never sees the turn. |
+
+Talking *about* what a philosopher thought of death is not tier 2 or 3 on its own. The user's own situation decides. Only the safety node assigns tiers; no other part of the app can overrule it.
+
+### The pause, and coming back
+
+<p align="center">
+  <img src="docs/images/safety-pause.png" width="250" alt="The café pauses and shows support resources">
+  &nbsp;
+  <img src="docs/images/come-back.png" width="250" alt="The paused conversation with buttons to ask the philosopher back">
+</p>
+
+On a tier-3 message the café pauses, shows support options, and encourages you to reach out to someone in your life. The conversation is kept, not wiped.
+
+Getting the philosopher back used to be slow. The safety model looks at the last four turns (`history_turns: 4`), so the message that caused the pause stayed in its window, and it took several more messages before the risk dropped. Now the paused conversation shows **"I'm ready to talk with {name} again"**, which offers two answers: *"I'm safe right now, and I'd like to keep talking"* or *"I'm still having a hard time."* The first is sent with `"intent": "return"`. While paused, the safety model sees only the turns since the pause, and the return has its own threshold (`return_theta2`), so it can be tuned without touching detection in ordinary conversation. A tier-3 message still keeps the café paused, and a refused return gets its own gentle reply.
+
+## Under the hood
+
+| Layer | What we used |
+|---|---|
+| Orchestration | LangGraph: `START → safety → (exit \| moderator → persona) → END`, with streaming and checkpoints |
+| Safety | Jev (TypeSafe AI); fallback `claude-haiku-5-5`; thresholds in `config.yaml` |
+| Voice | `claude-sonnet-5-5`, one YAML config per persona (`personas/`) |
+| Retrieval | One SQLite file: FTS5 keyword index + sqlite-vec vectors, fused by reciprocal rank |
+| Embeddings | fastembed, `sentence-transformers/all-MiniLM-L6-v2` (ONNX, no PyTorch) |
+| Backend | FastAPI with Server-Sent Events (`app/server.py`) |
+| Frontend | Single-page web app built from the UI/UX team's Figma design, installable as a PWA (`ui/web/`); a Streamlit debug UI shows tiers, timings and retrieved passages (`ui/app.py`) |
+| Hosting | Vercel, with conversation checkpoints in Postgres (Neon), purged after a set number of hours |
+
+### Data pipeline
+
+```
+public-domain source (Standard Ebooks, or Project Gutenberg via GITenberg), pinned to a commit
+  → scripts/<persona>_pipeline.py      clean: drop editors' notes, glosses, front matter; replace foreign
+                                       quotations with the English; flag speakers and sensitive passages
+  → data/processed/<persona>/          rag_passages.jsonl (≤180 words, never crossing a chapter),
+                                       turns.jsonl, stats.json, caution_candidates.csv
+  → scripts/build_sqlite.py --embed    → data/philocafe.db
+```
+
+Each passage id is a stable content hash (for example `socrates-meno-3fa9c2e1`), so persona configs and eval logs can point to exact passages. The notes in [`docs/`](docs/) record every source, copyright check and cleaning decision per philosopher.
+
+### Retrieval contract (design doc 7.1, v0.2)
 
 ```python
-retrieve(persona: str, query: str, k: int = 5, min_score: float | None = None) -> list[Chunk]
+retrieve(persona, query, k=5, min_score=None) -> list[Chunk]
+# Chunk = {chunk_id, persona, work, section, text, source_url, score}
 ```
 
-`Chunk` has exactly these fields:
+`score` is the cosine similarity and results are sorted by it. Chunks below `min_score` (default `0.3`, `PHILOCAFE_MIN_SCORE`) are dropped, so an unrelated question returns `[]` and the philosopher just talks without quoting. Retrieval never filters for safety; that decision belongs to the safety node and the persona config.
 
-| Field | Example |
+## Evaluation
+
+The UI/UX teammates wrote a fully synthetic test set (no real help-seeking data):
+
+- **30 single messages:** 10 everyday, 10 near the boundary (including "what did Socrates think about death?" questions that must *not* be flagged), and 10 high-risk.
+- **15 persona traps:** for each philosopher, a death-topic question that should stay calm, and tier-2 and tier-3 messages that use that philosopher's own ideas to justify harm (for example Epictetus' "the door is always open").
+- **3 multi-turn conversations:** gradual escalation, a calm discussion of death, and recovery after a pause.
+
+`eval/run_testset.py` runs each row through the graph and writes one row per turn; `eval/metrics.py` reports:
+
+| Metric | Target |
 |---|---|
-| `chunk_id` | `socrates-meno-3fa9c2e1` |
-| `persona` | `socrates` |
-| `work` | `Meno` |
-| `section` | `Book II`, or `""` |
-| `text` | the passage |
-| `source_url` | a readable page of the pinned edition (served by jsDelivr) |
-| `score` | cosine similarity between query and passage; results are sorted by it |
+| High-risk turns caught (NFR-01) | recall ≥ 0.95 |
+| Everyday turns wrongly escalated (NFR-03) | ≤ 8% |
+| Shown quotes that match a retrieved passage (NFR-05) | ≥ 85% |
+| Time to first token / safety decision time (NFR-06, NFR-07) | p50 ≤ 3 s / p95 ≤ 1 s |
 
-- Chunks below `min_score` are dropped, so a query with nothing relevant returns `[]`.
-- `min_score` defaults to `0.3` (`PHILOCAFE_MIN_SCORE`). This value is provisional until it is calibrated on the 30 test messages with `scripts/calibrate_min_score.py`.
-- An unknown persona raises `ValueError`.
-- No safety fields and no safety filtering.
-- Call `retrieval.open_db()` once at startup: it fails fast if the database, sqlite-vec or the vector index is missing. `retrieval.corpus_version(persona)` goes in eval headers.
+## Try it yourself
 
-The implementation is `scripts/retrieval.py`; `app/retrieval.py` wraps it for the app (and swaps in `pysqlite3-binary` on Vercel, whose Python cannot load SQLite extensions).
-
-## API and UI events (design doc 7.2)
-
-`app/server.py` (FastAPI) serves the web app from `ui/web` and this API on the same origin:
-
-| Route | Purpose |
-|---|---|
-| `GET /personas` | the persona list for the café |
-| `POST /threads` | start a conversation; returns `thread_id` |
-| `POST /threads/{id}/messages` | send `{"text", "persona_id"}`; replies as Server-Sent Events |
-| `POST /threads/{id}/note` | "Save thought" |
-| `GET /internal/purge` | daily cron on Vercel; deletes old conversations |
-
-Event types: `voice`, `token`, `citation`, `exit`, `safety`, `trace`, `done`, `error`. The Streamlit debug UI consumes the same events in-process.
-
-## Setup
-
-The app needs **Python 3.12** (`requires-python = ">=3.12"`). macOS system Python cannot load sqlite-vec, so use a uv (or conda) environment:
+Requires Python 3.12 and [uv](https://docs.astral.sh/uv/). macOS system Python cannot load sqlite-vec.
 
 ```bash
 git clone https://github.com/ShuaiBai-usc/philocafe.git && cd philocafe
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -r pyproject.toml -r requirements-dev.txt
-cp .env.example .env    # then fill in the keys
+
+# No keys? The offline demo mode runs the whole café with stand-in models:
+PHILOCAFE_FAKE=1 .venv/bin/uvicorn --factory app.server:create_app --port 8000
+# open http://localhost:8000
 ```
 
-`.env` (see [`.env.example`](.env.example)):
-
-| Variable | Needed for |
-|---|---|
-| `ANTHROPIC_API_KEY` | persona voice, safety fallback, translation, notes |
-| `JEV_API_KEY` | the safety model |
-| `PHILOCAFE_DB` | database path; default `data/philocafe.db` |
-| `PHILOCAFE_MIN_SCORE` | retrieval threshold; default `0.3` |
-| `PHILOCAFE_FAKE` | `1` runs the server on offline stand-ins (no keys, no network) |
-
-The deployment variables (`PHILOCAFE_ACCESS_CODE`, `PHILOCAFE_CHECKPOINT_URL`, `CRON_SECRET`, `PHILOCAFE_RETENTION_HOURS`) stay empty locally; see [`deploy/README.md`](deploy/README.md).
-
-Build the database once (it downloads the embedding model on first use):
+To run with the real models, copy `.env.example` to `.env`, add `ANTHROPIC_API_KEY` and `JEV_API_KEY`, and build the database once:
 
 ```bash
 for p in socrates epictetus seneca montaigne schopenhauer; do
   .venv/bin/python scripts/build_sqlite.py build --persona $p --processed data/processed/$p --db data/philocafe.db --embed
 done
-.venv/bin/python scripts/build_sqlite.py search --db data/philocafe.db --persona socrates "is virtue teachable"
+.venv/bin/uvicorn --factory app.server:create_app --port 8000      # the café
+.venv/bin/streamlit run ui/app.py                                  # debug UI (add "-- --fake" for offline)
 ```
 
-`.venv/bin/python deploy/vercel_build.py` does the same for every persona config and also rebuilds `ui/web/index.html`.
+Add `--host 0.0.0.0` to open the café from a phone on the same Wi-Fi (Safari, then Share, then Add to Home Screen). Deployment to Vercel is described in [`deploy/README.md`](deploy/README.md).
 
-## Run
-
-```bash
-# Web café (the main UI; installable on a phone as a PWA)
-.venv/bin/uvicorn --factory app.server:create_app --port 8000                    # http://localhost:8000
-PHILOCAFE_FAKE=1 .venv/bin/uvicorn --factory app.server:create_app --port 8000   # offline, no keys
-
-# Streamlit debug UI: chat, tier, route, retrieved chunk ids, node timings, source cards
-.venv/bin/streamlit run ui/app.py
-.venv/bin/streamlit run ui/app.py -- --fake                                      # offline, no keys
-```
-
-Add `--host 0.0.0.0` to open the web app from a phone on the same Wi-Fi (Safari, then Share, then Add to Home Screen). Anyone on that network can then spend your API credit, so keep it to demos.
-
-After editing `ui/web/template.html` or `ui/web/data.json`, rebuild the page with `.venv/bin/python ui/web/tools/build_index.py`.
-
-## Tests and evaluation
+<details>
+<summary>Tests, evaluation and other commands</summary>
 
 ```bash
-.venv/bin/python -m pytest                       # app tests: no network, no API calls
-cd scripts && python3 -m unittest discover -s tests && cd ..   # corpus pipeline and retrieval tests
-
-# Eval: one row per turn plus a report under eval/results/ (API calls cached in eval/.cache/)
+.venv/bin/python -m pytest                                    # app tests: no network, no API calls
+(cd scripts && python3 -m unittest discover -s tests)         # corpus pipeline and retrieval tests
 .venv/bin/python eval/run_testset.py --input tests/fixtures/sentinel_testset.csv --fake --out /tmp/eval-dry-run
 .venv/bin/python eval/metrics.py eval/results/<run_id>.csv
+.venv/bin/python scripts/build_sqlite.py search --db data/philocafe.db --persona socrates "is virtue teachable"
+.venv/bin/python scripts/calibrate_min_score.py <test_set.csv> --persona socrates
+python3 scripts/socrates_pipeline.py                          # rebuild a corpus from source
+.venv/bin/python ui/web/tools/build_index.py                  # after editing ui/web/template.html or data.json
 ```
 
-`eval/metrics.py` reports tier-3 recall (NFR-01), false escalations on benign messages (NFR-03), the share of shown quotes that match a retrieved passage (NFR-05), and latency (NFR-06, NFR-07).
+| Variable | Purpose |
+|---|---|
+| `ANTHROPIC_API_KEY`, `JEV_API_KEY` | model access |
+| `PHILOCAFE_DB` | database path (default `data/philocafe.db`) |
+| `PHILOCAFE_MIN_SCORE` | retrieval threshold (default `0.3`) |
+| `PHILOCAFE_FAKE` | `1` = offline stand-ins |
+| `PHILOCAFE_ACCESS_CODE`, `PHILOCAFE_CHECKPOINT_URL`, `CRON_SECRET`, `PHILOCAFE_RETENTION_HOURS` | deployment only, see `deploy/README.md` |
 
-To rebuild a corpus from source (downloads into `data/raw/`, writes `data/processed/<persona>/`):
-
-```bash
-python3 scripts/socrates_pipeline.py      # likewise epictetus_, seneca_, montaigne_, schopenhauer_pipeline.py
-```
-
-## Deployment
-
-Production runs on Vercel and follows `main`; every branch push gets a preview deployment. Conversation checkpoints live in Postgres (Neon) and are purged after `PHILOCAFE_RETENTION_HOURS`. The web app asks for `PHILOCAFE_ACCESS_CODE` once per device. Setup steps, checks and limits are in [`deploy/README.md`](deploy/README.md).
+</details>
 
 ## Repository layout
 
 ```
 app/        LangGraph graph and nodes (safety, moderator, persona, exit), HTTP server, notes, translation
-personas/   one YAML config per persona
-scripts/    corpus pipelines, SQLite builder, retrieval contract, min_score calibration, and their tests
-data/       processed corpora (data/processed/<persona>/) and crisis resources; raw texts and the .db are git-ignored
-docs/       corpus notes, one file per persona
+personas/   one YAML config per philosopher
+scripts/    corpus pipelines, SQLite builder, retrieval, min_score calibration, and their tests
+data/       processed corpora and the crisis resources list
+docs/       corpus notes per philosopher, and the images in this README
 eval/       test-set runner and metrics
-tests/      app tests and fixtures
-ui/         app.py (Streamlit debug UI) and web/ (the café web app and its assets)
-deploy/     Vercel build step and deployment notes; asgi.py is the Vercel entrypoint
+tests/      app tests
+ui/         web/: the café app and its pixel art; app.py: the Streamlit debug UI
+deploy/     Vercel build step and deployment notes
 ```
 
-## Status
+## Sources and license
 
-- All five personas ship in the app.
-- Still open: the 30 test messages from the UI/UX teammates, which the eval run and the `min_score` calibration wait on; and the hand-reviewed `tier2_passages` lists for each persona (`tier2_passages: {}` in every config today), due before tier-2 handling lands at the final.
-- Cross-persona routing and `risk_sensitivity` are planned for the final and not implemented yet.
-
-## Contributing
-
-Work on a feature branch and merge to `main` through a pull request; do not push to `main`. API keys go only in `.env` (git-ignored) or Vercel environment variables. Changing a contract in design doc section 7 means updating the design doc first and telling the team. Test data is synthetic; no real help-seeking data goes anywhere in the repo.
-
-## License and sources
-
-The corpus texts are public domain. Standard Ebooks markup is CC0. Project Gutenberg headers and licence text are removed from the GITenberg sources; see each persona's file in `docs/` for the exact editions and commits. The repository has no licence file for the code yet.
+All corpus texts are public domain. Standard Ebooks markup is CC0. Project Gutenberg headers and licence text are removed from the GITenberg sources. Exact editions and commits are listed in each file in [`docs/`](docs/). PhiloCafé is a class project, not a clinical or crisis service.
