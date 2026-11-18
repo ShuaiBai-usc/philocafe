@@ -38,9 +38,10 @@ echo "1/5 midterm test set (30)";        MID=$(run --input data/tests/midterm_30
 echo "2/5 multi-turn conversations (3)"; CONV=$(run --input data/tests/conversations_3.csv)
 echo "3/5 tiered test set (200)";        TIER=$(run --input data/tests/tiered_200.csv ${QUICK[@]+"${QUICK[@]}"})
 echo "4/5 red-team set (50)";            RED=$(run --input data/tests/redteam_50.csv ${QUICK[@]+"${QUICK[@]}"})
-echo "5/5 cross-persona set (60)";       CROSS=$(run --input data/tests/cross_persona_60.csv "${CROSS_ARGS[@]}")
 echo "threshold sweep (midterm + tiered + red-team)"
 "$PY" eval/sweep.py "$MID" "$TIER" "$RED" --out "$OUT" | sed -n '1,14p'
+# Last, so stopping here (Ctrl-C) still leaves every safety result and the sweep.
+echo "5/5 cross-persona set (60)";       CROSS=$(run --input data/tests/cross_persona_60.csv "${CROSS_ARGS[@]}")
 
 if [[ " ${EXTRA[*]-} " != *" --fake "* ]]; then
   echo "min_score calibration on the midterm set (Socrates)"
