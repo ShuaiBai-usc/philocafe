@@ -2,6 +2,13 @@
 
     .venv/bin/python eval/run_testset.py --input data/tests/midterm_30.csv
     .venv/bin/python eval/run_testset.py --input tests/fixtures/sentinel_testset.csv --fake
+    .venv/bin/python eval/run_testset.py --input data/tests/cross_persona_60.csv --personas all
+
+An optional `context` column holds earlier user turns, separated by `||`. They run first in
+the item's thread (the persona answers them as usual) and only the last turn is scored, so a
+message is judged after the turns that lead up to it (section 8 annotation guidance,
+gradual-escalation attacks in D4, the two-turn inputs of FR-63). --personas runs every item
+once per persona (item_id becomes <item_id>@<persona>), for the cross-persona experiment.
 
 Writes three files under --out (default eval/results/):
   <run_id>.csv            the 7.4 result columns, after '#' lines recording the config, model
@@ -42,6 +49,7 @@ from app.graph import build_graph, run_turn  # noqa: E402
 RESULT_COLUMNS = ["run_id", "item_id", "persona", "predicted_tier", "probability", "threshold", "escalated",
                   "expected_tier", "latency_ms", "source", "model_version", "commit"]
 REQUIRED_COLUMNS = {"item_id", "text"}
+CONTEXT_SEPARATOR = "||"
 RESULTS_DIR = ROOT / "eval" / "results"
 CACHE_DIR = ROOT / "eval" / ".cache"
 
@@ -55,7 +63,8 @@ def read_testset(path: Path) -> list[dict]:
         items = []
         for row in reader:
             expected = (row.get("expected_tier") or "").strip()
-            items.append({"item_id": row["item_id"].strip(), "text": row["text"],
+            context = [t.strip() for t in (row.get("context") or "").split(CONTEXT_SEPARATOR) if t.strip()]
+            items.append({"item_id": row["item_id"].strip(), "text": row["text"], "context": context,
                           "expected_tier": int(expected) if expected else None,
                           "family": (row.get("family") or "").strip(),
                           "persona": (row.get("persona") or "").strip(),
@@ -77,6 +86,11 @@ def sha256_of(path: Path) -> str:
 
 
 def run_item(graph, item: dict, persona: str, thread_id: str) -> dict:
+    for earlier in item.get("context", []):          # lead-up turns: run, not scored
+        for _ in run_turn(graph, thread_id, earlier, persona):
+            pass
+    config = {"configurable": {"thread_id": thread_id}}
+    mode_before = graph.get_state(config).values.get("mode", "persona") if item.get("context") else "persona"
     events, ttft = [], None
     start = time.perf_counter()
     for ev in run_turn(graph, thread_id, item["text"], persona):
@@ -90,9 +104,13 @@ def run_item(graph, item: dict, persona: str, thread_id: str) -> dict:
 
     trace = first("trace") or {}
     voice = first("voice")
-    state = graph.get_state({"configurable": {"thread_id": thread_id}}).values
+    state = graph.get_state(config).values
+    decision = state.get("safety") or {}
     return {
         "safety": first("safety"), "error": first("error"),
+        # Tier probabilities let eval/sweep.py replay the decision rule at other thresholds (FR-61).
+        "tier_probs": {str(k): v for k, v in (decision.get("tier_probs") or {}).items()},
+        "mode_before": mode_before,
         "voice": voice["speaker"] if voice else None,
         "reply": "".join(e["data"]["text"] for e in events if e["type"] == "token"),
         "citations": [e["data"]["chunk_id"] for e in events if e["type"] == "citation"],
@@ -110,11 +128,18 @@ def _counts(deps: Deps) -> tuple[int, int]:
     return sum(w.calls for w in wrappers), sum(w.hits for w in wrappers)
 
 
+def expand_personas(items: list[dict], personas: list[str]) -> list[dict]:
+    """One copy of every item per persona, for the cross-persona experiment (FR-63)."""
+    return [{**item, "item_id": f"{item['item_id']}@{p}", "persona": p} for item in items for p in personas]
+
+
 def run(items: list[dict], deps: Deps, run_id: str, commit: str,
         retries: int = 1, retry_delay: float = 2.0) -> tuple[list[dict], list[dict]]:
     graph = build_graph(deps)
     rows, replies = [], []
-    for item in items:
+    for n, item in enumerate(items, 1):
+        if len(items) > 20 and n % 20 == 0:
+            print(f"  {n}/{len(items)} items", file=sys.stderr, flush=True)
         persona = item["persona"] or deps.config.default_persona
         calls0, hits0 = _counts(deps)
         for attempt in range(retries + 1):
@@ -140,10 +165,12 @@ def run(items: list[dict], deps: Deps, run_id: str, commit: str,
                        latency_ms=safety_ms, source=safety["source"], model_version=safety["model_version"])
         rows.append(row)
         replies.append({"item_id": item["item_id"], "family": item["family"], "text": item["text"],
+                        "context": item.get("context", []), "expected_tier": item["expected_tier"],
                         "persona": persona, "attempts": attempt + 1,
                         "cached": calls > 0 and calls == hits,
                         **{k: res[k] for k in ("voice", "error", "reply", "citations", "quotes", "retrieval_query",
-                                               "retrieved", "skipped", "nodes", "ttft_ms", "total_ms")}})
+                                               "retrieved", "skipped", "nodes", "ttft_ms", "total_ms",
+                                               "tier_probs", "mode_before")}})
     return rows, replies
 
 
@@ -231,11 +258,18 @@ def main(argv=None) -> int:
     ap.add_argument("--fake", action="store_true", help="offline stand-ins instead of the real services")
     ap.add_argument("--no-cache", action="store_true", help="make fresh Jev and Claude calls")
     ap.add_argument("--retries", type=int, default=1)
+    ap.add_argument("--personas", help="comma-separated persona ids, or 'all': run every item once per persona")
     ap.add_argument("--cache-dir", type=Path, default=CACHE_DIR, help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
 
     items = read_testset(args.input)
     deps = build_deps(args.fake, not args.no_cache, args.cache_dir)
+    if args.personas:
+        personas = sorted(deps.personas) if args.personas == "all" else args.personas.split(",")
+        unknown = set(personas) - set(deps.personas)
+        if unknown:
+            ap.error(f"unknown personas: {sorted(unknown)}")
+        items = expand_personas(items, personas)
     commit, dirty = git_commit()
     started = datetime.now(timezone.utc)
     run_id = f"{started:%Y%m%d-%H%M%S}-{commit}"

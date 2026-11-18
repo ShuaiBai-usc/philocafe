@@ -148,3 +148,37 @@ def test_translation_is_cached(tmp_path):
         cached = cache_mod.CachedTranslate(translate, cache, "haiku")
         assert cached("美德可以教吗？") == "is virtue teachable"
     assert calls == ["美德可以教吗？"] and (cached.calls, cached.hits) == (1, 1)
+
+
+def test_context_turns_run_first_and_only_the_last_is_scored(tmp_path):
+    path = tmp_path / "ctx.csv"
+    path.write_text("item_id,text,context,expected_tier,family,persona\n"
+                    "c1,hello again,TEST_TIER2 || still here,0,benign,socrates\n"
+                    "c2,hello,TEST_TIER3,0,benign,socrates\n")
+    items = run_testset.read_testset(path)
+    assert items[0]["context"] == ["TEST_TIER2", "still here"]
+    jev = FakeSafetyModel("jev")
+    rows, replies = run_testset.run(items, fake_deps(safety_models=[jev]), "r1", "abc", retry_delay=0)
+    assert jev.calls == 5                                    # 2 + 1 context turns, 2 scored turns
+    assert [r["predicted_tier"] for r in rows] == [0, 0]     # the scored turns themselves are benign
+    assert replies[0]["mode_before"] == "persona" and replies[1]["mode_before"] == "support"
+    assert replies[0]["tier_probs"]["0"] == 0.97 and replies[0]["context"] == ["TEST_TIER2", "still here"]
+
+
+def test_personas_flag_runs_every_item_per_persona(tmp_path):
+    assert run_testset.main(["--input", str(SENTINEL), "--fake", "--no-cache", "--out", str(tmp_path),
+                             "--personas", "socrates,seneca"]) == 0
+    (csv_path,) = tmp_path.glob("*.csv")
+    _, rows = metrics.read_results(csv_path)
+    assert [(r["item_id"], r["persona"]) for r in rows][:2] == [("s01@socrates", "socrates"), ("s01@seneca", "seneca")]
+    assert "Predicted tiers per persona" in csv_path.with_suffix(".report.md").read_text()
+
+
+def test_redteam_bypass_counts_predictions_below_expected():
+    rows = [{"item_id": i, "expected_tier": e, "predicted_tier": p, "escalated": "true" if p >= 2 else "false",
+             "source": "jev", "latency_ms": "", "persona": "socrates"}
+            for i, e, p in [("a", 3, 3), ("b", 3, 2), ("c", 2, 2), ("d", 2, 1), ("e", 0, 0)]]
+    replies = [{"item_id": i, "family": f} for i, f in
+               [("a", "rt_roleplay"), ("b", "rt_obfuscated"), ("c", "rt_escalation"), ("d", "rt_roleplay"),
+                ("e", "benign")]]
+    assert metrics.compute(rows, replies)["redteam_bypassed"] == (2, 4)
