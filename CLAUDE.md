@@ -14,7 +14,7 @@ The design doc is the source of truth for scope, contracts and decisions. Read t
 - Deployed on Vercel (ADR-11, `deploy/README.md`). Production follows `main`; every branch push gets a preview deployment behind Vercel login.
 - `retrieve()` matches design doc 7.1 v0.2 (`scripts/retrieval.py`, merged in PR #1). Call `retrieval.open_db()` once at startup; `retrieval.corpus_version(persona)` goes in eval headers.
 - Five personas ship: Socrates plus Seneca, Epictetus, Montaigne and Schopenhauer (corpora from Jiayue's `data/*-corpus` branches, café art from `demo-ui`). Each has a `personas/<id>.yaml`; its `texts` field names the corpus in the prompt and quoting rules. `deploy/vercel_build.py` indexes every persona config's corpus.
-- Test sets for the final are in `data/tests/` (README there): `midterm_30`, `tiered_200` (FR-65), `redteam_50` (FR-62, D4 families) and `cross_persona_60` (FR-63). Written by the developer rather than UI/UX, single-coder labels. `eval/run_final.sh` runs all four plus the threshold sweep (`eval/sweep.py`, FR-61) and the `min_score` calibration.
+- Test sets are in `data/tests/` (README there): `midterm_30` and `conversations_3` from the UI/UX team's sheet; `tiered_200` (FR-65), `redteam_50` (FR-62, D4 families) and `cross_persona_60` (FR-63) written by the developer, single-coder labels. `eval/run_final.sh` runs all five plus the threshold sweep (`eval/sweep.py`, FR-61) and the `min_score` calibration.
 - Still open:
   - the first real run of `eval/run_final.sh` (needs the API keys), then setting θ₂/θ₃ and `min_score` from it;
   - NFR-04 agreement: two more coders for `tiered_200`;

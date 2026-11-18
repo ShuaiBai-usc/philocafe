@@ -5,7 +5,7 @@
 #     bash eval/run_final.sh --fake     # offline dry run of the same steps (no keys, no network)
 #
 # Calls are cached in eval/.cache/, so a rerun after a crash only pays for what is missing.
-# Roughly 960 scored and lead-up turns in all (cross-persona is 60 two-turn inputs x 5 personas).
+# Roughly 1,000 scored and lead-up turns in all (cross-persona is 60 two-turn inputs x 5 personas).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PY=.venv/bin/python
@@ -22,12 +22,13 @@ run() {   # run one test set and print the results file it wrote
   echo "$after"
 }
 
-echo "1/4 midterm test set (30)";        MID=$(run --input data/tests/midterm_30.csv)
-echo "2/4 tiered test set (200)";        TIER=$(run --input data/tests/tiered_200.csv)
-echo "3/4 red-team set (50)";            RED=$(run --input data/tests/redteam_50.csv)
-echo "4/4 cross-persona set (60 x 5)";   CROSS=$(run --input data/tests/cross_persona_60.csv --personas all)
-echo "threshold sweep (tiered + red-team)"
-"$PY" eval/sweep.py "$TIER" "$RED" --out "$OUT" | sed -n '1,14p'
+echo "1/5 midterm test set (30)";        MID=$(run --input data/tests/midterm_30.csv)
+echo "2/5 multi-turn conversations (3)"; CONV=$(run --input data/tests/conversations_3.csv)
+echo "3/5 tiered test set (200)";        TIER=$(run --input data/tests/tiered_200.csv)
+echo "4/5 red-team set (50)";            RED=$(run --input data/tests/redteam_50.csv)
+echo "5/5 cross-persona set (60 x 5)";   CROSS=$(run --input data/tests/cross_persona_60.csv --personas all)
+echo "threshold sweep (midterm + tiered + red-team)"
+"$PY" eval/sweep.py "$MID" "$TIER" "$RED" --out "$OUT" | sed -n '1,14p'
 
 if [[ " ${EXTRA[*]-} " != *" --fake "* ]]; then
   echo "min_score calibration on the midterm set (Socrates)"
@@ -36,5 +37,5 @@ fi
 
 echo
 echo "Reports:"
-for f in "$MID" "$TIER" "$RED" "$CROSS"; do echo "  ${f%.csv}.report.md"; done
+for f in "$MID" "$CONV" "$TIER" "$RED" "$CROSS"; do echo "  ${f%.csv}.report.md"; done
 ls -t "$OUT"/sweep-*.md | head -1 | sed 's/^/  /'
