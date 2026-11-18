@@ -82,7 +82,7 @@ PHILOCAFE_FAKE=1 .venv/bin/uvicorn --factory app.server:create_app --port 8000 #
 # eval: one row per turn plus report under eval/results/ (calls cached in eval/.cache/)
 .venv/bin/python eval/run_testset.py --input data/tests/midterm_30.csv
 .venv/bin/python eval/run_testset.py --input data/tests/cross_persona_60.csv --personas all   # FR-63
-bash eval/run_final.sh                                        # all four sets, the sweep and min_score calibration
+bash eval/run_final.sh                                        # quick run (~30-40 min): all five sets, the sweep, min_score calibration; --full for everything
 .venv/bin/python eval/sweep.py eval/results/<tiered>.csv eval/results/<redteam>.csv   # FR-61, no model calls
 .venv/bin/python eval/run_testset.py --input tests/fixtures/sentinel_testset.csv --fake --out /tmp/eval-dry-run
 .venv/bin/python eval/metrics.py eval/results/<run_id>.csv   # recompute a report

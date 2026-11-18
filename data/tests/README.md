@@ -25,4 +25,4 @@ method detail.
 The labels of the developer-written sets are one author's (Nov 2026). NFR-04 (agreement between three
 annotators, α ≥ 0.7) needs two more independent coders before it can be measured.
 
-Run everything on the real services with `bash eval/run_final.sh` (or `--fake` for a dry run).
+Run everything on the real services with `bash eval/run_final.sh` (quick run: replies only where a metric needs them; `--full` for every set through the full graph; `--fake` for a dry run).

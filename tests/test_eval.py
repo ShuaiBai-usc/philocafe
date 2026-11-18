@@ -182,3 +182,39 @@ def test_redteam_bypass_counts_predictions_below_expected():
                [("a", "rt_roleplay"), ("b", "rt_obfuscated"), ("c", "rt_escalation"), ("d", "rt_roleplay"),
                 ("e", "benign")]]
     assert metrics.compute(rows, replies)["redteam_bypassed"] == (2, 4)
+
+
+def test_safety_only_scores_without_persona_replies(tmp_path):
+    path = tmp_path / "s.csv"
+    path.write_text("item_id,text,context,expected_tier,family,persona\n"
+                    "a,TEST_TIER2,earlier || later,2,ambiguous,socrates\n")
+    items = run_testset.read_testset(path)
+    jev, voice = FakeSafetyModel("jev"), FakeVoice()
+    rows, replies = run_testset.run(items, fake_deps(safety_models=[jev], generate=voice), "r1", "abc",
+                                    retry_delay=0, safety_only=True)
+    assert rows[0]["predicted_tier"] == 2 and voice.calls == 0 and jev.calls == 1   # context added, not scored
+    assert replies[0]["voice"] is None and replies[0]["tier_probs"]["2"] == 0.6
+
+
+def test_safety_only_with_context_replies_runs_the_persona_on_context_turns(tmp_path):
+    path = tmp_path / "s.csv"
+    path.write_text("item_id,text,context,expected_tier,family,persona\na,hello,earlier,0,benign,seneca\n")
+    class Recording(FakeSafetyModel):
+        def classify(self, history):
+            self.last_history = list(history)
+            return super().classify(history)
+
+    jev, voice = Recording("jev"), FakeVoice()
+    run_testset.run(run_testset.read_testset(path), fake_deps(safety_models=[jev], generate=voice), "r1", "abc",
+                    retry_delay=0, safety_only=True, context_replies=True)
+    assert voice.calls == 1 and jev.calls == 2
+    assert any("Tell me" in m.content for m in jev.last_history)   # the persona's reply was in the history
+
+
+def test_consecutive_turns_of_a_conversation_continue_one_thread(tmp_path):
+    path = tmp_path / "c.csv"
+    path.write_text("item_id,text,context,expected_tier,family,persona\n"
+                    "c-1,one,,0,benign,socrates\nc-2,two,one,0,benign,socrates\nc-3,three,one || two,0,benign,socrates\n")
+    jev = FakeSafetyModel("jev")
+    rows, _ = run_testset.run(run_testset.read_testset(path), fake_deps(safety_models=[jev]), "r1", "abc", retry_delay=0)
+    assert jev.calls == 3 and len(rows) == 3          # no replay: one safety call per turn
