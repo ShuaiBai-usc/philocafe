@@ -31,7 +31,8 @@ HOME_SIZE = (375, 372)
 # Socrates frame (index in data.json) whose cup placement each pose uses.
 POSE_REF = {"rest": 0, "ponder": 2, "reach": 4, "carry": 5, "hold": 6, "raise": 7, "sip": 8}
 # Seats: the prototype's boxes for these two chairs, resized to the home frame and kept on the floor.
-SEATS = {"montaigne": (750, 2508), "schopenhauer": (564, 2004)}     # (left, bottom) in home_bg pixels
+SEATS = {"montaigne": (763, 2508), "schopenhauer": (594, 2004)}     # (left, bottom) in home_bg pixels, centred on the armchairs
+FLIP = {"montaigne"}  # its armchair has the table on its left, so the frames are mirrored on the page
 CLEAR = (0, 0, 0, 0)
 
 
@@ -112,8 +113,11 @@ def build(data: dict, props: Props, who: str) -> dict:
     left, bottom = SEATS[who]
     seq = data[who]["seq"] + [[0, 6200 if who == "montaigne" else 5400]]   # a long rest, like the other seats
     start = len(seq) // 3                                                     # out of step with the others
-    return {"box": [left, bottom - HOME_SIZE[1], left + HOME_SIZE[0], bottom], "frames": frames,
-            "seq": seq[start:] + seq[:start]}
+    entry = {"box": [left, bottom - HOME_SIZE[1], left + HOME_SIZE[0], bottom], "frames": frames,
+             "seq": seq[start:] + seq[:start]}
+    if who in FLIP:
+        entry["flip"] = True
+    return entry
 
 
 def main(argv: list[str]) -> int:

@@ -200,6 +200,7 @@ p { margin: 0; }
 .cite a { color: var(--ink); }
 .sysnote .inner p + p { margin-top: 4px; }
 .netnote { text-align: center; }
+.comeback { display: flex; flex-direction: column; gap: 9px; margin-bottom: 12px; }
 .codein { width: 100%; height: 40px; border: 1px solid var(--ink); background: var(--paper); padding: 0 10px; font: 16px var(--f-pixel); color: var(--ink); border-radius: 0; }
 #debugPanel { position: fixed; left: 8px; bottom: 8px; z-index: 50; max-width: 360px; max-height: 45vh; overflow: auto; margin: 0; padding: 8px 10px;
   background: rgba(47,38,28,.92); color: #fffae0; font: 11px/1.45 ui-monospace, Menlo, monospace; white-space: pre-wrap; }   /* developer panel, not app text */
@@ -371,6 +372,7 @@ function actor(key, W, H) {
   const box = el("div", "actor px");
   Object.assign(box.style, { left: x0 / W * 100 + "%", top: y0 / H * 100 + "%", width: (x1 - x0) / W * 100 + "%", height: (y1 - y0) / H * 100 + "%" });
   const img = el("img"); img.alt = ""; img.src = A + d.frames[d.seq[0][0]];
+  if (d.flip) img.style.transform = "scaleX(-1)";   // face the table on the seat's left
   box.append(img);
   let i = 0, t = null, alive = true;
   const step = () => {
@@ -475,10 +477,10 @@ const backend = {
     this.save({ thread_id, paused: false });
     return thread_id;
   },
-  async *turn(text, personaId) {
+  async *turn(text, personaId, intent) {
     const id = await this.thread();
     const r = await fetch(`threads/${id}/messages`, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
-                                                    body: JSON.stringify({ text, persona_id: personaId }) });
+                                                    body: JSON.stringify({ text, persona_id: personaId, ...(intent ? { intent } : {}) }) });
     if (r.status === 401) { this.setCode(""); askCode("That code no longer opens the café."); }
     if (!r.ok) {
       let e = { code: String(r.status), message: "request failed" };
@@ -574,6 +576,7 @@ function header(id, sub) {
 }
 
 function openChat(id) {
+  if (isPaused() && paused?.id === id) return restorePaused();     // back to the conversation the pause set aside
   // Kept aside until the visitor sits down, so "Not yet" leaves the last conversation as it was.
   const prev = cur ? { nodes: [...chat.childNodes], cls: chat.className, cur, curId, history, fbIdx, citations } : null;
   const p = PH[id]; cur = p; curId = id; history = []; busy = false; fbIdx = 0; citations = [];
@@ -599,7 +602,7 @@ function openChat(id) {
   $("#srcBtn").onclick = openSource;
   setMode();
   show("chat");
-  if (backend.live && backend.paused()) return resumePaused(p);
+  if (isPaused()) return enterSupport(p);
 
   // "A table for you" popup, as in the design
   const veil = el("div", "veil");
@@ -631,6 +634,7 @@ function pauseScene() { sceneActor?.stop(); sceneActor = null; }
 // Leaving for the café keeps the conversation; the Conversation tab brings it back.
 function leaveChat() { pauseScene(); show("home"); }
 function resumeChat() {
+  if (paused && isPaused()) return restorePaused();
   if (!cur || !$(".dock", chat)) return noChatYet();
   const wrap = $(".scene-wrap", chat);
   if (wrap && !sceneActor) wrap.replaceWith(sceneFor(cur));      // restart the scene animation
@@ -692,18 +696,77 @@ function systemCard(text, resources) {
   $("#scroll").append(card); scrollDown();
 }
 
-// Reopening the café during a pause: the thread stays in support mode until the visitor
-// asks for the philosopher back and the safety node finds the risk has dropped (FR-32).
-function resumePaused(p) {
+// A pause (FR-32) sets the conversation aside instead of throwing it away. Reopening it, or
+// any philosopher, during the pause shows the support card and the way back: a button, then two
+// fixed replies, so the visitor never has to guess what to say. The server decides; in the demo
+// the scripted check stands in.
+let paused = null;          // { id, nodes, cls, history, fbIdx, citations } of the conversation set aside
+let demoPaused = false;
+const isPaused = () => backend.live ? backend.paused() : demoPaused;
+const READY = p => `I’m ready to talk with ${p.name} again`;
+const SAFE = p => `I’m safe right now, and I’d like to keep talking with ${p.name}.`;
+const HARD = "I’m still having a hard time.";
+
+function setAside(id) {
+  if (cur && curId === id && $(".dock", chat)) paused = { id, nodes: [...chat.childNodes], cls: chat.className, history, fbIdx, citations };
+}
+function restorePaused() {
+  const s = paused; paused = null;
+  pauseScene(); clearInterval(typer);
+  cur = PH[s.id]; curId = s.id; ({ history, fbIdx, citations } = s); busy = false;
+  chat.replaceChildren(...s.nodes); chat.className = s.cls;
+  $(".scene-wrap", chat)?.replaceWith(sceneFor(cur));
+  const btn = $(".send", chat); if (btn) btn.disabled = false;
+  setMode(); show("chat");
+  enterSupport(cur);
+}
+function enterSupport(p) {
   clearInterval(typer);
-  chat.classList.add("convo");
-  $("#scroll").innerHTML = "";
+  if (!chat.classList.contains("convo")) { chat.classList.add("convo"); $("#scroll").innerHTML = ""; }
   $(".tools").hidden = true;
-  systemCard(`This conversation is paused. When you feel ready, you can ask ${p.name} to come back.`);
-  $("#msg").placeholder = `Ask ${p.name} to come back, or say how you are…`;
+  systemCard(`This conversation is paused, and ${p.name} is waiting nearby. You can tell me how you are. When you feel ready, tap the button below.`);
+  $("#msg").placeholder = "Say how you are…";
+  comeBack(p);
+}
+function comeBack(p, step = "ask") {
+  let box = $(".comeback", chat);
+  if (!box) { box = el("div", "comeback"); $(".dock", chat).prepend(box); }
+  if (step === "ask") {
+    box.innerHTML = `<button class="chip ready" type="button">→  ${esc(READY(p))}</button>`;
+    $(".ready", box).onclick = () => comeBack(p, "check");
+  } else {
+    box.innerHTML = `<p class="t14">Before ${esc(p.name)} comes back, how are you feeling right now?</p>
+      <div class="chips"><button class="chip" type="button" data-a="safe">→  ${esc(SAFE(p))}</button>
+      <button class="chip" type="button" data-a="hard">→  ${esc(HARD)}</button></div>`;
+    box.querySelector('[data-a="safe"]').onclick = () => checkIn(p, true);
+    box.querySelector('[data-a="hard"]').onclick = () => checkIn(p, false);
+  }
+  scrollDown();
+}
+function leaveSupport() {
+  $(".comeback", chat)?.remove();
+  $("#msg").placeholder = "Share a thought...";
+  $(".tools").hidden = false;
+}
+async function checkIn(p, safe) {
+  if (busy) return;
+  const text = safe ? SAFE(p) : HARD;
+  if (backend.live) return sendLive(text, safe ? "return" : null);
+  bubble("me", text);
+  history.push({ role: "user", content: text });
+  if (!safe) {
+    systemCard(`Thank you for telling me. ${p.name} will wait a little longer. If you might be in danger, please reach out to someone who can help right away. Whenever you’re ready, you can try again.`);
+    return comeBack(p);
+  }
+  demoPaused = false; leaveSupport();
+  busy = true;
+  const b = bubble("them");
+  await new Promise(r => typeInto(b, "I’m glad you’re here. Let’s go on gently, at your own pace. Where would you like to begin?", r));
+  history.push({ role: "assistant", content: b.textContent });
+  busy = false;
 }
 
-async function sendLive(text) {
+async function sendLive(text, intent = null) {
   const id = curId;
   busy = true; $(".send").disabled = true;
   startConvo(cur);
@@ -713,11 +776,11 @@ async function sendLive(text) {
   b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
   let voice = null, said = "", resources = null, reason = null, failed = null;
   try {
-    for await (const ev of backend.turn(text, id)) {
+    for await (const ev of backend.turn(text, id, intent)) {
       const d = ev.data;
       if (ev.type === "voice") {
         voice = d.speaker;
-        if (voice === "persona") { b.textContent = ""; backend.save({ paused: false }); $("#msg").placeholder = "Share a thought..."; }
+        if (voice === "persona") { b.textContent = ""; backend.save({ paused: false }); leaveSupport(); }
       } else if (ev.type === "token") {
         said += d.text;
         if (voice === "persona") { b.textContent += d.text; scrollDown(); }
@@ -736,7 +799,8 @@ async function sendLive(text) {
     backend.save({ paused: true });
     if (reason === "tier_3") return distress(id, text, { text: said, resources });
     $(".tools").hidden = true;
-    return systemCard(said, resources);
+    systemCard(said, resources);
+    return comeBack(PH[id]);
   }
   if (failed || voice !== "persona") {          // never stand in for the persona with a made-up reply
     b.closest(".row").remove();
@@ -752,6 +816,13 @@ async function send(text) {
   if (backend.live) return sendLive(text);
   const p = cur;
   if (DISTRESS.test(text)) return distress(curId, text);   // demo only; live pauses come from the server
+  if (demoPaused) {
+    startConvo(p);
+    bubble("me", text);
+    history.push({ role: "user", content: text });
+    systemCard(`I’m still here with you, and ${p.name} is staying aside for now. When you feel ready, tap the button below. If you might be in danger, please reach out to someone who can help right away.`);
+    return comeBack(p);
+  }
   busy = true; $(".send").disabled = true;
   startConvo(p);
   bubble("me", text);
@@ -860,6 +931,8 @@ function renderNotes() {
 /* ---------- 07 System detects distress → 06 Pause the café ---------- */
 let pauseTimer = null;
 function distress(id, text, care) {
+  setAside(id);
+  if (!backend.live) demoPaused = true;
   stopChat();
   const p = PH[id];
   const c = $("#chat");

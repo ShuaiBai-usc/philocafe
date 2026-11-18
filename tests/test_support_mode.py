@@ -3,13 +3,24 @@ the user asks for it (safety's route) and risk has dropped to tier 1 or below.""
 
 from langchain_core.messages import SystemMessage
 
-from app.fakes import FakeVoice, fake_deps
+from app.exit import NOT_YET
+from app.fakes import FakeSafetyModel, FakeVoice, fake_deps
 from app.graph import build_graph, run_turn
 from app.persona import REENTRY_NOTE
 
 
-def turn(graph, text, persona="socrates", thread="t1"):
-    return list(run_turn(graph, thread, text, persona))
+def turn(graph, text, persona="socrates", thread="t1", intent=None):
+    return list(run_turn(graph, thread, text, persona, intent))
+
+
+class WholeHistorySafety(FakeSafetyModel):
+    """Like Jev, judges the latest message in the light of every turn it is shown."""
+
+    def classify(self, history):
+        scores = super().classify(history)
+        if any("TEST_TIER3" in m.content for m in history):
+            scores = {**scores, "tier_probs": {0: 0.01, 1: 0.01, 2: 0.08, 3: 0.90}}
+        return scores
 
 
 def voice_of(events):
@@ -63,3 +74,37 @@ def test_route_is_ignored_outside_support_mode():
     graph = build_graph(fake_deps())
     turn(graph, "TEST_COME_BACK")
     assert state(graph)["safety"]["route"] is None
+
+
+def test_return_button_counts_as_asking_back():
+    graph = build_graph(fake_deps())
+    turn(graph, "TEST_TIER3")
+    events = turn(graph, "I'm safe right now.", intent="return")
+    assert voice_of(events) == "persona"
+    assert state(graph)["mode"] == "persona"
+
+
+def test_return_button_while_risk_is_high_stays_and_says_why():
+    voice = FakeVoice()
+    graph = build_graph(fake_deps(generate=voice))
+    turn(graph, "TEST_TIER3")
+    events = turn(graph, "TEST_TIER2", intent="return")
+    assert voice_of(events) == "system" and voice.calls == 0
+    said = "".join(e["data"]["text"] for e in events if e["type"] == "token")
+    assert said == NOT_YET.format(name="Socrates")
+
+
+def test_the_message_that_caused_the_pause_does_not_hold_the_return():
+    graph = build_graph(fake_deps(safety_models=[WholeHistorySafety("jev")]))
+    turn(graph, "TEST_TIER3")
+    events = turn(graph, "I'm safe right now.", intent="return")
+    assert voice_of(events) == "persona"
+
+
+def test_a_second_pause_starts_its_own_window():
+    graph = build_graph(fake_deps(safety_models=[WholeHistorySafety("jev")]))
+    turn(graph, "TEST_TIER3")
+    assert voice_of(turn(graph, "I'm safe right now.", intent="return")) == "persona"
+    assert voice_of(turn(graph, "TEST_TIER3 again")) == "system"
+    assert voice_of(turn(graph, "TEST_TIER3 still")) == "system"     # said after the pause: counts
+    assert voice_of(turn(graph, "I'm safe right now.", intent="return")) == "system"

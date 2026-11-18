@@ -61,12 +61,14 @@ def skipped_quotes(quotes) -> list[dict]:
             for q in quotes if not q["ok"] and not q["reason"].startswith("untagged")]
 
 
-def run_turn(graph, thread_id: str, text: str, persona_id: str) -> Iterator[Event]:
-    """Run one user turn and yield its UI events, ending with `done` or `error`."""
+def run_turn(graph, thread_id: str, text: str, persona_id: str, intent: str | None = None) -> Iterator[Event]:
+    """Run one user turn and yield its UI events, ending with `done` or `error`.
+    `intent="return"` marks the web app's "ready to come back" button (FR-32)."""
     config = {"configurable": {"thread_id": thread_id}}
     # Per-turn fields are reset here; messages and mode carry over in the checkpoint.
     turn = {"thread_id": thread_id, "persona_id": persona_id, "messages": [HumanMessage(text)],
-            "trace": [], "retrieved": [], "reply": "", "citations": [], "quotes": [], "retrieval_query": ""}
+            "trace": [], "retrieved": [], "reply": "", "citations": [], "quotes": [], "retrieval_query": "",
+            "return_request": intent == "return"}
     try:
         yield from graph.stream(turn, config, stream_mode="custom")
         state = graph.get_state(config).values

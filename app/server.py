@@ -141,7 +141,10 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
             return error(400, "text_too_long", f"Messages are limited to {MAX_TEXT} characters.")
         if persona_id not in deps.personas:
             return error(404, "unknown_persona", f"No persona {persona_id!r}.")
-        events = run_turn(graph, request.path_params["thread_id"], text, persona_id)
+        intent = body.get("intent")
+        if intent not in (None, "return"):
+            return error(400, "bad_intent", "intent must be \"return\" or absent.")
+        events = run_turn(graph, request.path_params["thread_id"], text, persona_id, intent)
         return StreamingResponse((sse(e) for e in events), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache"})
 

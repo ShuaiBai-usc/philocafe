@@ -200,6 +200,7 @@ p { margin: 0; }
 .cite a { color: var(--ink); }
 .sysnote .inner p + p { margin-top: 4px; }
 .netnote { text-align: center; }
+.comeback { display: flex; flex-direction: column; gap: 9px; margin-bottom: 12px; }
 .codein { width: 100%; height: 40px; border: 1px solid var(--ink); background: var(--paper); padding: 0 10px; font: 16px var(--f-pixel); color: var(--ink); border-radius: 0; }
 #debugPanel { position: fixed; left: 8px; bottom: 8px; z-index: 50; max-width: 360px; max-height: 45vh; overflow: auto; margin: 0; padding: 8px 10px;
   background: rgba(47,38,28,.92); color: #fffae0; font: 11px/1.45 ui-monospace, Menlo, monospace; white-space: pre-wrap; }   /* developer panel, not app text */
@@ -252,7 +253,7 @@ p { margin: 0; }
 
 <script>
 const A = "assets/";
-const DATA = {"socrates": {"scene": "scene_socrates.png", "box": [377, 313, 598, 535], "size": [1242, 662], "frames": ["socrates_01_rest.png", "socrates_02_rest_closed.png", "socrates_03_ponder_up_hmm.png", "socrates_04_rest_right.png", "socrates_05_reach_right.png", "socrates_06_carry.png", "socrates_07_hold.png", "socrates_08_raise.png", "socrates_09_sip_closed.png", "socrates_10_raise_happy_smile.png", "socrates_11_hold_happy_smile_blush.png", "socrates_12_hold_smile.png", "socrates_13_carry_smile.png", "socrates_14_reach_smile.png", "socrates_15_rest_smile.png"], "seq": [[0, 2000], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 600], [7, 200], [8, 1400], [9, 200], [10, 800], [6, 400], [7, 200], [8, 1000], [7, 200], [11, 600], [12, 200], [13, 200], [14, 1000], [1, 100], [0, 600]]}, "montaigne": {"scene": "scene_montaigne.png", "box": [377, 313, 598, 535], "size": [1242, 662], "frames": ["montaigne_01_rest_left.png", "montaigne_02_rest_right.png", "montaigne_03_rest_closed.png", "montaigne_04_rest_hmm_raised.png", "montaigne_05_ponder_up_hmm.png", "montaigne_06_reach_right.png", "montaigne_07_carry.png", "montaigne_08_hold.png", "montaigne_09_raise.png", "montaigne_10_sip_closed.png", "montaigne_11_raise_o_raised.png", "montaigne_12_hold_o_raised.png", "montaigne_13_hold_happy_smile_blush.png", "montaigne_14_hold_smile.png", "montaigne_15_carry_smile.png", "montaigne_16_reach_smile.png", "montaigne_17_rest_smile.png", "montaigne_18_rest.png"], "seq": [[0, 1900], [1, 600], [2, 100], [3, 800], [4, 1200], [5, 200], [6, 200], [7, 400], [8, 200], [9, 1200], [10, 300], [11, 400], [12, 800], [8, 200], [9, 800], [8, 200], [13, 600], [14, 200], [15, 200], [16, 1000], [2, 100], [17, 400]]}, "schopenhauer": {"scene": "scene_schopenhauer.png", "box": [377, 313, 598, 535], "size": [1242, 662], "frames": ["schopenhauer_01_rest_stern.png", "schopenhauer_02_rest_closed_stern.png", "schopenhauer_03_ponder_up_hmm_stern.png", "schopenhauer_04_rest_right_stern.png", "schopenhauer_05_reach_right_stern.png", "schopenhauer_06_carry_stern.png", "schopenhauer_07_hold_stern.png", "schopenhauer_08_raise_stern.png", "schopenhauer_09_sip_closed.png", "schopenhauer_10_raise_closed.png", "schopenhauer_11_hold_closed_hmm.png", "schopenhauer_12_hold_smile.png", "schopenhauer_13_raise.png", "schopenhauer_14_hold_hmm_stern.png", "schopenhauer_15_reach_stern.png"], "seq": [[0, 2200], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 400], [7, 200], [8, 1400], [9, 200], [10, 600], [11, 600], [6, 400], [7, 200], [8, 800], [12, 200], [13, 600], [5, 200], [14, 200], [0, 1000], [1, 100], [0, 400]]}, "home_socrates": {"box": [54, 876, 429, 1248], "frames": ["home_socrates_01_rest.png", "home_socrates_02_rest_closed.png", "home_socrates_03_ponder_up_hmm.png", "home_socrates_04_rest_right.png", "home_socrates_05_reach_right.png", "home_socrates_06_carry.png", "home_socrates_07_hold.png", "home_socrates_08_raise.png", "home_socrates_09_sip_closed.png", "home_socrates_10_raise_happy_smile.png", "home_socrates_11_hold_happy_smile_blush.png", "home_socrates_12_hold_smile.png", "home_socrates_13_carry_smile.png", "home_socrates_14_reach_smile.png", "home_socrates_15_rest_smile.png"], "seq": [[0, 800], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 600], [7, 200], [8, 1400], [9, 200], [10, 800], [6, 400], [7, 200], [8, 1000], [7, 200], [11, 600], [12, 200], [13, 200], [14, 1000], [1, 100], [0, 7800]]}, "home_montaigne": {"box": [750, 2136, 1125, 2508], "frames": ["home_montaigne_01_rest_left.png", "home_montaigne_02_rest_right.png", "home_montaigne_03_rest_closed.png", "home_montaigne_04_rest_hmm_raised.png", "home_montaigne_05_ponder_up_hmm.png", "home_montaigne_06_reach_right.png", "home_montaigne_07_carry.png", "home_montaigne_08_hold.png", "home_montaigne_09_raise.png", "home_montaigne_10_sip_closed.png", "home_montaigne_11_raise_o_raised.png", "home_montaigne_12_hold_o_raised.png", "home_montaigne_13_hold_happy_smile_blush.png", "home_montaigne_14_hold_smile.png", "home_montaigne_15_carry_smile.png", "home_montaigne_16_reach_smile.png", "home_montaigne_17_rest_smile.png", "home_montaigne_18_rest.png"], "seq": [[7, 400], [8, 200], [9, 1200], [10, 300], [11, 400], [12, 800], [8, 200], [9, 800], [8, 200], [13, 600], [14, 200], [15, 200], [16, 1000], [2, 100], [17, 400], [0, 6200], [0, 1900], [1, 600], [2, 100], [3, 800], [4, 1200], [5, 200], [6, 200]]}, "home_schopenhauer": {"box": [564, 1632, 939, 2004], "frames": ["home_schopenhauer_01_rest_stern.png", "home_schopenhauer_02_rest_closed_stern.png", "home_schopenhauer_03_ponder_up_hmm_stern.png", "home_schopenhauer_04_rest_right_stern.png", "home_schopenhauer_05_reach_right_stern.png", "home_schopenhauer_06_carry_stern.png", "home_schopenhauer_07_hold_stern.png", "home_schopenhauer_08_raise_stern.png", "home_schopenhauer_09_sip_closed.png", "home_schopenhauer_10_raise_closed.png", "home_schopenhauer_11_hold_closed_hmm.png", "home_schopenhauer_12_hold_smile.png", "home_schopenhauer_13_raise.png", "home_schopenhauer_14_hold_hmm_stern.png", "home_schopenhauer_15_reach_stern.png"], "seq": [[7, 200], [8, 1400], [9, 200], [10, 600], [11, 600], [6, 400], [7, 200], [8, 800], [12, 200], [13, 600], [5, 200], [14, 200], [0, 1000], [1, 100], [0, 400], [0, 5400], [0, 2200], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 400]]}, "seneca": {"scene": "scene_seneca.png", "box": [644.6, 306.0, 862.8, 531.2], "size": [1242, 662], "frames": ["seneca_01_rest_left.png", "seneca_02_rest_right.png", "seneca_03_rest_closed.png", "seneca_04_rest_hmm_raised.png", "seneca_05_reach_right.png", "seneca_06_carry.png", "seneca_07_hold.png", "seneca_08_raise.png", "seneca_09_sip_closed.png", "seneca_10_raise_o_raised.png", "seneca_11_hold_o_raised.png", "seneca_12_hold_happy_smile_blush.png", "seneca_13_carry_smile.png", "seneca_14_reach_smile.png", "seneca_15_rest_happy_smile_blush.png", "seneca_16_hold_smile.png", "seneca_17_rest_smile.png"], "seq": [[14, 400], [0, 600], [4, 200], [5, 200], [6, 400], [7, 200], [8, 1400], [7, 200], [15, 800], [12, 200], [13, 200], [16, 800], [2, 100], [0, 6900], [1, 600], [2, 100], [3, 600], [4, 200], [5, 200], [6, 300], [7, 200], [8, 800], [9, 400], [10, 400], [11, 800], [12, 200], [13, 200], [14, 400]]}, "home_seneca": {"box": [762, 1116, 1137, 1500], "frames": ["home_seneca_01_rest_left.png", "home_seneca_02_rest_right.png", "home_seneca_03_rest_closed.png", "home_seneca_04_rest_hmm_raised.png", "home_seneca_05_reach_right.png", "home_seneca_06_carry.png", "home_seneca_07_hold.png", "home_seneca_08_raise.png", "home_seneca_09_sip_closed.png", "home_seneca_10_raise_o_raised.png", "home_seneca_11_hold_o_raised.png", "home_seneca_12_hold_happy_smile_blush.png", "home_seneca_13_carry_smile.png", "home_seneca_14_reach_smile.png", "home_seneca_15_rest_happy_smile_blush.png", "home_seneca_16_hold_smile.png", "home_seneca_17_rest_smile.png"], "seq": [[14, 400], [0, 600], [4, 200], [5, 200], [6, 400], [7, 200], [8, 1400], [7, 200], [15, 800], [12, 200], [13, 200], [16, 800], [2, 100], [0, 6900], [1, 600], [2, 100], [3, 600], [4, 200], [5, 200], [6, 300], [7, 200], [8, 800], [9, 400], [10, 400], [11, 800], [12, 200], [13, 200], [14, 400]]}, "epictetus": {"scene": "scene_epictetus.png", "box": [341.8, 313.0, 595.2, 531.2], "size": [1242, 662], "frames": ["epictetus_01_rest_closed.png", "epictetus_02_rest_closed_smile.png", "epictetus_03_rest.png", "epictetus_04_reach.png", "epictetus_05_carry.png", "epictetus_06_hold_closed.png", "epictetus_07_raise.png", "epictetus_08_sip_closed.png", "epictetus_09_raise_closed_smile.png", "epictetus_10_hold_closed_smile.png", "epictetus_11_ponder_up_hmm.png", "epictetus_12_reach_right.png", "epictetus_13_hold.png", "epictetus_14_hold_happy_smile.png", "epictetus_15_carry_smile.png", "epictetus_16_reach_smile.png", "epictetus_17_rest_happy_smile.png"], "seq": [[13, 500], [14, 200], [15, 200], [16, 800], [0, 5900], [1, 800], [2, 400], [3, 200], [4, 200], [5, 600], [6, 200], [7, 1600], [8, 200], [9, 1000], [4, 200], [3, 200], [2, 600], [0, 100], [10, 1000], [2, 400], [11, 200], [4, 200], [12, 400], [6, 200], [7, 1200], [6, 200], [13, 300]]}, "home_epictetus": {"box": [30, 1884, 465, 2256], "frames": ["home_epictetus_01_rest_closed.png", "home_epictetus_02_rest_closed_smile.png", "home_epictetus_03_rest.png", "home_epictetus_04_reach.png", "home_epictetus_05_carry.png", "home_epictetus_06_hold_closed.png", "home_epictetus_07_raise.png", "home_epictetus_08_sip_closed.png", "home_epictetus_09_raise_closed_smile.png", "home_epictetus_10_hold_closed_smile.png", "home_epictetus_11_ponder_up_hmm.png", "home_epictetus_12_reach_right.png", "home_epictetus_13_hold.png", "home_epictetus_14_hold_happy_smile.png", "home_epictetus_15_carry_smile.png", "home_epictetus_16_reach_smile.png", "home_epictetus_17_rest_happy_smile.png"], "seq": [[13, 500], [14, 200], [15, 200], [16, 800], [0, 5900], [1, 800], [2, 400], [3, 200], [4, 200], [5, 600], [6, 200], [7, 1600], [8, 200], [9, 1000], [4, 200], [3, 200], [2, 600], [0, 100], [10, 1000], [2, 400], [11, 200], [4, 200], [12, 400], [6, 200], [7, 1200], [6, 200], [13, 300]]}};
+const DATA = {"socrates": {"scene": "scene_socrates.png", "box": [377, 313, 598, 535], "size": [1242, 662], "frames": ["socrates_01_rest.png", "socrates_02_rest_closed.png", "socrates_03_ponder_up_hmm.png", "socrates_04_rest_right.png", "socrates_05_reach_right.png", "socrates_06_carry.png", "socrates_07_hold.png", "socrates_08_raise.png", "socrates_09_sip_closed.png", "socrates_10_raise_happy_smile.png", "socrates_11_hold_happy_smile_blush.png", "socrates_12_hold_smile.png", "socrates_13_carry_smile.png", "socrates_14_reach_smile.png", "socrates_15_rest_smile.png"], "seq": [[0, 2000], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 600], [7, 200], [8, 1400], [9, 200], [10, 800], [6, 400], [7, 200], [8, 1000], [7, 200], [11, 600], [12, 200], [13, 200], [14, 1000], [1, 100], [0, 600]]}, "montaigne": {"scene": "scene_montaigne.png", "box": [377, 313, 598, 535], "size": [1242, 662], "frames": ["montaigne_01_rest_left.png", "montaigne_02_rest_right.png", "montaigne_03_rest_closed.png", "montaigne_04_rest_hmm_raised.png", "montaigne_05_ponder_up_hmm.png", "montaigne_06_reach_right.png", "montaigne_07_carry.png", "montaigne_08_hold.png", "montaigne_09_raise.png", "montaigne_10_sip_closed.png", "montaigne_11_raise_o_raised.png", "montaigne_12_hold_o_raised.png", "montaigne_13_hold_happy_smile_blush.png", "montaigne_14_hold_smile.png", "montaigne_15_carry_smile.png", "montaigne_16_reach_smile.png", "montaigne_17_rest_smile.png", "montaigne_18_rest.png"], "seq": [[0, 1900], [1, 600], [2, 100], [3, 800], [4, 1200], [5, 200], [6, 200], [7, 400], [8, 200], [9, 1200], [10, 300], [11, 400], [12, 800], [8, 200], [9, 800], [8, 200], [13, 600], [14, 200], [15, 200], [16, 1000], [2, 100], [17, 400]]}, "schopenhauer": {"scene": "scene_schopenhauer.png", "box": [377, 313, 598, 535], "size": [1242, 662], "frames": ["schopenhauer_01_rest_stern.png", "schopenhauer_02_rest_closed_stern.png", "schopenhauer_03_ponder_up_hmm_stern.png", "schopenhauer_04_rest_right_stern.png", "schopenhauer_05_reach_right_stern.png", "schopenhauer_06_carry_stern.png", "schopenhauer_07_hold_stern.png", "schopenhauer_08_raise_stern.png", "schopenhauer_09_sip_closed.png", "schopenhauer_10_raise_closed.png", "schopenhauer_11_hold_closed_hmm.png", "schopenhauer_12_hold_smile.png", "schopenhauer_13_raise.png", "schopenhauer_14_hold_hmm_stern.png", "schopenhauer_15_reach_stern.png"], "seq": [[0, 2200], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 400], [7, 200], [8, 1400], [9, 200], [10, 600], [11, 600], [6, 400], [7, 200], [8, 800], [12, 200], [13, 600], [5, 200], [14, 200], [0, 1000], [1, 100], [0, 400]]}, "home_socrates": {"box": [54, 876, 429, 1248], "frames": ["home_socrates_01_rest.png", "home_socrates_02_rest_closed.png", "home_socrates_03_ponder_up_hmm.png", "home_socrates_04_rest_right.png", "home_socrates_05_reach_right.png", "home_socrates_06_carry.png", "home_socrates_07_hold.png", "home_socrates_08_raise.png", "home_socrates_09_sip_closed.png", "home_socrates_10_raise_happy_smile.png", "home_socrates_11_hold_happy_smile_blush.png", "home_socrates_12_hold_smile.png", "home_socrates_13_carry_smile.png", "home_socrates_14_reach_smile.png", "home_socrates_15_rest_smile.png"], "seq": [[0, 800], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 600], [7, 200], [8, 1400], [9, 200], [10, 800], [6, 400], [7, 200], [8, 1000], [7, 200], [11, 600], [12, 200], [13, 200], [14, 1000], [1, 100], [0, 7800]]}, "home_montaigne": {"box": [763, 2136, 1138, 2508], "frames": ["home_montaigne_01_rest_left.png", "home_montaigne_02_rest_right.png", "home_montaigne_03_rest_closed.png", "home_montaigne_04_rest_hmm_raised.png", "home_montaigne_05_ponder_up_hmm.png", "home_montaigne_06_reach_right.png", "home_montaigne_07_carry.png", "home_montaigne_08_hold.png", "home_montaigne_09_raise.png", "home_montaigne_10_sip_closed.png", "home_montaigne_11_raise_o_raised.png", "home_montaigne_12_hold_o_raised.png", "home_montaigne_13_hold_happy_smile_blush.png", "home_montaigne_14_hold_smile.png", "home_montaigne_15_carry_smile.png", "home_montaigne_16_reach_smile.png", "home_montaigne_17_rest_smile.png", "home_montaigne_18_rest.png"], "seq": [[7, 400], [8, 200], [9, 1200], [10, 300], [11, 400], [12, 800], [8, 200], [9, 800], [8, 200], [13, 600], [14, 200], [15, 200], [16, 1000], [2, 100], [17, 400], [0, 6200], [0, 1900], [1, 600], [2, 100], [3, 800], [4, 1200], [5, 200], [6, 200]], "flip": true}, "home_schopenhauer": {"box": [594, 1632, 969, 2004], "frames": ["home_schopenhauer_01_rest_stern.png", "home_schopenhauer_02_rest_closed_stern.png", "home_schopenhauer_03_ponder_up_hmm_stern.png", "home_schopenhauer_04_rest_right_stern.png", "home_schopenhauer_05_reach_right_stern.png", "home_schopenhauer_06_carry_stern.png", "home_schopenhauer_07_hold_stern.png", "home_schopenhauer_08_raise_stern.png", "home_schopenhauer_09_sip_closed.png", "home_schopenhauer_10_raise_closed.png", "home_schopenhauer_11_hold_closed_hmm.png", "home_schopenhauer_12_hold_smile.png", "home_schopenhauer_13_raise.png", "home_schopenhauer_14_hold_hmm_stern.png", "home_schopenhauer_15_reach_stern.png"], "seq": [[7, 200], [8, 1400], [9, 200], [10, 600], [11, 600], [6, 400], [7, 200], [8, 800], [12, 200], [13, 600], [5, 200], [14, 200], [0, 1000], [1, 100], [0, 400], [0, 5400], [0, 2200], [1, 100], [2, 1400], [3, 400], [4, 200], [5, 200], [6, 400]]}, "seneca": {"scene": "scene_seneca.png", "box": [644.6, 306.0, 862.8, 531.2], "size": [1242, 662], "frames": ["seneca_01_rest_left.png", "seneca_02_rest_right.png", "seneca_03_rest_closed.png", "seneca_04_rest_hmm_raised.png", "seneca_05_reach_right.png", "seneca_06_carry.png", "seneca_07_hold.png", "seneca_08_raise.png", "seneca_09_sip_closed.png", "seneca_10_raise_o_raised.png", "seneca_11_hold_o_raised.png", "seneca_12_hold_happy_smile_blush.png", "seneca_13_carry_smile.png", "seneca_14_reach_smile.png", "seneca_15_rest_happy_smile_blush.png", "seneca_16_hold_smile.png", "seneca_17_rest_smile.png"], "seq": [[14, 400], [0, 600], [4, 200], [5, 200], [6, 400], [7, 200], [8, 1400], [7, 200], [15, 800], [12, 200], [13, 200], [16, 800], [2, 100], [0, 6900], [1, 600], [2, 100], [3, 600], [4, 200], [5, 200], [6, 300], [7, 200], [8, 800], [9, 400], [10, 400], [11, 800], [12, 200], [13, 200], [14, 400]]}, "home_seneca": {"box": [775, 1128, 1150, 1500], "frames": ["home_seneca_01_rest_left.png", "home_seneca_02_rest_right.png", "home_seneca_03_rest_closed.png", "home_seneca_04_rest_hmm_raised.png", "home_seneca_05_reach_right.png", "home_seneca_06_carry.png", "home_seneca_07_hold.png", "home_seneca_08_raise.png", "home_seneca_09_sip_closed.png", "home_seneca_10_raise_o_raised.png", "home_seneca_11_hold_o_raised.png", "home_seneca_12_hold_happy_smile_blush.png", "home_seneca_13_carry_smile.png", "home_seneca_14_reach_smile.png", "home_seneca_15_rest_happy_smile_blush.png", "home_seneca_16_hold_smile.png", "home_seneca_17_rest_smile.png"], "seq": [[14, 400], [0, 600], [4, 200], [5, 200], [6, 400], [7, 200], [8, 1400], [7, 200], [15, 800], [12, 200], [13, 200], [16, 800], [2, 100], [0, 6900], [1, 600], [2, 100], [3, 600], [4, 200], [5, 200], [6, 300], [7, 200], [8, 800], [9, 400], [10, 400], [11, 800], [12, 200], [13, 200], [14, 400]], "flip": true}, "epictetus": {"scene": "scene_epictetus.png", "box": [341.8, 313.0, 595.2, 531.2], "size": [1242, 662], "frames": ["epictetus_01_rest_closed.png", "epictetus_02_rest_closed_smile.png", "epictetus_03_rest.png", "epictetus_04_reach.png", "epictetus_05_carry.png", "epictetus_06_hold_closed.png", "epictetus_07_raise.png", "epictetus_08_sip_closed.png", "epictetus_09_raise_closed_smile.png", "epictetus_10_hold_closed_smile.png", "epictetus_11_ponder_up_hmm.png", "epictetus_12_reach_right.png", "epictetus_13_hold.png", "epictetus_14_hold_happy_smile.png", "epictetus_15_carry_smile.png", "epictetus_16_reach_smile.png", "epictetus_17_rest_happy_smile.png"], "seq": [[13, 500], [14, 200], [15, 200], [16, 800], [0, 5900], [1, 800], [2, 400], [3, 200], [4, 200], [5, 600], [6, 200], [7, 1600], [8, 200], [9, 1000], [4, 200], [3, 200], [2, 600], [0, 100], [10, 1000], [2, 400], [11, 200], [4, 200], [12, 400], [6, 200], [7, 1200], [6, 200], [13, 300]]}, "home_epictetus": {"box": [30, 1884, 465, 2256], "frames": ["home_epictetus_01_rest_closed.png", "home_epictetus_02_rest_closed_smile.png", "home_epictetus_03_rest.png", "home_epictetus_04_reach.png", "home_epictetus_05_carry.png", "home_epictetus_06_hold_closed.png", "home_epictetus_07_raise.png", "home_epictetus_08_sip_closed.png", "home_epictetus_09_raise_closed_smile.png", "home_epictetus_10_hold_closed_smile.png", "home_epictetus_11_ponder_up_hmm.png", "home_epictetus_12_reach_right.png", "home_epictetus_13_hold.png", "home_epictetus_14_hold_happy_smile.png", "home_epictetus_15_carry_smile.png", "home_epictetus_16_reach_smile.png", "home_epictetus_17_rest_happy_smile.png"], "seq": [[13, 500], [14, 200], [15, 200], [16, 800], [0, 5900], [1, 800], [2, 400], [3, 200], [4, 200], [5, 600], [6, 200], [7, 1600], [8, 200], [9, 1000], [4, 200], [3, 200], [2, 600], [0, 100], [10, 1000], [2, 400], [11, 200], [4, 200], [12, 400], [6, 200], [7, 1200], [6, 200], [13, 300]]}};
 
 const PH = {
   socrates: {
@@ -371,6 +372,7 @@ function actor(key, W, H) {
   const box = el("div", "actor px");
   Object.assign(box.style, { left: x0 / W * 100 + "%", top: y0 / H * 100 + "%", width: (x1 - x0) / W * 100 + "%", height: (y1 - y0) / H * 100 + "%" });
   const img = el("img"); img.alt = ""; img.src = A + d.frames[d.seq[0][0]];
+  if (d.flip) img.style.transform = "scaleX(-1)";   // face the table on the seat's left
   box.append(img);
   let i = 0, t = null, alive = true;
   const step = () => {
@@ -475,10 +477,10 @@ const backend = {
     this.save({ thread_id, paused: false });
     return thread_id;
   },
-  async *turn(text, personaId) {
+  async *turn(text, personaId, intent) {
     const id = await this.thread();
     const r = await fetch(`threads/${id}/messages`, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
-                                                    body: JSON.stringify({ text, persona_id: personaId }) });
+                                                    body: JSON.stringify({ text, persona_id: personaId, ...(intent ? { intent } : {}) }) });
     if (r.status === 401) { this.setCode(""); askCode("That code no longer opens the café."); }
     if (!r.ok) {
       let e = { code: String(r.status), message: "request failed" };
@@ -574,6 +576,7 @@ function header(id, sub) {
 }
 
 function openChat(id) {
+  if (isPaused() && paused?.id === id) return restorePaused();     // back to the conversation the pause set aside
   // Kept aside until the visitor sits down, so "Not yet" leaves the last conversation as it was.
   const prev = cur ? { nodes: [...chat.childNodes], cls: chat.className, cur, curId, history, fbIdx, citations } : null;
   const p = PH[id]; cur = p; curId = id; history = []; busy = false; fbIdx = 0; citations = [];
@@ -599,7 +602,7 @@ function openChat(id) {
   $("#srcBtn").onclick = openSource;
   setMode();
   show("chat");
-  if (backend.live && backend.paused()) return resumePaused(p);
+  if (isPaused()) return enterSupport(p);
 
   // "A table for you" popup, as in the design
   const veil = el("div", "veil");
@@ -631,6 +634,7 @@ function pauseScene() { sceneActor?.stop(); sceneActor = null; }
 // Leaving for the café keeps the conversation; the Conversation tab brings it back.
 function leaveChat() { pauseScene(); show("home"); }
 function resumeChat() {
+  if (paused && isPaused()) return restorePaused();
   if (!cur || !$(".dock", chat)) return noChatYet();
   const wrap = $(".scene-wrap", chat);
   if (wrap && !sceneActor) wrap.replaceWith(sceneFor(cur));      // restart the scene animation
@@ -692,18 +696,77 @@ function systemCard(text, resources) {
   $("#scroll").append(card); scrollDown();
 }
 
-// Reopening the café during a pause: the thread stays in support mode until the visitor
-// asks for the philosopher back and the safety node finds the risk has dropped (FR-32).
-function resumePaused(p) {
+// A pause (FR-32) sets the conversation aside instead of throwing it away. Reopening it, or
+// any philosopher, during the pause shows the support card and the way back: a button, then two
+// fixed replies, so the visitor never has to guess what to say. The server decides; in the demo
+// the scripted check stands in.
+let paused = null;          // { id, nodes, cls, history, fbIdx, citations } of the conversation set aside
+let demoPaused = false;
+const isPaused = () => backend.live ? backend.paused() : demoPaused;
+const READY = p => `I’m ready to talk with ${p.name} again`;
+const SAFE = p => `I’m safe right now, and I’d like to keep talking with ${p.name}.`;
+const HARD = "I’m still having a hard time.";
+
+function setAside(id) {
+  if (cur && curId === id && $(".dock", chat)) paused = { id, nodes: [...chat.childNodes], cls: chat.className, history, fbIdx, citations };
+}
+function restorePaused() {
+  const s = paused; paused = null;
+  pauseScene(); clearInterval(typer);
+  cur = PH[s.id]; curId = s.id; ({ history, fbIdx, citations } = s); busy = false;
+  chat.replaceChildren(...s.nodes); chat.className = s.cls;
+  $(".scene-wrap", chat)?.replaceWith(sceneFor(cur));
+  const btn = $(".send", chat); if (btn) btn.disabled = false;
+  setMode(); show("chat");
+  enterSupport(cur);
+}
+function enterSupport(p) {
   clearInterval(typer);
-  chat.classList.add("convo");
-  $("#scroll").innerHTML = "";
+  if (!chat.classList.contains("convo")) { chat.classList.add("convo"); $("#scroll").innerHTML = ""; }
   $(".tools").hidden = true;
-  systemCard(`This conversation is paused. When you feel ready, you can ask ${p.name} to come back.`);
-  $("#msg").placeholder = `Ask ${p.name} to come back, or say how you are…`;
+  systemCard(`This conversation is paused, and ${p.name} is waiting nearby. You can tell me how you are. When you feel ready, tap the button below.`);
+  $("#msg").placeholder = "Say how you are…";
+  comeBack(p);
+}
+function comeBack(p, step = "ask") {
+  let box = $(".comeback", chat);
+  if (!box) { box = el("div", "comeback"); $(".dock", chat).prepend(box); }
+  if (step === "ask") {
+    box.innerHTML = `<button class="chip ready" type="button">→  ${esc(READY(p))}</button>`;
+    $(".ready", box).onclick = () => comeBack(p, "check");
+  } else {
+    box.innerHTML = `<p class="t14">Before ${esc(p.name)} comes back, how are you feeling right now?</p>
+      <div class="chips"><button class="chip" type="button" data-a="safe">→  ${esc(SAFE(p))}</button>
+      <button class="chip" type="button" data-a="hard">→  ${esc(HARD)}</button></div>`;
+    box.querySelector('[data-a="safe"]').onclick = () => checkIn(p, true);
+    box.querySelector('[data-a="hard"]').onclick = () => checkIn(p, false);
+  }
+  scrollDown();
+}
+function leaveSupport() {
+  $(".comeback", chat)?.remove();
+  $("#msg").placeholder = "Share a thought...";
+  $(".tools").hidden = false;
+}
+async function checkIn(p, safe) {
+  if (busy) return;
+  const text = safe ? SAFE(p) : HARD;
+  if (backend.live) return sendLive(text, safe ? "return" : null);
+  bubble("me", text);
+  history.push({ role: "user", content: text });
+  if (!safe) {
+    systemCard(`Thank you for telling me. ${p.name} will wait a little longer. If you might be in danger, please reach out to someone who can help right away. Whenever you’re ready, you can try again.`);
+    return comeBack(p);
+  }
+  demoPaused = false; leaveSupport();
+  busy = true;
+  const b = bubble("them");
+  await new Promise(r => typeInto(b, "I’m glad you’re here. Let’s go on gently, at your own pace. Where would you like to begin?", r));
+  history.push({ role: "assistant", content: b.textContent });
+  busy = false;
 }
 
-async function sendLive(text) {
+async function sendLive(text, intent = null) {
   const id = curId;
   busy = true; $(".send").disabled = true;
   startConvo(cur);
@@ -713,11 +776,11 @@ async function sendLive(text) {
   b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
   let voice = null, said = "", resources = null, reason = null, failed = null;
   try {
-    for await (const ev of backend.turn(text, id)) {
+    for await (const ev of backend.turn(text, id, intent)) {
       const d = ev.data;
       if (ev.type === "voice") {
         voice = d.speaker;
-        if (voice === "persona") { b.textContent = ""; backend.save({ paused: false }); $("#msg").placeholder = "Share a thought..."; }
+        if (voice === "persona") { b.textContent = ""; backend.save({ paused: false }); leaveSupport(); }
       } else if (ev.type === "token") {
         said += d.text;
         if (voice === "persona") { b.textContent += d.text; scrollDown(); }
@@ -736,7 +799,8 @@ async function sendLive(text) {
     backend.save({ paused: true });
     if (reason === "tier_3") return distress(id, text, { text: said, resources });
     $(".tools").hidden = true;
-    return systemCard(said, resources);
+    systemCard(said, resources);
+    return comeBack(PH[id]);
   }
   if (failed || voice !== "persona") {          // never stand in for the persona with a made-up reply
     b.closest(".row").remove();
@@ -752,6 +816,13 @@ async function send(text) {
   if (backend.live) return sendLive(text);
   const p = cur;
   if (DISTRESS.test(text)) return distress(curId, text);   // demo only; live pauses come from the server
+  if (demoPaused) {
+    startConvo(p);
+    bubble("me", text);
+    history.push({ role: "user", content: text });
+    systemCard(`I’m still here with you, and ${p.name} is staying aside for now. When you feel ready, tap the button below. If you might be in danger, please reach out to someone who can help right away.`);
+    return comeBack(p);
+  }
   busy = true; $(".send").disabled = true;
   startConvo(p);
   bubble("me", text);
@@ -860,6 +931,8 @@ function renderNotes() {
 /* ---------- 07 System detects distress → 06 Pause the café ---------- */
 let pauseTimer = null;
 function distress(id, text, care) {
+  setAside(id);
+  if (!backend.live) demoPaused = true;
   stopChat();
   const p = PH[id];
   const c = $("#chat");

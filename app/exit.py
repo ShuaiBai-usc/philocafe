@@ -30,6 +30,13 @@ STILL_HERE = (
     "{name} to come back. If you might be in danger, please reach out to one of the people below right now."
 )
 
+# The user tapped "ready to come back", but risk has not dropped enough yet (FR-32).
+NOT_YET = (
+    "Thank you for telling me. It sounds like things may still feel heavy, so {name} will wait a little "
+    "longer. If you might be in danger, please reach out to one of the people below. Whenever you're "
+    "ready, you can try again."
+)
+
 
 def load_resources(path: Path = RESOURCES_PATH) -> list[dict]:
     resources = yaml.safe_load(path.read_text(encoding="utf-8")) or []
@@ -39,7 +46,8 @@ def load_resources(path: Path = RESOURCES_PATH) -> list[dict]:
 def exit_node(state: TurnState, deps: Deps) -> dict:
     first = state.get("mode") != "support"
     persona = deps.personas.get(state.get("persona_id", ""))
-    text = HANDOVER if first else STILL_HERE.format(name=persona.name if persona else "the philosopher")
+    name = persona.name if persona else "the philosopher"
+    text = HANDOVER if first else (NOT_YET if state.get("return_request") else STILL_HERE).format(name=name)
     emit("voice", speaker="system", persona_id=None)
     emit("token", text=text)
     emit("exit", reason="tier_3" if first else "support_mode", resources=list(deps.resources))

@@ -30,6 +30,7 @@ class TurnState(TypedDict, total=False):
     persona_id: str
     messages: Annotated[list[AnyMessage], add_messages]
     mode: Literal["persona", "support"]
+    return_request: bool          # this turn is the "ready to come back" button (FR-32)
     safety: SafetyDecision        # 7.3
     retrieved: list[Chunk]        # 7.1
     reply: str
