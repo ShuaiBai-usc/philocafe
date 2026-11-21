@@ -22,6 +22,7 @@ Postgres so a thread, and its support mode, survives across function instances.
    | `CRON_SECRET` | any long random string; guards the daily purge |
    | `PHILOCAFE_MIN_SCORE` | optional, defaults to 0.3 |
    | `PHILOCAFE_RETENTION_HOURS` | optional: 168 (7 days) by default; **set 24 on showcase day**; 0 = never purge |
+   | `PHILOCAFE_ADMIN_TOKEN` | any long random string; needed to download the user-test submissions (below) |
 
 4. **Deploy.** Branch pushes get preview deployments; `main` gets the production deployment. The daily
    purge (`vercel.json` crons) runs on production only and deletes conversations older than
@@ -37,6 +38,23 @@ Postgres so a thread, and its support mode, survives across function instances.
   `app/retrieval.py` swaps in `pysqlite3-binary` (a Linux-only dependency in `pyproject.toml`) before
   `scripts/retrieval.py` is imported; that error means the swap did not happen.
 - On an iPhone: open the URL in Safari, Share, Add to Home Screen.
+
+## User test page
+
+`/test` (redirects to `/test.html`) is the page to send testers: open the café, chat, tap **Copy chat**
+above the message box, come back, pick the philosopher, paste and submit. Submissions go to the
+`test_submissions` table in the same Postgres (`app/submissions.py`); they hold only the philosopher,
+the pasted text, its turn count and the time, and the daily purge never touches them. Submitting does
+not need the access code (on iPhone the home-screen app keeps its storage apart from Safari).
+
+Download everything as CSV (opens in Excel or Numbers):
+
+```bash
+curl -H "Authorization: Bearer $PHILOCAFE_ADMIN_TOKEN" -o submissions.csv https://philocafe-ivory.vercel.app/test/submissions.csv
+```
+
+Or read the table in the Neon console (Vercel, Storage, then Open in Neon, then SQL Editor):
+`SELECT * FROM test_submissions ORDER BY id;`
 
 ## Build locally
 

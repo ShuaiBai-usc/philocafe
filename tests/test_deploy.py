@@ -16,6 +16,7 @@ from app.config import ROOT
 from app.fakes import FAKE_QUOTING_REPLY, FakeVoice, fake_deps
 from app.graph import build_graph, run_turn
 from app.server import create_app
+from app.submissions import MemorySubmissions
 
 
 def quoting_deps():
@@ -67,7 +68,9 @@ def test_checkpoint_url_precedence(monkeypatch, env, expected):
 def test_postgres_is_used_when_configured(monkeypatch):
     opened = []
     saver = InMemorySaver()
-    monkeypatch.setattr(server, "postgres_checkpointer", lambda url: opened.append(url) or saver)
+    monkeypatch.setattr(server, "postgres_pool", lambda url: opened.append(url) or "pool")
+    monkeypatch.setattr(server, "postgres_checkpointer", lambda pool: saver)
+    monkeypatch.setattr(server, "PostgresSubmissions", lambda pool: MemorySubmissions())
     monkeypatch.setenv("PHILOCAFE_CHECKPOINT_URL", "postgres://neon.example/db")
     client = TestClient(create_app(quoting_deps(), access_code=""))
     client.post("/threads/t1/messages", json={"text": "TEST_TIER3"})
@@ -97,7 +100,7 @@ def test_postgres_pool_checks_connections_before_use(monkeypatch):
 
     monkeypatch.setattr(psycopg_pool, "ConnectionPool", Pool)
     monkeypatch.setattr(lg_postgres, "PostgresSaver", Saver)
-    server.postgres_checkpointer("postgres://neon.example/db")
+    server.postgres_checkpointer(server.postgres_pool("postgres://neon.example/db"))
     assert made["check"] is psycopg_pool.ConnectionPool.check_connection
 
 
@@ -114,9 +117,9 @@ def test_vercel_gets_the_same_web_app_mount(monkeypatch):
 
 
 def test_redirects_point_at_files_the_build_publishes():
-    """vercel.json sends / and /favicon.ico to the CDN copy of ui/web (deploy/vercel_build.py)."""
+    """vercel.json sends /, /test and /favicon.ico to the CDN copy of ui/web (deploy/vercel_build.py)."""
     redirects = json.loads((ROOT / "vercel.json").read_text())["redirects"]
-    assert {r["source"] for r in redirects} == {"/", "/favicon.ico"}
+    assert {r["source"] for r in redirects} == {"/", "/test", "/favicon.ico"}
     for r in redirects:
         assert (ROOT / "ui" / "web" / r["destination"].lstrip("/")).is_file(), r
 

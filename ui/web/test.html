@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Share a talk from the café · Philocafé user test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fffae0">
+<meta name="robots" content="noindex">
+<meta name="description" content="Have a chat with an AI philosopher, then share it with the Philocafé team. Anonymous, a few minutes.">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500&family=Silkscreen&display=swap">
+<style>
+/* Same tokens as the café (template.html, Figma "Philocafe · Mobile App UI"). */
+:root {
+  --paper: #fffae0; --white: #faedcd; --ink: #6b4e2e; --muted: #79694f;
+  --sage: #e9edc9; --clay: #d4aa73; --shadow: #cca370;
+  --f-pixel: "Pixelify Sans", "Courier New", monospace;
+  --f-label: "Silkscreen", "Courier New", monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.55 var(--f-pixel); }
+img.px { image-rendering: pixelated; }
+p { margin: 0; }
+a { color: inherit; }
+button, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px dashed var(--ink); outline-offset: 3px; }
+[hidden] { display: none !important; }
+
+.page { max-width: 500px; margin: 0 auto;
+  padding: calc(22px + env(safe-area-inset-top, 0px)) max(22px, env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) max(22px, env(safe-area-inset-left, 0px));
+  display: flex; flex-direction: column; gap: 26px; }
+.label { font: 11px/1.3 var(--f-label); letter-spacing: .12em; text-transform: uppercase; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; line-height: 1.5; }
+
+/* header */
+.hero { display: flex; gap: 16px; align-items: center; }
+.hero img { width: 76px; flex: none; }
+.hero h1 { margin: 4px 0 0; font: 500 30px/1.15 var(--f-pixel); letter-spacing: .01em; }
+.intro { font-size: 17px; }
+
+/* pixel card with striped title bar, as in the café */
+.card { background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); }
+.titlebar { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 2px solid var(--ink);
+  background: repeating-linear-gradient(to bottom, var(--sage) 0 2px, var(--paper) 2px 4px); }
+.titlebar img { width: 16px; height: 14px; }
+.inner { padding: 16px 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+
+.primary { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 54px; padding: 0 12px;
+  background: var(--clay); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow);
+  font: 18px/1.2 var(--f-pixel); text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.primary:active { transform: translate(2px, 2px); box-shadow: 1px 2px 0 var(--shadow); }
+.primary:disabled { opacity: .6; cursor: default; transform: none; box-shadow: 3px 4px 0 var(--shadow); }
+
+.care { border: 2px dashed var(--clay); padding: 12px 14px; font-size: 14px; line-height: 1.55; }
+.care b { font-weight: 500; }
+.tag { display: inline-block; padding: 1px 6px 0; border: 1.5px solid var(--ink); background: var(--paper);
+  font: 10px/1.6 var(--f-label); letter-spacing: .08em; vertical-align: 2px; white-space: nowrap; }
+
+/* who did you talk with */
+.q { font-size: 18px; }
+.who { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; border: 0; margin: 0; padding: 0; }
+.who legend { padding: 0; margin-bottom: 12px; }
+.pick { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 4px 10px;
+  background: var(--paper); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); cursor: pointer;
+  font-size: 15px; line-height: 1.2; text-align: center; -webkit-tap-highlight-color: transparent; }
+.pick input { position: absolute; opacity: 0; pointer-events: none; }
+.pick img, .pick .plus { width: 56px; height: 56px; border: 2px solid var(--ink); }
+.pick .plus { display: grid; place-items: center; font-size: 26px; background: var(--white); }
+.pick span:last-child { min-height: 2.4em; display: flex; align-items: center; justify-content: center; }
+.pick .long { font-size: 13px; letter-spacing: -.02em; }   /* "Schopenhauer" on one line on small phones */
+.pick:has(input:checked) { background: var(--sage); border-width: 4px; padding: 10px 2px 8px; }
+.pick:has(input:focus-visible) { outline: 3px dashed var(--ink); outline-offset: 3px; }
+.pick:active { transform: translate(2px, 2px); box-shadow: 1px 2px 0 var(--shadow); }
+
+/* paste box: dashed frame around a solid one */
+.paste { display: flex; flex-direction: column; gap: 8px; }
+.paste label { font-size: 18px; }
+.frame { border: 3px dashed var(--ink); padding: 4px; }
+textarea { display: block; width: 100%; min-height: 230px; resize: vertical; border: 2px solid var(--ink); border-radius: 0;
+  background: var(--paper); padding: 14px 16px; font-size: 16px; line-height: 1.6; -webkit-appearance: none; }
+textarea::placeholder { color: var(--muted); opacity: .8; }
+.meta { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.err { border: 2px solid var(--ink); background: var(--sage); padding: 10px 12px; font-size: 14px; }
+.consent { text-align: center; }
+
+/* after submitting */
+.thanks { align-items: center; text-align: center; }
+.thanks img { width: 84px; }
+.thanks h2 { margin: 0; font: 500 22px/1.2 var(--f-pixel); }
+
+footer { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding-top: 4px; }
+
+@media (max-width: 360px) {
+  .hero h1 { font-size: 26px; }
+  .who { gap: 9px; }
+  .pick { font-size: 13px; }
+  .pick img, .pick .plus { width: 48px; height: 48px; }
+}
+@media (prefers-reduced-motion: reduce) { .primary:active, .pick:active { transform: none; } }
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <img class="px" src="assets/icon_coffee_big.png" alt="">
+    <div>
+      <p class="label muted">User test · Philocafé</p>
+      <h1>Share a talk from the café</h1>
+    </div>
+  </header>
+
+  <p class="intro">Philocafé is a little café where you sit down with an AI philosopher and talk through what’s on your mind. Have a chat, then paste it here. It takes a few minutes and it’s anonymous.</p>
+
+  <section class="card" aria-labelledby="s1">
+    <div class="titlebar"><img class="px" src="assets/icon_quill.png" alt=""><span class="label" id="s1">Step 01 · Take a seat</span></div>
+    <div class="inner">
+      <a class="primary" href="index.html" target="_blank" rel="noopener">Open Philocafé <span aria-hidden="true">↗</span></a>
+      <p>Pick a philosopher and talk about anything: a choice you’re stuck on, a question you can’t let go of, a feeling that’s hard to name. Talk for as long as you like.</p>
+      <p class="small muted">If the café asks for an access code, ask the classmate who invited you.</p>
+      <div class="care">This is a test version, and our team will read what you share. Only share what you’re comfortable with us seeing. If you’re going through something really hard right now, please reach out to someone who can help: in the US, call or text <b>988</b>. In an emergency, call <b>911</b>.</div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="s2">
+    <div class="titlebar"><img class="px" src="assets/icon_quill.png" alt=""><span class="label" id="s2">Step 02 · Copy your chat</span></div>
+    <div class="inner">
+      <p>When you’re done, tap <span class="tag">Copy chat</span> above the message box. The whole conversation is copied.</p>
+      <p class="small muted">If copying doesn’t work, press and hold each message to copy it.</p>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="s3">
+    <div class="titlebar"><img class="px" src="assets/icon_quill.png" alt=""><span class="label" id="s3">Step 03 · Bring it back</span></div>
+
+    <form class="inner" id="form" novalidate>
+      <fieldset class="who" id="who">
+        <legend class="q">Who did you talk with?</legend>
+        <label class="pick"><input type="radio" name="persona" value="socrates"><img class="px" src="assets/mono_socrates.png" alt=""><span>Socrates</span></label>
+        <label class="pick"><input type="radio" name="persona" value="seneca"><img class="px" src="assets/mono_seneca.png" alt=""><span>Seneca</span></label>
+        <label class="pick"><input type="radio" name="persona" value="epictetus"><img class="px" src="assets/mono_epictetus.png" alt=""><span>Epictetus</span></label>
+        <label class="pick"><input type="radio" name="persona" value="montaigne"><img class="px" src="assets/mono_montaigne.png" alt=""><span>Montaigne</span></label>
+        <label class="pick"><input type="radio" name="persona" value="schopenhauer"><img class="px" src="assets/mono_schopenhauer.png" alt=""><span class="long">Schopenhauer</span></label>
+        <label class="pick"><input type="radio" name="persona" value="several"><span class="plus" aria-hidden="true">+</span><span>More than one</span></label>
+      </fieldset>
+
+      <div class="paste">
+        <label for="chat">Paste your conversation</label>
+        <div class="frame"><textarea id="chat" name="transcript" maxlength="20000" spellcheck="false"
+          placeholder="Philocafé · Seneca · 11/17/2026&#10;&#10;Seneca: Welcome. What weighs on you today?&#10;&#10;Me: …"></textarea></div>
+        <div class="meta muted"><span id="turns" aria-live="polite">0 turns</span><span>Saved on this device as you go</span></div>
+      </div>
+
+      <p class="small muted">Please remove names of people, schools or companies first. “My friend” or “a company” works just as well.</p>
+
+      <p class="err" id="err" role="alert" hidden></p>
+      <button class="primary" type="submit" id="submit">Submit</button>
+      <p class="small muted consent">By submitting, you agree that your conversation may be used anonymously for the Philocafé class research.</p>
+    </form>
+
+    <div class="inner thanks" id="thanks" hidden tabindex="-1">
+      <img class="px" src="assets/icon_coffee_big.png" alt="">
+      <h2>Thank you!</h2>
+      <p>Your conversation is with the team now. Thanks for taking the time.</p>
+      <p class="small muted">Talked with someone else too? You can share that one as well.</p>
+      <button class="primary" type="button" id="again">Share another talk</button>
+    </div>
+  </section>
+
+  <footer>
+    <p class="label muted">Anonymous · research only</p>
+    <p class="small">COMM 586 · Questions? Message the classmate who invited you.</p>
+  </footer>
+</main>
+
+<script>
+(() => {
+  const NAMES = { socrates: "Socrates", seneca: "Seneca", epictetus: "Epictetus", montaigne: "Montaigne", schopenhauer: "Schopenhauer" };
+  const KEY = "philocafe.test.draft";
+  const $ = s => document.querySelector(s);
+  const form = $("#form"), chat = $("#chat"), err = $("#err"), submit = $("#submit");
+  const picked = () => form.querySelector('input[name="persona"]:checked')?.value || "";
+  const pick = v => { const r = form.querySelector(`input[name="persona"][value="${v}"]`); if (r) r.checked = true; };
+
+  // The draft stays on this device only, so a tester can go back to the café and return.
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ persona: picked(), text: chat.value })); } catch {} };
+  const clear = () => { try { localStorage.removeItem(KEY); } catch {} };
+
+  const turns = () => {
+    const n = (chat.value.match(/^\s*me\s*:/gim) || []).length;
+    $("#turns").textContent = `${n} ${n === 1 ? "turn" : "turns"}`;
+  };
+
+  // "Copy chat" in the café starts with "Philocafé · <name> · <date>"; pick that philosopher if none is chosen yet.
+  const guess = () => {
+    if (picked()) return;
+    const head = chat.value.trim().split("\n", 1)[0] || "";
+    const found = Object.entries(NAMES).filter(([, name]) => head.includes(name)).map(([id]) => id);
+    if (found.length === 1) pick(found[0]);
+    else if (found.length > 1) pick("several");
+  };
+
+  const showError = msg => { err.textContent = msg; err.hidden = !msg; };
+
+  const draft = load();
+  if (draft.text) chat.value = draft.text;
+  if (draft.persona) pick(draft.persona);
+  turns();
+
+  chat.addEventListener("input", () => { guess(); turns(); save(); showError(""); });
+  form.addEventListener("change", () => { save(); showError(""); });
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const persona = picked(), transcript = chat.value.trim();
+    if (!persona) { showError("Pick who you talked with first."); $("#who").scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    if (!transcript) { showError("Paste your conversation first."); chat.focus(); return; }
+    submit.disabled = true; submit.textContent = "Sending…"; showError("");
+    try {
+      const r = await fetch("/test/submissions", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ persona, transcript }),
+      });
+      if (!r.ok) {
+        let msg = "Something went wrong. Please try again in a moment.";
+        try { msg = (await r.json()).error?.message || msg; } catch {}
+        if (r.status >= 500) msg = "The café couldn’t save it just now. Your text is still here; please try again in a moment.";
+        throw new Error(msg);
+      }
+      clear();
+      form.hidden = true; $("#thanks").hidden = false; $("#thanks").focus();
+      $("#s3").closest(".card").scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (x) {
+      showError(x instanceof TypeError ? "No connection. Your text is still here; please try again." : x.message);
+    } finally {
+      submit.disabled = false; submit.textContent = "Submit";
+    }
+  });
+
+  $("#again").addEventListener("click", () => {
+    form.reset(); chat.value = ""; turns(); showError("");
+    $("#thanks").hidden = true; form.hidden = false;
+    $("#s1").closest(".card").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+})();
+</script>
+</body>
+</html>

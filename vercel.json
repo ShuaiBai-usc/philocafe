@@ -10,6 +10,7 @@
   },
   "redirects": [
     { "source": "/", "destination": "/index.html", "permanent": false },
+    { "source": "/test", "destination": "/test.html", "permanent": false },
     { "source": "/favicon.ico", "destination": "/icons/icon-192.png", "permanent": false }
   ],
   "crons": [{ "path": "/internal/purge", "schedule": "0 10 * * *" }]
