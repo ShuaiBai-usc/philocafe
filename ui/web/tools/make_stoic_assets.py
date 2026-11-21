@@ -9,8 +9,9 @@ in the conversation scene; a cup in the hand stays).
 - Epictetus sits in the left armchair of the conversation scene, like the others, staff at his side.
 - Seneca's home frames face a table on his left, so he takes the right armchair.
 - The conversation scenes are the same room for everyone, so each new scene is a copy of Socrates'.
-- Portrait and avatar are the rest frame drawn large on the portraits' olive background. They are
-  placeholders until the UI/UX team draws detailed ones; replace the PNGs and nothing else changes.
+- Portraits: the UI/UX team's drawings (ab4da1b) are kept; a missing one falls back to the rest
+  frame drawn large on the olive background. The avatar (mono_*.png) is always cut from the
+  portrait, so after replacing a portrait, rerun this script to update the avatar.
 
     .venv/bin/python ui/web/tools/make_stoic_assets.py
     .venv/bin/python ui/web/tools/build_index.py
@@ -129,6 +130,12 @@ def portrait(who: str) -> Image.Image:
     return bg.convert("RGB")
 
 
+def avatar(portrait_path: Path) -> Image.Image:
+    """The 64 px avatar (chat header, bubbles, test page): the portrait's head and shoulders,
+    framed like the other three philosophers' mono_*.png."""
+    return Image.open(portrait_path).convert("RGB").crop((0, 36, 408, 444)).resize((64, 64), Image.BOX)
+
+
 def build(who: str, data: dict) -> None:
     home = data.get("home_" + who) or {}
     home_frames = home.get("frames") or sorted(p.name for p in ASSETS.glob(f"home_{who}_*.png"))
@@ -145,9 +152,10 @@ def build(who: str, data: dict) -> None:
                  "box": [round(x0, 1), round(y0, 1), round(x0 + cols * CHAT_CELL, 1), round(FEET_Y, 1)],
                  "size": [1242, 662], "frames": frames, "seq": HOME_SEQ[who]}
     data["home_" + who] = {"box": HOME_BOX[who], "frames": home_frames, "seq": HOME_SEQ[who]}
-    p = portrait(who)
-    p.save(ASSETS / f"portrait_{who}.png")
-    p.crop((0, 30, 408, 438)).resize((64, 64), Image.NEAREST).save(ASSETS / f"mono_{who}.png")
+    path = ASSETS / f"portrait_{who}.png"
+    if not path.exists():           # the hand-drawn portraits (ab4da1b) replace the placeholders; keep them
+        portrait(who).save(path)
+    avatar(path).save(ASSETS / f"mono_{who}.png")
     print(f"{who}: {len(frames)} conversation frames, scene, portrait, avatar")
 
 
