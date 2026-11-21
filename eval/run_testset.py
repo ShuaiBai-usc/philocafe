@@ -2,6 +2,21 @@
 
     .venv/bin/python eval/run_testset.py --input data/tests/midterm_30.csv
     .venv/bin/python eval/run_testset.py --input tests/fixtures/sentinel_testset.csv --fake
+    .venv/bin/python eval/run_testset.py --input data/tests/cross_persona_60.csv --personas all
+
+An optional `context` column holds earlier user turns, separated by `||`. They run first in
+the item's thread (the persona answers them as usual) and only the last turn is scored, so a
+message is judged after the turns that lead up to it (section 8 annotation guidance,
+gradual-escalation attacks in D4, the two-turn inputs of FR-63). --personas runs every item
+once per persona (item_id becomes <item_id>@<persona>), for the cross-persona experiment.
+
+An item whose context is the previous item's context plus its text (consecutive turns of one
+conversation, as in conversations_3.csv) continues that item's thread instead of replaying it.
+
+--safety-only scores each turn with the safety node alone (no persona reply, no voice calls):
+enough for the safety metrics and the threshold sweep, and much faster. Its context turns are
+added as plain user messages, unless --context-replies runs them through the full graph so the
+persona's own replies are in the history (needed for the cross-persona experiment).
 
 Writes three files under --out (default eval/results/):
   <run_id>.csv            the 7.4 result columns, after '#' lines recording the config, model
@@ -36,12 +51,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import metrics  # noqa: E402
 from cache import CachedSafetyModel, CachedTranslate, CachedVoice, DiskCache  # noqa: E402
 
+from functools import partial  # noqa: E402
+
+from langchain_core.messages import HumanMessage  # noqa: E402
+from langgraph.checkpoint.memory import InMemorySaver  # noqa: E402
+from langgraph.graph import END, START, StateGraph  # noqa: E402
+
 from app.deps import Deps  # noqa: E402
-from app.graph import build_graph, run_turn  # noqa: E402
+from app.graph import build_graph, run_turn, timed  # noqa: E402
+from app.safety.node import safety_node  # noqa: E402
+from app.state import TurnState  # noqa: E402
 
 RESULT_COLUMNS = ["run_id", "item_id", "persona", "predicted_tier", "probability", "threshold", "escalated",
                   "expected_tier", "latency_ms", "source", "model_version", "commit"]
 REQUIRED_COLUMNS = {"item_id", "text"}
+CONTEXT_SEPARATOR = "||"
 RESULTS_DIR = ROOT / "eval" / "results"
 CACHE_DIR = ROOT / "eval" / ".cache"
 
@@ -55,7 +79,8 @@ def read_testset(path: Path) -> list[dict]:
         items = []
         for row in reader:
             expected = (row.get("expected_tier") or "").strip()
-            items.append({"item_id": row["item_id"].strip(), "text": row["text"],
+            context = [t.strip() for t in (row.get("context") or "").split(CONTEXT_SEPARATOR) if t.strip()]
+            items.append({"item_id": row["item_id"].strip(), "text": row["text"], "context": context,
                           "expected_tier": int(expected) if expected else None,
                           "family": (row.get("family") or "").strip(),
                           "persona": (row.get("persona") or "").strip(),
@@ -76,7 +101,33 @@ def sha256_of(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()[:12]
 
 
-def run_item(graph, item: dict, persona: str, thread_id: str) -> dict:
+class Graphs:
+    """The full turn graph and a safety-only graph (START -> safety -> END) on one checkpointer,
+    so a thread can get persona replies on its context turns and be scored by safety alone."""
+
+    def __init__(self, deps: Deps):
+        saver = InMemorySaver()
+        self.full = build_graph(deps, checkpointer=saver)
+        g = StateGraph(TurnState)
+        g.add_node("safety", timed("safety", partial(safety_node, deps=deps)))
+        g.add_edge(START, "safety")
+        g.add_edge("safety", END)
+        self.safety = g.compile(checkpointer=saver)
+
+
+def run_item(graphs: Graphs, item: dict, persona: str, thread_id: str, safety_only: bool = False,
+             context_replies: bool = False, continue_thread: bool = False) -> dict:
+    config = {"configurable": {"thread_id": thread_id}}
+    context = [] if continue_thread else item.get("context", [])
+    if context and safety_only and not context_replies:
+        graphs.safety.update_state(config, {"thread_id": thread_id, "persona_id": persona,
+                                            "messages": [HumanMessage(t) for t in context]}, as_node="safety")
+    else:
+        for earlier in context:                       # lead-up turns: run, not scored
+            for _ in run_turn(graphs.full, thread_id, earlier, persona):
+                pass
+    graph = graphs.safety if safety_only else graphs.full
+    mode_before = graph.get_state(config).values.get("mode", "persona") if (context or continue_thread) else "persona"
     events, ttft = [], None
     start = time.perf_counter()
     for ev in run_turn(graph, thread_id, item["text"], persona):
@@ -90,9 +141,13 @@ def run_item(graph, item: dict, persona: str, thread_id: str) -> dict:
 
     trace = first("trace") or {}
     voice = first("voice")
-    state = graph.get_state({"configurable": {"thread_id": thread_id}}).values
+    state = graph.get_state(config).values
+    decision = state.get("safety") or {}
     return {
         "safety": first("safety"), "error": first("error"),
+        # Tier probabilities let eval/sweep.py replay the decision rule at other thresholds (FR-61).
+        "tier_probs": {str(k): v for k, v in (decision.get("tier_probs") or {}).items()},
+        "mode_before": mode_before,
         "voice": voice["speaker"] if voice else None,
         "reply": "".join(e["data"]["text"] for e in events if e["type"] == "token"),
         "citations": [e["data"]["chunk_id"] for e in events if e["type"] == "citation"],
@@ -110,21 +165,34 @@ def _counts(deps: Deps) -> tuple[int, int]:
     return sum(w.calls for w in wrappers), sum(w.hits for w in wrappers)
 
 
-def run(items: list[dict], deps: Deps, run_id: str, commit: str,
-        retries: int = 1, retry_delay: float = 2.0) -> tuple[list[dict], list[dict]]:
-    graph = build_graph(deps)
+def expand_personas(items: list[dict], personas: list[str]) -> list[dict]:
+    """One copy of every item per persona, for the cross-persona experiment (FR-63)."""
+    return [{**item, "item_id": f"{item['item_id']}@{p}", "persona": p} for item in items for p in personas]
+
+
+def run(items: list[dict], deps: Deps, run_id: str, commit: str, retries: int = 1, retry_delay: float = 2.0,
+        safety_only: bool = False, context_replies: bool = False) -> tuple[list[dict], list[dict]]:
+    graphs = Graphs(deps)
     rows, replies = [], []
-    for item in items:
+    chain = None          # (persona, every turn so far, thread_id) of the last conversation item
+    for n, item in enumerate(items, 1):
+        if len(items) > 20 and n % 20 == 0:
+            print(f"  {n}/{len(items)} items", file=sys.stderr, flush=True)
         persona = item["persona"] or deps.config.default_persona
+        follows = bool(chain and item["context"] and chain[0] == persona and chain[1] == item["context"])
         calls0, hits0 = _counts(deps)
         for attempt in range(retries + 1):
-            res = run_item(graph, item, persona, f"{run_id}-{item['item_id']}-{attempt}")
+            thread_id = chain[2] if follows else f"{run_id}-{item['item_id']}-{attempt}"
+            res = run_item(graphs, item, persona, thread_id, safety_only, context_replies, continue_thread=follows)
             safety = res["safety"]
             provider_failed = safety is None or safety["model_version"] == "fail-closed"
             if not provider_failed and res["error"] is None:
                 break
+            if follows:          # a retry would repeat the turn in the same thread
+                break
             if attempt < retries:
                 time.sleep(retry_delay)
+        chain = (persona, [*item["context"], item["text"]], thread_id)
         calls, hits = (c - c0 for c, c0 in zip(_counts(deps), (calls0, hits0)))
 
         row = {"run_id": run_id, "item_id": item["item_id"], "persona": persona,
@@ -140,10 +208,12 @@ def run(items: list[dict], deps: Deps, run_id: str, commit: str,
                        latency_ms=safety_ms, source=safety["source"], model_version=safety["model_version"])
         rows.append(row)
         replies.append({"item_id": item["item_id"], "family": item["family"], "text": item["text"],
+                        "context": item.get("context", []), "expected_tier": item["expected_tier"],
                         "persona": persona, "attempts": attempt + 1,
                         "cached": calls > 0 and calls == hits,
                         **{k: res[k] for k in ("voice", "error", "reply", "citations", "quotes", "retrieval_query",
-                                               "retrieved", "skipped", "nodes", "ttft_ms", "total_ms")}})
+                                               "retrieved", "skipped", "nodes", "ttft_ms", "total_ms",
+                                               "tier_probs", "mode_before")}})
     return rows, replies
 
 
@@ -210,7 +280,9 @@ def run_meta(args, items, rows, deps: Deps, run_id: str, started: datetime, comm
                    f"jev_timeout_s={s.jev_timeout_s} fallback_timeout_s={s.fallback_timeout_s} "
                    f"k={cfg.k} min_score={min_score} translate_model={cfg.translate_model}"),
         "mode": f"{'fake' if args.fake else 'real'} services; cache {'off' if args.no_cache else 'on'}; "
-                f"retries={args.retries}",
+                f"retries={args.retries}"
+                + ("; safety only" + (" (context turns with persona replies)" if args.context_replies else "")
+                   if args.safety_only else ""),
         "columns": "escalated = predicted_tier >= 2 (section 8); latency_ms = safety node time",
     }
 
@@ -231,15 +303,26 @@ def main(argv=None) -> int:
     ap.add_argument("--fake", action="store_true", help="offline stand-ins instead of the real services")
     ap.add_argument("--no-cache", action="store_true", help="make fresh Jev and Claude calls")
     ap.add_argument("--retries", type=int, default=1)
+    ap.add_argument("--safety-only", action="store_true", help="score turns with the safety node alone")
+    ap.add_argument("--context-replies", action="store_true",
+                    help="with --safety-only: run context turns through the full graph (persona replies)")
+    ap.add_argument("--personas", help="comma-separated persona ids, or 'all': run every item once per persona")
     ap.add_argument("--cache-dir", type=Path, default=CACHE_DIR, help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
 
     items = read_testset(args.input)
     deps = build_deps(args.fake, not args.no_cache, args.cache_dir)
+    if args.personas:
+        personas = sorted(deps.personas) if args.personas == "all" else args.personas.split(",")
+        unknown = set(personas) - set(deps.personas)
+        if unknown:
+            ap.error(f"unknown personas: {sorted(unknown)}")
+        items = expand_personas(items, personas)
     commit, dirty = git_commit()
     started = datetime.now(timezone.utc)
     run_id = f"{started:%Y%m%d-%H%M%S}-{commit}"
-    rows, replies = run(items, deps, run_id, commit, retries=args.retries, retry_delay=0 if args.fake else 2.0)
+    rows, replies = run(items, deps, run_id, commit, retries=args.retries, retry_delay=0 if args.fake else 2.0,
+                        safety_only=args.safety_only, context_replies=args.context_replies)
 
     meta = run_meta(args, items, rows, deps, run_id, started, commit, dirty)
     args.out.mkdir(parents=True, exist_ok=True)

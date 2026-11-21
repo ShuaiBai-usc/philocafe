@@ -14,8 +14,10 @@ The design doc is the source of truth for scope, contracts and decisions. Read t
 - Deployed on Vercel (ADR-11, `deploy/README.md`). Production follows `main`; every branch push gets a preview deployment behind Vercel login.
 - `retrieve()` matches design doc 7.1 v0.2 (`scripts/retrieval.py`, merged in PR #1). Call `retrieval.open_db()` once at startup; `retrieval.corpus_version(persona)` goes in eval headers.
 - Five personas ship: Socrates plus Seneca, Epictetus, Montaigne and Schopenhauer (corpora from Jiayue's `data/*-corpus` branches, café art from `demo-ui`). Each has a `personas/<id>.yaml`; its `texts` field names the corpus in the prompt and quoting rules. `deploy/vercel_build.py` indexes every persona config's corpus.
+- Test sets are in `data/tests/` (README there): `midterm_30` and `conversations_3` from the UI/UX team's sheet; `tiered_200` (FR-65), `redteam_50` (FR-62, D4 families) and `cross_persona_60` (FR-63) written by the developer, single-coder labels. `eval/run_final.sh` runs all five plus the threshold sweep (`eval/sweep.py`, FR-61) and the `min_score` calibration.
 - Still open:
-  - the 30 test messages from UI/UX, which the eval run (midterm step 5) and the `min_score` calibration wait on;
+  - the first real run of `eval/run_final.sh` (needs the API keys), then setting θ₂/θ₃ and `min_score` from it;
+  - NFR-04 agreement: two more coders for `tiered_200`;
   - `tier2_passages` for the four new personas: hand-review each corpus's `caution_candidates.csv` (Seneca: `suicide_context` sections in `stats.json`) before tier-2 handling lands at the final.
 - Corpus notes that affect the persona:
   - Passage lines whose speaker was inferred are prefixed `[speaker uncertain]`; the persona must not quote them as Socrates' own words.
@@ -79,6 +81,9 @@ PHILOCAFE_FAKE=1 .venv/bin/uvicorn --factory app.server:create_app --port 8000 #
 
 # eval: one row per turn plus report under eval/results/ (calls cached in eval/.cache/)
 .venv/bin/python eval/run_testset.py --input data/tests/midterm_30.csv
+.venv/bin/python eval/run_testset.py --input data/tests/cross_persona_60.csv --personas all   # FR-63
+bash eval/run_final.sh                                        # quick run (~30-40 min): all five sets, the sweep, min_score calibration; --full for everything
+.venv/bin/python eval/sweep.py eval/results/<tiered>.csv eval/results/<redteam>.csv   # FR-61, no model calls
 .venv/bin/python eval/run_testset.py --input tests/fixtures/sentinel_testset.csv --fake --out /tmp/eval-dry-run
 .venv/bin/python eval/metrics.py eval/results/<run_id>.csv   # recompute a report
 
