@@ -591,7 +591,7 @@ function openChat(id) {
     <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">→  ${esc(s)}</button>`).join("")}</div>`;
   scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => send(c.dataset.s));
   const tools = el("div", "tools"); tools.hidden = true;
-  tools.innerHTML = `<button id="saveBtn">Save thought</button><button id="srcBtn" hidden>From the source ↗</button>`;
+  tools.innerHTML = `<button id="saveBtn">Save thought</button><button id="copyBtn">Copy chat</button><button id="srcBtn" hidden>From the source ↗</button>`;
   const dock = el("div", "dock");
   dock.innerHTML = `<form class="composer">${icon("cup", "ink", 30)}
     <input id="msg" type="text" placeholder="Share a thought..." autocomplete="off" aria-label="Your message">
@@ -599,6 +599,7 @@ function openChat(id) {
   $("form", dock).onsubmit = e => { e.preventDefault(); const v = $("#msg").value.trim(); if (v) { $("#msg").value = ""; send(v); } };
   chat.append(header(id, "A table for your thoughts"), sceneFor(p), scroll, tools, dock);
   $("#saveBtn").onclick = saveThought;
+  $("#copyBtn").onclick = copyChat;
   $("#srcBtn").onclick = openSource;
   setMode();
   show("chat");
@@ -896,6 +897,29 @@ async function saveThought() {
   else { const n = { id: Date.now().toString(36), who: id, reflection: "", ...note }; notes.unshift(n); selected = n.id; store.set(notes); }
   btn.disabled = false; btn.textContent = "Save thought";
   toast("Saved to My notes");
+}
+
+// Copy chat (user test, ui/web/test.html): the whole conversation as plain text, headed
+// "Philocafé · <name> · <date>" so the test page can tell who it was with.
+function chatText() {
+  const name = cur?.name || "Philosopher";
+  const date = new Date().toLocaleDateString("en-US");
+  const turns = history.map(m => `${m.role === "user" ? "Me" : name}: ${m.content.trim()}`);
+  return [`Philocafé · ${name} · ${date}`, ...turns].join("\n\n");
+}
+async function copyChat() {
+  if (!history.some(m => m.role === "user")) return toast("Say something first");
+  const text = chatText();
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch {}
+  if (!ok) {          // older iOS, or a page opened without HTTPS
+    const ta = Object.assign(document.createElement("textarea"), { value: text, readOnly: true });
+    Object.assign(ta.style, { position: "fixed", top: 0, left: 0, opacity: 0 });
+    document.body.append(ta); ta.select(); ta.setSelectionRange(0, text.length);
+    try { ok = document.execCommand("copy"); } catch {}
+    ta.remove();
+  }
+  toast(ok ? "Chat copied" : "Couldn’t copy. Press and hold each message to copy it.");
 }
 
 /* ---------- 05 My Notes ---------- */

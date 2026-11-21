@@ -14,6 +14,8 @@ On Vercel (ADR-11) the entrypoint is asgi.py and these environment variables mat
 - CRON_SECRET: guards /internal/purge, which the daily Vercel Cron calls to delete
   conversations older than PHILOCAFE_RETENTION_HOURS: 168 (7 days) by default, set to
   24 on showcase day; 0 turns the purge off.
+- PHILOCAFE_ADMIN_TOKEN: guards GET /test/submissions.csv, the export of what testers
+  submitted on /test.html (app/submissions.py). Those submissions are not purged.
 """
 
 from __future__ import annotations
@@ -29,13 +31,14 @@ from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
-from starlette.responses import JSONResponse, StreamingResponse
+from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from app.config import ROOT
 from app.deps import Deps
 from app.graph import build_graph, run_turn
+from app.submissions import MAX_TRANSCRIPT, SEVERAL, MemorySubmissions, PostgresSubmissions, to_csv
 
 log = logging.getLogger(__name__)
 
@@ -73,18 +76,23 @@ def checkpoint_url() -> str | None:
     return None
 
 
-def postgres_checkpointer(url: str):
-    """LangGraph's Postgres checkpointer on a small pool. Prepared statements are off so
-    a transaction-mode pooler (such as Neon's) works. Each connection is checked before
-    use: Neon suspends after 5 idle minutes and drops open connections, while the pool
+def postgres_pool(url: str):
+    """A small pool shared by the checkpointer and the test submissions. Prepared statements
+    are off so a transaction-mode pooler (such as Neon's) works. Each connection is checked
+    before use: Neon suspends after 5 idle minutes and drops open connections, while the pool
     keeps idle ones for 10, so the first turn after a pause got a dead connection."""
-    from langgraph.checkpoint.postgres import PostgresSaver
     from psycopg.rows import dict_row
     from psycopg_pool import ConnectionPool
 
-    pool = ConnectionPool(conninfo=url, min_size=0, max_size=4, open=True,
+    return ConnectionPool(conninfo=url, min_size=0, max_size=4, open=True,
                           check=ConnectionPool.check_connection,
                           kwargs={"autocommit": True, "prepare_threshold": None, "row_factory": dict_row})
+
+
+def postgres_checkpointer(pool):
+    """LangGraph's Postgres checkpointer on the shared pool."""
+    from langgraph.checkpoint.postgres import PostgresSaver
+
     saver = PostgresSaver(pool)
     saver.setup()            # idempotent: creates or migrates the checkpoint tables
     return saver
@@ -99,10 +107,15 @@ def stale_threads(saver, hours: float) -> list[str]:
     return [r["thread_id"] for r in rows]
 
 
-def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | None = None) -> FastAPI:
+def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | None = None,
+               submissions=None) -> FastAPI:
     deps = deps or deps_from_env()
-    if checkpointer is None and (url := checkpoint_url()):
-        checkpointer = postgres_checkpointer(url)
+    url = checkpoint_url()
+    pool = postgres_pool(url) if url and (checkpointer is None or submissions is None) else None
+    if checkpointer is None and pool is not None:
+        checkpointer = postgres_checkpointer(pool)
+    if submissions is None:
+        submissions = PostgresSubmissions(pool) if pool is not None else MemorySubmissions()
     graph = build_graph(deps, checkpointer=checkpointer)
     code = access_code if access_code is not None else os.environ.get("PHILOCAFE_ACCESS_CODE", "")
 
@@ -182,11 +195,47 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         log.info("purged %d conversations older than %s hours", len(threads), hours)
         return JSONResponse({"deleted": len(threads)})
 
+    async def submit_test(request: Request) -> JSONResponse:
+        # Open without the access code: testers may have chatted in the home-screen app, whose
+        # storage (and saved code) is separate from Safari's on iPhone. Size limits keep it cheap.
+        try:
+            body = await request.json()
+        except json.JSONDecodeError:
+            return error(400, "bad_json", "The request body is not JSON.")
+        if not isinstance(body, dict):
+            return error(400, "bad_json", "The request body must be a JSON object.")
+        persona = str(body.get("persona") or "")
+        transcript = str(body.get("transcript") or "").strip()
+        if persona not in deps.personas and persona != SEVERAL:
+            return error(400, "bad_persona", "Pick who you talked with.")
+        if not transcript:
+            return error(400, "empty_transcript", "Paste your conversation first.")
+        if len(transcript) > MAX_TRANSCRIPT:
+            return error(400, "transcript_too_long",
+                         f"Conversations are limited to {MAX_TRANSCRIPT} characters. Please trim it a little.")
+        try:
+            sid = await run_in_threadpool(submissions.add, persona, transcript)
+        except Exception as e:
+            log.exception("test submission failed")
+            return error(502, "save_failed", type(e).__name__)
+        return JSONResponse({"id": sid}, status_code=201)
+
+    async def export_tests(request: Request):
+        token = os.environ.get("PHILOCAFE_ADMIN_TOKEN", "")
+        if not token or not hmac.compare_digest(request.headers.get("authorization", ""), f"Bearer {token}"):
+            return error(401, "admin_only", "This export needs the admin token.")
+        rows = await run_in_threadpool(submissions.all)
+        return Response(to_csv(rows), media_type="text/csv; charset=utf-8",
+                        headers={"Content-Disposition": 'attachment; filename="philocafe-test-submissions.csv"',
+                                 "Cache-Control": "no-store"})
+
     routes = [Route("/personas", personas),
               Route("/threads", new_thread, methods=["POST"]),
               Route("/threads/{thread_id}/messages", messages, methods=["POST"]),
               Route("/threads/{thread_id}/note", note, methods=["POST"]),
-              Route("/internal/purge", purge)]
+              Route("/internal/purge", purge),
+              Route("/test/submissions", submit_test, methods=["POST"]),
+              Route("/test/submissions.csv", export_tests)]
     # The same mount on Vercel: it promotes StaticFiles mounts to its CDN at build time, and the
     # function serves the files itself if it does not. Declared last, so the API routes win.
     if WEB_DIR.exists():
