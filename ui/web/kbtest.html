@@ -21,10 +21,10 @@ body.fix #app { position:fixed; inset:0; height:auto; }
 .px { image-rendering:pixelated; image-rendering:crisp-edges; }
 #stage { position:absolute; left:0; top:0; will-change:transform; transform:translateY(calc(-1 * var(--lift))); transition:transform var(--dur) cubic-bezier(.2,.8,.2,1); }
 #stage img { position:absolute; }
-#think { position:absolute; max-width:180px; padding:6px 10px; background:var(--paper); border:2px dashed var(--ink); border-radius:14px; font-size:15px; line-height:1.3; visibility:hidden; }
+#think { position:absolute; max-width:180px; padding:5px 8px; background:var(--paper); border:2px dashed var(--ink); border-radius:12px; font-size:13px; line-height:1.3; visibility:hidden; }
 /* No smooth fades anywhere: things appear and leave by a pixel dissolve (ordered dither, 4px blocks; dissolve() below). */
 #back { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:12px; width:44px; height:44px; border:2px solid var(--ink); background:var(--paper); color:var(--ink); font:20px inherit; box-shadow:2px 3px 0 rgba(0,0,0,.25); z-index:5; }
-#chat { position:absolute; left:10px; right:10px; top:var(--chat-top); bottom:calc(var(--kb) + var(--pad-b) + var(--composer) + 8px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-top:32px; transition:top var(--dur) cubic-bezier(.2,.8,.2,1), bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
+#chat { position:absolute; left:10px; right:10px; top:var(--chat-top); bottom:calc(var(--kb) + var(--pad-b) + var(--composer) + 8px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-top:64px; transition:top var(--dur) cubic-bezier(.2,.8,.2,1), bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
 #chat .sp { margin-top:auto; }
 .b { max-width:82%; padding:8px 11px; background:var(--paper); border:2px solid var(--ink); box-shadow:2px 3px 0 rgba(0,0,0,.25); font-size:16px; line-height:1.4; }
 .b.me { align-self:flex-end; background:#e6efd7; }
@@ -45,8 +45,8 @@ button.send { width:52px; border:2px solid var(--ink); background:#e6efd7; color
 <body class="fix">
 <div id="app">
   <div id="stage">
-    <img id="bg" class="px" src="assets/scene_socrates.png" alt="">
-    <img id="who" class="px" src="assets/socrates_01_rest.png" alt="Socrates in his armchair">
+    <img id="bg" class="px" src="assets/personas/socrates/scene.png" alt="">
+    <img id="who" class="px" src="assets/personas/socrates/face_pleased.png" alt="">
     <div id="think" aria-live="polite"></div>
   </div>
   <button id="back" aria-label="Back to the café">‹</button>
@@ -65,8 +65,9 @@ const $ = s => document.querySelector(s);
 const app = $("#app"), stage = $("#stage"), bg = $("#bg"), who = $("#who"), think = $("#think"), chat = $("#chat"), msg = $("#msg"), dbg = $("#dbg");
 const root = document.documentElement.style;
 const vv = window.visualViewport;
-const SCENE = { w: 1242, h: 662, box: [377, 313, 598, 535], head: [430, 313, 545, 395] };   // head: face region of the seated sprite
-const A = "assets/";
+const SCENE = { w: 144, h: 256, cx: 66, head: [54, 48, 80, 70] };   // head: the face patch (assets/personas/socrates/face_<mood>.png)
+const A = "assets/personas/socrates/"; const face = m => { who.src = A + "face_" + m + ".png"; };
+["attentive", "curious", "amused", "skeptical", "pondering", "pleased"].forEach(m => { new Image().src = A + "face_" + m + ".png"; });
 let fix = true, H0 = innerHeight, kbOpen = false, kbEst = +(localStorage.getItem("kbtest.kb") || 0) || Math.round(innerHeight * 0.42);
 let tFocus = 0, log = [], sceneH = 0, sceneTop0 = 0, headC0 = 0, headHalf = 0;
 
@@ -74,19 +75,18 @@ function note(e) { log.unshift(`${String(Math.round(performance.now() - tFocus))
 function safe() { const p = getComputedStyle($("#probe")); return { top: parseFloat(p.paddingTop) || 0, bottom: parseFloat(p.paddingBottom) || 0 }; }
 
 function layoutScene() {
-  // Scene as tall as the screen, Socrates centred, his face at 24% of the screen (below the notch).
+  // Full-screen scene (144x256 pixel art) scaled to cover the screen; the face patch sits on top of it.
   const W = innerWidth; H0 = Math.max(H0, fix ? (vv ? vv.height : innerHeight) : innerHeight);
-  sceneH = Math.round(H0); const k = sceneH / SCENE.h, sceneW = SCENE.w * k;
-  const [hx0, hy0, hx1, hy1] = SCENE.head, cx = (SCENE.box[0] + SCENE.box[2]) / 2;
-  headHalf = (hy1 - hy0) * k / 2;
-  const targetC = safe().top + Math.max(H0 * 0.24, 130);
-  sceneTop0 = targetC - ((hy0 + hy1) / 2) * k; headC0 = targetC;
-  const left = W / 2 - cx * k;
-  Object.assign(stage.style, { width: W + "px", height: sceneH + sceneTop0 + "px" });
-  Object.assign(bg.style, { left: left + "px", top: sceneTop0 + "px", width: sceneW + "px", height: sceneH + "px" });
-  const [x0, y0, x1, y1] = SCENE.box;
-  Object.assign(who.style, { left: left + x0 * k + "px", top: sceneTop0 + y0 * k + "px", width: (x1 - x0) * k + "px", height: (y1 - y0) * k + "px" });
-  Object.assign(think.style, { left: Math.min(W - 248, left + hx1 * k + 4) + "px", top: Math.max(safe().top + 58, targetC - headHalf - 30) + "px" });
+  const k = Math.max(W / SCENE.w, H0 / SCENE.h), sceneW = SCENE.w * k; sceneH = SCENE.h * k;
+  const left = Math.min(0, Math.max(W - sceneW, W / 2 - SCENE.cx * k));   // keep Socrates near the middle
+  const [hx0, hy0, hx1, hy1] = SCENE.head;
+  sceneTop0 = 0; headHalf = (hy1 - hy0) * k / 2; headC0 = (hy0 + hy1) / 2 * k;
+  Object.assign(stage.style, { width: W + "px", height: sceneH + "px" });
+  Object.assign(bg.style, { left: left + "px", top: "0px", width: sceneW + "px", height: sceneH + "px" });
+  Object.assign(who.style, { left: left + hx0 * k + "px", top: hy0 * k + "px", width: (hx1 - hx0) * k + "px", height: (hy1 - hy0) * k + "px" });
+  // Thought bubble beside the face (right side, level with the brow), never over it.
+  const tl = left + hx1 * k + 6;
+  Object.assign(think.style, { left: tl + "px", top: hy0 * k - 6 + "px", maxWidth: Math.max(96, W - tl - 10) + "px" });
 }
 
 function apply(h, why) {
@@ -144,16 +144,24 @@ function onViewport(kind) {
 if (vv) { vv.addEventListener("resize", () => onViewport("resize")); vv.addEventListener("scroll", () => onViewport("scroll")); }
 addEventListener("orientationchange", () => setTimeout(() => { H0 = 0; layoutScene(); setKb(0, "rotate"); }, 300));
 
-// Pixel dissolve: a 4x4 Bayer matrix in 4px blocks, 17 levels (0 = nothing shown, 16 = all shown).
-const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5], BLOCK = 4, TILE = 4 * BLOCK;
-function ditherUrl(w, rows, levelAt) {
-  const c = document.createElement("canvas"); c.width = w; c.height = rows * BLOCK;
+// Pixel dissolve. Every 4px block gets a fixed random threshold (mixed with an 8x8 Bayer value so the
+// noise doesn't clump); a block shows once the reveal level passes its threshold. The result reads as the
+// bubble breaking into pixels, with a ragged edge, instead of a tiled pattern or a straight line.
+const BLOCK = 4;
+const B8 = [0,32,8,40,2,34,10,42,48,16,56,24,50,18,58,26,12,44,4,36,14,46,6,38,60,28,52,20,62,30,54,22,
+            3,35,11,43,1,33,9,41,51,19,59,27,49,17,57,25,15,47,7,39,13,45,5,37,63,31,55,23,61,29,53,21];
+function thresholds(cols, rows, seed) {
+  let s = seed >>> 0 || 1; const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const t = new Float32Array(cols * rows);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) t[r * cols + c] = 0.65 * rnd() + 0.35 * (B8[(r % 8) * 8 + (c % 8)] + 0.5) / 64;
+  return t;
+}
+function maskUrl(w, h, cols, rows, keep) {      // keep(col, row) -> true where the block is visible
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
   const g = c.getContext("2d"); g.fillStyle = "#000";
-  for (let r = 0; r < rows; r++) for (let x = 0; x < w / BLOCK; x++)
-    if (BAYER[(r % 4) * 4 + (x % 4)] < levelAt(r)) g.fillRect(x * BLOCK, r * BLOCK, BLOCK, BLOCK);
+  for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) if (keep(k, r)) g.fillRect(k * BLOCK, r * BLOCK, BLOCK, BLOCK);
   return `url(${c.toDataURL()})`;
 }
-const LEVELS = Array.from({ length: 17 }, (_, k) => ditherUrl(TILE, 4, () => k));
 function setMask(el, layers) {   // layers: [[image, position, size, repeat], ...]
   for (const pre of ["webkitMask", "mask"]) {
     el.style[pre + "Image"] = layers.map(l => l[0]).join(",");
@@ -163,33 +171,44 @@ function setMask(el, layers) {   // layers: [[image, position, size, repeat], ..
   }
 }
 function clearMask(el) { for (const pre of ["webkitMask", "mask"]) for (const k of ["Image", "Position", "Size", "Repeat"]) el.style[pre + k] = ""; }
-function dissolve(el, show, ms = 240) {
-  cancelAnimationFrame(el._dz); const t0 = performance.now();
+let seedN = 7;
+function dissolve(el, show, ms = 260) {
+  cancelAnimationFrame(el._dz);
   if (show) el.style.visibility = "visible";
+  const w = Math.ceil(el.offsetWidth / BLOCK) * BLOCK, h = Math.ceil(el.offsetHeight / BLOCK) * BLOCK;
+  const cols = w / BLOCK, rows = h / BLOCK, t = thresholds(cols, rows, seedN++ * 2654435761);
+  const t0 = performance.now(); let last = -1;
   const step = now => {
-    const f = Math.min(1, (now - t0) / ms), k = Math.round((show ? f : 1 - f) * 16);
-    setMask(el, [[LEVELS[k], "0 0", `${TILE}px ${TILE}px`, "repeat"]]);
+    const f = Math.min(1, (now - t0) / ms), lv = Math.round((show ? f : 1 - f) * 24) / 24;   // 24 steps
+    if (lv !== last) { last = lv; setMask(el, [[maskUrl(w, h, cols, rows, (k, r) => t[r * cols + k] < lv), "0 0", `${w}px ${h}px`, "no-repeat"]]); }
     if (f < 1) el._dz = requestAnimationFrame(step);
     else { clearMask(el); if (!show) el.style.visibility = "hidden"; }
   };
   el._dz = requestAnimationFrame(step);
 }
-// The chat's top edge: an 8-block band where old messages break up into pixels instead of a gradient.
-const EDGE_ROWS = 8;
-setMask(chat, [[ditherUrl(TILE, EDGE_ROWS, r => Math.round((r + 0.5) / EDGE_ROWS * 16)), "0 0", `${TILE}px ${EDGE_ROWS * BLOCK}px`, "repeat-x"],
-               ["linear-gradient(#000,#000)", `0 ${EDGE_ROWS * BLOCK}px`, `100% calc(100% - ${EDGE_ROWS * BLOCK}px)`, "no-repeat"]]);
+// The chat's top edge: a 20-block band. Visibility rises smoothly down the band, and each block's
+// random threshold decides when it appears, so old messages crumble upward instead of meeting a line.
+const EDGE_ROWS = 20;
+function edgeMask() {
+  const w = Math.ceil(chat.clientWidth / BLOCK) * BLOCK, cols = w / BLOCK, t = thresholds(cols, EDGE_ROWS, 12345);
+  const keepAt = r => { const x = (r + 0.5) / EDGE_ROWS; return x * x * (3 - 2 * x); };   // smoothstep
+  setMask(chat, [[maskUrl(w, EDGE_ROWS * BLOCK, cols, EDGE_ROWS, (k, r) => t[r * cols + k] < keepAt(r)), "0 0", `${w}px ${EDGE_ROWS * BLOCK}px`, "no-repeat"],
+                 ["linear-gradient(#000,#000)", `0 ${EDGE_ROWS * BLOCK}px`, `100% calc(100% - ${EDGE_ROWS * BLOCK}px)`, "no-repeat"]]);
+}
+edgeMask(); addEventListener("resize", edgeMask);
 
 function bubble(text, me) { const b = document.createElement("div"); b.className = "b" + (me ? " me" : ""); b.textContent = text; b.style.visibility = "hidden"; chat.append(b); chat.scrollTop = chat.scrollHeight; dissolve(b, true, 200); return b; }
 const THOUGHTS = ["What does this friend mean by that?", "Is it pleasure they want, or something steadier?", "Better to ask than to tell."];
 const REPLIES = ["Then tell me: is a pleasant life always a good one?", "You say that easily. But what would you give up for it?", "Let us look closely, you and I. What do you call good?"];
+const MOODS = ["curious", "amused", "skeptical", "pleased", "attentive"];   // one per canned reply, to see every face
 let n = 0, busy = false;
 $("#f").addEventListener("submit", e => {
   e.preventDefault(); const v = msg.value.trim(); if (!v || busy) return;
   msg.value = ""; bubble(v, true); busy = true;
-  who.src = A + "socrates_03_ponder_up_hmm.png"; let i = 0;
+  face("pondering"); let i = 0;
   think.textContent = THOUGHTS[0]; dissolve(think, true);
   const roll = setInterval(() => { think.textContent = THOUGHTS[++i % THOUGHTS.length]; }, 900);
-  setTimeout(() => { clearInterval(roll); dissolve(think, false); who.src = A + "socrates_15_rest_smile.png"; bubble(REPLIES[n++ % REPLIES.length]); busy = false; }, 2700);
+  setTimeout(() => { clearInterval(roll); dissolve(think, false); face(MOODS[n % MOODS.length]); bubble(REPLIES[n++ % REPLIES.length]); busy = false; }, 2700);
 });
 $("#back").onclick = () => bubble("(Back would return to the café.)");
 $("#dbgBtn").onclick = () => { dbg.classList.toggle("on"); paint(); };
