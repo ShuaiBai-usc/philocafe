@@ -74,6 +74,8 @@ button, textarea { font: inherit; color: inherit; }
 .pick span:last-child { min-height: 2.4em; display: flex; align-items: center; justify-content: center; }
 .pick .long { font-size: 13px; letter-spacing: -.02em; }   /* "Schopenhauer" on one line on small phones */
 .pick:has(input:checked) { background: var(--sage); border-width: 4px; padding: 10px 2px 8px; }
+.who.multi .pick:has(input[name="persona"]:checked)::after { content: "✓"; position: absolute; top: 2px; right: 6px; font-size: 16px; }
+.who.multi .plus { background: var(--sage); }
 .pick:has(input:focus-visible) { outline: 3px dashed var(--ink); outline-offset: 3px; }
 .pick:active { transform: translate(2px, 2px); box-shadow: 1px 2px 0 var(--shadow); }
 
@@ -140,13 +142,14 @@ footer { display: flex; flex-direction: column; align-items: center; gap: 6px; t
     <form class="inner" id="form" novalidate>
       <fieldset class="who" id="who">
         <legend class="q">Who did you talk with?</legend>
-        <label class="pick"><input type="radio" name="persona" value="socrates"><img class="px" src="assets/mono_socrates.png" alt=""><span>Socrates</span></label>
-        <label class="pick"><input type="radio" name="persona" value="seneca"><img class="px" src="assets/mono_seneca.png" alt=""><span>Seneca</span></label>
-        <label class="pick"><input type="radio" name="persona" value="epictetus"><img class="px" src="assets/mono_epictetus.png" alt=""><span>Epictetus</span></label>
-        <label class="pick"><input type="radio" name="persona" value="montaigne"><img class="px" src="assets/mono_montaigne.png" alt=""><span>Montaigne</span></label>
-        <label class="pick"><input type="radio" name="persona" value="schopenhauer"><img class="px" src="assets/mono_schopenhauer.png" alt=""><span class="long">Schopenhauer</span></label>
-        <label class="pick"><input type="radio" name="persona" value="several"><span class="plus" aria-hidden="true">+</span><span>More than one</span></label>
+        <label class="pick"><input type="checkbox" name="persona" value="socrates"><img class="px" src="assets/mono_socrates.png" alt=""><span>Socrates</span></label>
+        <label class="pick"><input type="checkbox" name="persona" value="seneca"><img class="px" src="assets/mono_seneca.png" alt=""><span>Seneca</span></label>
+        <label class="pick"><input type="checkbox" name="persona" value="epictetus"><img class="px" src="assets/mono_epictetus.png" alt=""><span>Epictetus</span></label>
+        <label class="pick"><input type="checkbox" name="persona" value="montaigne"><img class="px" src="assets/mono_montaigne.png" alt=""><span>Montaigne</span></label>
+        <label class="pick"><input type="checkbox" name="persona" value="schopenhauer"><img class="px" src="assets/mono_schopenhauer.png" alt=""><span class="long">Schopenhauer</span></label>
+        <label class="pick"><input type="checkbox" id="multi"><span class="plus" aria-hidden="true">+</span><span>More than one</span></label>
       </fieldset>
+      <p class="small muted" id="multiHint" hidden>Tap everyone you talked with, then paste each chat below, one after another.</p>
 
       <div class="paste">
         <label for="chat">Paste your conversation</label>
@@ -183,12 +186,24 @@ footer { display: flex; flex-direction: column; align-items: center; gap: 6px; t
   const KEY = "philocafe.test.draft";
   const $ = s => document.querySelector(s);
   const form = $("#form"), chat = $("#chat"), err = $("#err"), submit = $("#submit");
-  const picked = () => form.querySelector('input[name="persona"]:checked')?.value || "";
-  const pick = v => { const r = form.querySelector(`input[name="persona"][value="${v}"]`); if (r) r.checked = true; };
+  const boxes = [...form.querySelectorAll('input[name="persona"]')], multi = $("#multi");
+  const picked = () => boxes.filter(b => b.checked).map(b => b.value);
+  const pick = ids => boxes.forEach(b => { b.checked = ids.includes(b.value); });
+  // One philosopher by default; "More than one" lets the tester tick several.
+  const setMulti = on => {
+    multi.checked = on;
+    $("#who").classList.toggle("multi", on);
+    $("#multiHint").hidden = !on;
+    if (!on && picked().length > 1) pick(picked().slice(0, 1));
+  };
+  boxes.forEach(b => b.addEventListener("change", () => {
+    if (!multi.checked && b.checked) pick([b.value]);
+  }));
+  multi.addEventListener("change", () => setMulti(multi.checked));
 
   // The draft stays on this device only, so a tester can go back to the café and return.
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ persona: picked(), text: chat.value })); } catch {} };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ personas: picked(), multi: multi.checked, text: chat.value })); } catch {} };
   const clear = () => { try { localStorage.removeItem(KEY); } catch {} };
 
   const turns = () => {
@@ -196,20 +211,23 @@ footer { display: flex; flex-direction: column; align-items: center; gap: 6px; t
     $("#turns").textContent = `${n} ${n === 1 ? "turn" : "turns"}`;
   };
 
-  // "Copy chat" in the café starts with "Philocafé · <name> · <date>"; pick that philosopher if none is chosen yet.
+  // Each "Copy chat" starts with "Philocafé · <name> · <date>". If nobody is picked yet, pick
+  // whoever those header lines name: several pasted chats with different philosophers pick them all.
   const guess = () => {
-    if (picked()) return;
-    const head = chat.value.trim().split("\n", 1)[0] || "";
-    const found = Object.entries(NAMES).filter(([, name]) => head.includes(name)).map(([id]) => id);
-    if (found.length === 1) pick(found[0]);
-    else if (found.length > 1) pick("several");
+    if (picked().length) return;
+    const heads = chat.value.match(/^\s*Philocaf[ée]\s*·\s*[^·\n]+·/gim) || [];
+    const found = Object.entries(NAMES).filter(([, name]) => heads.some(h => h.includes(name))).map(([id]) => id);
+    if (found.length > 1) setMulti(true);
+    if (found.length) pick(multi.checked ? found : found.slice(0, 1));
   };
 
   const showError = msg => { err.textContent = msg; err.hidden = !msg; };
 
   const draft = load();
   if (draft.text) chat.value = draft.text;
-  if (draft.persona) pick(draft.persona);
+  if (draft.multi || draft.persona === "several") setMulti(true);
+  if (draft.personas) pick(draft.personas);
+  else if (draft.persona && NAMES[draft.persona]) pick([draft.persona]);
   turns();
 
   chat.addEventListener("input", () => { guess(); turns(); save(); showError(""); });
@@ -217,14 +235,16 @@ footer { display: flex; flex-direction: column; align-items: center; gap: 6px; t
 
   form.addEventListener("submit", async e => {
     e.preventDefault();
-    const persona = picked(), transcript = chat.value.trim();
-    if (!persona) { showError("Pick who you talked with first."); $("#who").scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    const personas = picked(), transcript = chat.value.trim();
+    const toWho = () => $("#who").scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!personas.length) { showError(multi.checked ? "Tap everyone you talked with first." : "Pick who you talked with first."); toWho(); return; }
+    if (multi.checked && personas.length < 2) { showError("Tap everyone you talked with, or tap More than one again if it was just one."); toWho(); return; }
     if (!transcript) { showError("Paste your conversation first."); chat.focus(); return; }
     submit.disabled = true; submit.textContent = "Sending…"; showError("");
     try {
       const r = await fetch("/test/submissions", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ persona, transcript }),
+        body: JSON.stringify({ personas, transcript }),
       });
       if (!r.ok) {
         let msg = "Something went wrong. Please try again in a moment.";
@@ -243,7 +263,7 @@ footer { display: flex; flex-direction: column; align-items: center; gap: 6px; t
   });
 
   $("#again").addEventListener("click", () => {
-    form.reset(); chat.value = ""; turns(); showError("");
+    form.reset(); setMulti(false); chat.value = ""; turns(); showError("");
     $("#thanks").hidden = true; form.hidden = false;
     $("#s1").closest(".card").scrollIntoView({ behavior: "smooth", block: "start" });
   });

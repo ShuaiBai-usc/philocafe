@@ -32,6 +32,12 @@ def test_submit_without_the_access_code(client, store):
 
 
 def test_more_than_one_philosopher(client, store):
+    body = {"personas": ["socrates", "seneca", "socrates"], "transcript": CHAT}
+    assert client.post("/test/submissions", json=body).status_code == 201
+    assert store.all()[0].persona == "socrates,seneca"
+
+
+def test_page_cached_from_before_multi_select(client, store):
     assert client.post("/test/submissions", json={"persona": "several", "transcript": CHAT}).status_code == 201
     assert store.all()[0].persona == "several"
 
@@ -39,6 +45,10 @@ def test_more_than_one_philosopher(client, store):
 @pytest.mark.parametrize("body, code", [
     ({"persona": "camus", "transcript": CHAT}, "bad_persona"),
     ({"transcript": CHAT}, "bad_persona"),
+    ({"personas": [], "transcript": CHAT}, "bad_persona"),
+    ({"personas": ["seneca", "camus"], "transcript": CHAT}, "bad_persona"),
+    ({"personas": "seneca", "transcript": CHAT}, "bad_persona"),
+    ({"personas": ["several", "seneca"], "transcript": CHAT}, "bad_persona"),
     ({"persona": "seneca", "transcript": "   "}, "empty_transcript"),
     ({"persona": "seneca", "transcript": "x" * (MAX_TRANSCRIPT + 1)}, "transcript_too_long"),
     (["not", "an", "object"], "bad_json"),

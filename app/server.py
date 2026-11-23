@@ -204,10 +204,17 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
             return error(400, "bad_json", "The request body is not JSON.")
         if not isinstance(body, dict):
             return error(400, "bad_json", "The request body must be a JSON object.")
-        persona = str(body.get("persona") or "")
-        transcript = str(body.get("transcript") or "").strip()
-        if persona not in deps.personas and persona != SEVERAL:
+        picked = body.get("personas")
+        if picked is None and body.get("persona") == SEVERAL:
+            picked = [SEVERAL]                  # a test page cached from before multi-select
+        elif picked is None:
+            picked = [body.get("persona")]
+        known = set(deps.personas) | {SEVERAL}
+        if not isinstance(picked, list) or not picked or any(p not in known for p in picked) \
+                or (SEVERAL in picked and len(picked) > 1):
             return error(400, "bad_persona", "Pick who you talked with.")
+        persona = ",".join(dict.fromkeys(picked))     # e.g. "socrates,seneca" (page order), duplicates dropped
+        transcript = str(body.get("transcript") or "").strip()
         if not transcript:
             return error(400, "empty_transcript", "Paste your conversation first.")
         if len(transcript) > MAX_TRANSCRIPT:
