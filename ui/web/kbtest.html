@@ -12,24 +12,26 @@
 <title>Philocafé keyboard test</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500&display=swap">
 <style>
-:root { --paper:#fffae0; --ink:#6b4e2e; --floor:#8a6440; --vvh:100vh; --vvtop:0px; --lift:0px; --chat-top:50%; --dur:260ms; }
+:root { --paper:#fffae0; --ink:#6b4e2e; --floor:#8a6440; --kb:0px; --lift:0px; --chat-top:50%; --dur:260ms; --composer:62px; }
 * { box-sizing:border-box; }
 html, body { margin:0; height:100%; background:var(--floor); color:var(--ink); font-family:"Pixelify Sans","Courier New",monospace; }
 body.fix { position:fixed; inset:0; overflow:hidden; overscroll-behavior:none; }
 #app { position:relative; width:100%; height:100dvh; overflow:hidden; background:var(--floor); }
-body.fix #app { position:fixed; left:0; right:0; top:0; height:var(--vvh); transform:translateY(var(--vvtop)); }
+body.fix #app { position:fixed; inset:0; height:auto; }
 .px { image-rendering:pixelated; image-rendering:crisp-edges; }
 #stage { position:absolute; left:0; top:0; will-change:transform; transform:translateY(calc(-1 * var(--lift))); transition:transform var(--dur) cubic-bezier(.2,.8,.2,1); }
 #stage img { position:absolute; }
-#think { position:absolute; max-width:180px; padding:6px 10px; background:var(--paper); border:2px dashed var(--ink); border-radius:14px; font-size:15px; line-height:1.3; opacity:0; transition:opacity 200ms; }
-#think.on { opacity:1; }
+#think { position:absolute; max-width:180px; padding:6px 10px; background:var(--paper); border:2px dashed var(--ink); border-radius:14px; font-size:15px; line-height:1.3; visibility:hidden; }
+/* No smooth fades anywhere: things appear and leave by a pixel dissolve (ordered dither, 4px blocks; dissolve() below). */
 #back { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:12px; width:44px; height:44px; border:2px solid var(--ink); background:var(--paper); color:var(--ink); font:20px inherit; box-shadow:2px 3px 0 rgba(0,0,0,.25); z-index:5; }
-#chat { position:absolute; left:10px; right:10px; top:var(--chat-top); bottom:calc(var(--composer) + 8px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-top:24px;
-  -webkit-mask-image:linear-gradient(transparent, #000 24px); mask-image:linear-gradient(transparent, #000 24px); transition:top var(--dur) cubic-bezier(.2,.8,.2,1); }
+#chat { position:absolute; left:10px; right:10px; top:var(--chat-top); bottom:calc(var(--kb) + var(--pad-b) + var(--composer) + 8px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-top:32px; transition:top var(--dur) cubic-bezier(.2,.8,.2,1), bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
 #chat .sp { margin-top:auto; }
 .b { max-width:82%; padding:8px 11px; background:var(--paper); border:2px solid var(--ink); box-shadow:2px 3px 0 rgba(0,0,0,.25); font-size:16px; line-height:1.4; }
 .b.me { align-self:flex-end; background:#e6efd7; }
-form { position:absolute; left:10px; right:10px; bottom:calc(max(env(safe-area-inset-bottom), 0px) + 10px); display:flex; gap:8px; height:52px; }
+:root { --pad-b:max(env(safe-area-inset-bottom), 10px); }
+body.kb { --pad-b:8px; }
+form { position:absolute; left:10px; right:10px; bottom:calc(var(--kb) + var(--pad-b)); display:flex; gap:8px; height:52px; transition:bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
+body.snap form, body.snap #chat { transition:none; }   /* opening: the composer must already sit above the keyboard when focus lands */
 input { flex:1; min-width:0; font:16px "Pixelify Sans",monospace; color:var(--ink); background:var(--paper); border:2px solid var(--ink); padding:0 12px; border-radius:0; }
 button.send { width:52px; border:2px solid var(--ink); background:#e6efd7; color:var(--ink); font:20px inherit; }
 #dbgBtn { position:absolute; top:calc(env(safe-area-inset-top) + 10px); right:12px; width:44px; height:44px; border:2px solid var(--ink); background:var(--paper); color:var(--ink); font:16px inherit; z-index:5; }
@@ -67,7 +69,6 @@ const SCENE = { w: 1242, h: 662, box: [377, 313, 598, 535], head: [430, 313, 545
 const A = "assets/";
 let fix = true, H0 = innerHeight, kbOpen = false, kbEst = +(localStorage.getItem("kbtest.kb") || 0) || Math.round(innerHeight * 0.42);
 let tFocus = 0, log = [], sceneH = 0, sceneTop0 = 0, headC0 = 0, headHalf = 0;
-root.setProperty("--composer", "62px");
 
 function note(e) { log.unshift(`${String(Math.round(performance.now() - tFocus)).padStart(5)}ms ${e}`); log = log.slice(0, 9); paint(); }
 function safe() { const p = getComputedStyle($("#probe")); return { top: parseFloat(p.paddingTop) || 0, bottom: parseFloat(p.paddingBottom) || 0 }; }
@@ -100,37 +101,85 @@ function apply(h, why) {
   requestAnimationFrame(() => { chat.scrollTop = chat.scrollHeight; });
 }
 
-function onViewport() {
-  if (!fix || !vv) return;
-  root.setProperty("--vvh", vv.height + "px");
-  root.setProperty("--vvtop", vv.offsetTop + "px");
-  if (window.scrollY) window.scrollTo(0, 0);            // undo Safari pushing the page up
-  const kb = Math.round(innerHeight - vv.height);
-  if (kb > 120) { kbEst = kb; try { localStorage.setItem("kbtest.kb", kb); } catch {} }
-  apply(vv.height, "viewport");
-  paint();
+// The app never changes size. On iOS the composer moves above the keyboard *before* focus lands,
+// so Safari sees the input already visible and does not pan the page (the pan was the jump).
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+let kb = 0;
+function setKb(px, why, snap) {
+  kb = Math.max(0, Math.round(px));
+  document.body.classList.toggle("kb", kb > 0);
+  if (snap) document.body.classList.add("snap");
+  root.setProperty("--kb", kb + "px");
+  apply(H0 - kb, why);
+  if (snap) { void app.offsetHeight; requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.remove("snap"))); }
 }
-
-msg.addEventListener("focus", () => {
-  tFocus = performance.now(); log = []; note("focus (estimate " + kbEst + "px)");
-  if (fix) apply(H0 - kbEst, "estimate");                // start moving with the keyboard, correct on resize
-});
+function preOpen(why) {
+  if (!fix || !IOS || kb) return;
+  tFocus = performance.now(); log = []; note(why + ": composer up by estimate " + kbEst + "px");
+  setKb(kbEst, "estimate", true);
+}
+msg.addEventListener("touchstart", e => {
+  if (document.activeElement === msg || !fix || !IOS) return;
+  e.preventDefault();                                     // no native tap-to-focus at the old position
+  preOpen("touch");
+  msg.focus({ preventScroll: true });                     // still inside the touch, so the keyboard opens
+}, { passive: false });
+msg.addEventListener("focus", () => { preOpen("focus"); note("focus"); });
 msg.addEventListener("blur", () => {
   note("blur");
   if (!fix) return;
-  apply(H0, "blur");
-  setTimeout(() => {                                      // iOS 26 can leave offsetTop > 0 after the keyboard closes
-    window.scrollTo(0, 0); root.setProperty("--vvtop", "0px");
-    if (vv) root.setProperty("--vvh", Math.max(vv.height, H0) + "px");
-    note("reset after blur, vv.offsetTop=" + (vv ? Math.round(vv.offsetTop) : "n/a")); paint();
-  }, 350);
+  app.style.transform = "";
+  setKb(0, "blur");
 });
-if (vv) { vv.addEventListener("resize", () => { note("vv resize " + Math.round(vv.height)); onViewport(); });
-          vv.addEventListener("scroll", () => { note("vv scroll " + Math.round(vv.offsetTop)); onViewport(); }); }
-addEventListener("scroll", () => { if (fix && window.scrollY) window.scrollTo(0, 0); }, { passive: true });
-addEventListener("orientationchange", () => setTimeout(() => { H0 = 0; layoutScene(); apply(vv ? vv.height : innerHeight, "rotate"); }, 300));
+function onViewport(kind) {
+  if (!fix || !vv) return;
+  note(`vv ${kind} h=${Math.round(vv.height)} top=${Math.round(vv.offsetTop)}`);
+  if (document.activeElement !== msg) { if (vv.offsetTop === 0) app.style.transform = ""; return; }
+  const real = Math.round((IOS ? innerHeight : H0) - vv.height);   // Android resizes the page itself
+  if (real > 120 && Math.abs(real - kb) > 2) { kbEst = real; try { localStorage.setItem("kbtest.kb", real); } catch {} setKb(real, "measured"); }
+  // If Safari panned anyway (first open, wrong estimate), follow it rather than fight it.
+  app.style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : "";
+  paint();
+}
+if (vv) { vv.addEventListener("resize", () => onViewport("resize")); vv.addEventListener("scroll", () => onViewport("scroll")); }
+addEventListener("orientationchange", () => setTimeout(() => { H0 = 0; layoutScene(); setKb(0, "rotate"); }, 300));
 
-function bubble(text, me) { const b = document.createElement("div"); b.className = "b" + (me ? " me" : ""); b.textContent = text; chat.append(b); chat.scrollTop = chat.scrollHeight; return b; }
+// Pixel dissolve: a 4x4 Bayer matrix in 4px blocks, 17 levels (0 = nothing shown, 16 = all shown).
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5], BLOCK = 4, TILE = 4 * BLOCK;
+function ditherUrl(w, rows, levelAt) {
+  const c = document.createElement("canvas"); c.width = w; c.height = rows * BLOCK;
+  const g = c.getContext("2d"); g.fillStyle = "#000";
+  for (let r = 0; r < rows; r++) for (let x = 0; x < w / BLOCK; x++)
+    if (BAYER[(r % 4) * 4 + (x % 4)] < levelAt(r)) g.fillRect(x * BLOCK, r * BLOCK, BLOCK, BLOCK);
+  return `url(${c.toDataURL()})`;
+}
+const LEVELS = Array.from({ length: 17 }, (_, k) => ditherUrl(TILE, 4, () => k));
+function setMask(el, layers) {   // layers: [[image, position, size, repeat], ...]
+  for (const pre of ["webkitMask", "mask"]) {
+    el.style[pre + "Image"] = layers.map(l => l[0]).join(",");
+    el.style[pre + "Position"] = layers.map(l => l[1]).join(",");
+    el.style[pre + "Size"] = layers.map(l => l[2]).join(",");
+    el.style[pre + "Repeat"] = layers.map(l => l[3]).join(",");
+  }
+}
+function clearMask(el) { for (const pre of ["webkitMask", "mask"]) for (const k of ["Image", "Position", "Size", "Repeat"]) el.style[pre + k] = ""; }
+function dissolve(el, show, ms = 240) {
+  cancelAnimationFrame(el._dz); const t0 = performance.now();
+  if (show) el.style.visibility = "visible";
+  const step = now => {
+    const f = Math.min(1, (now - t0) / ms), k = Math.round((show ? f : 1 - f) * 16);
+    setMask(el, [[LEVELS[k], "0 0", `${TILE}px ${TILE}px`, "repeat"]]);
+    if (f < 1) el._dz = requestAnimationFrame(step);
+    else { clearMask(el); if (!show) el.style.visibility = "hidden"; }
+  };
+  el._dz = requestAnimationFrame(step);
+}
+// The chat's top edge: an 8-block band where old messages break up into pixels instead of a gradient.
+const EDGE_ROWS = 8;
+setMask(chat, [[ditherUrl(TILE, EDGE_ROWS, r => Math.round((r + 0.5) / EDGE_ROWS * 16)), "0 0", `${TILE}px ${EDGE_ROWS * BLOCK}px`, "repeat-x"],
+               ["linear-gradient(#000,#000)", `0 ${EDGE_ROWS * BLOCK}px`, `100% calc(100% - ${EDGE_ROWS * BLOCK}px)`, "no-repeat"]]);
+
+function bubble(text, me) { const b = document.createElement("div"); b.className = "b" + (me ? " me" : ""); b.textContent = text; b.style.visibility = "hidden"; chat.append(b); chat.scrollTop = chat.scrollHeight; dissolve(b, true, 200); return b; }
 const THOUGHTS = ["What does this friend mean by that?", "Is it pleasure they want, or something steadier?", "Better to ask than to tell."];
 const REPLIES = ["Then tell me: is a pleasant life always a good one?", "You say that easily. But what would you give up for it?", "Let us look closely, you and I. What do you call good?"];
 let n = 0, busy = false;
@@ -138,9 +187,9 @@ $("#f").addEventListener("submit", e => {
   e.preventDefault(); const v = msg.value.trim(); if (!v || busy) return;
   msg.value = ""; bubble(v, true); busy = true;
   who.src = A + "socrates_03_ponder_up_hmm.png"; let i = 0;
-  think.textContent = THOUGHTS[0]; think.classList.add("on");
+  think.textContent = THOUGHTS[0]; dissolve(think, true);
   const roll = setInterval(() => { think.textContent = THOUGHTS[++i % THOUGHTS.length]; }, 900);
-  setTimeout(() => { clearInterval(roll); think.classList.remove("on"); who.src = A + "socrates_15_rest_smile.png"; bubble(REPLIES[n++ % REPLIES.length]); busy = false; }, 2700);
+  setTimeout(() => { clearInterval(roll); dissolve(think, false); who.src = A + "socrates_15_rest_smile.png"; bubble(REPLIES[n++ % REPLIES.length]); busy = false; }, 2700);
 });
 $("#back").onclick = () => bubble("(Back would return to the café.)");
 $("#dbgBtn").onclick = () => { dbg.classList.toggle("on"); paint(); };
@@ -150,17 +199,17 @@ function paint() {
   const s = safe();
   dbg.innerHTML = `<b>Fix ${fix ? "ON" : "OFF"}</b> · ${navigator.standalone ? "home screen" : "browser"}<br>
 innerHeight ${innerHeight} · vv.height ${vv ? Math.round(vv.height) : "n/a"} · vv.offsetTop ${vv ? Math.round(vv.offsetTop) : "n/a"} · scrollY ${Math.round(scrollY)}<br>
-H0 ${Math.round(H0)} · kb estimate ${kbEst} · lift ${root.getPropertyValue("--lift")} · safe ${s.top}/${s.bottom}<br>
+H0 ${Math.round(H0)} · kb ${kb} · estimate ${kbEst} · lift ${root.getPropertyValue("--lift")} · app shift ${app.style.transform || "none"} · safe ${s.top}/${s.bottom}<br>
 <pre style="margin:4px 0 0;white-space:pre-wrap">${log.join("\n")}</pre>
 <button id="tg">Turn fix ${fix ? "off" : "on"}</button><button id="cl">Close</button>`;
-  $("#tg").onclick = () => { fix = !fix; document.body.classList.toggle("fix", fix); root.setProperty("--lift", "0px"); root.setProperty("--vvtop", "0px"); H0 = 0; layoutScene(); apply(innerHeight, "toggle"); paint(); };
+  $("#tg").onclick = () => { fix = !fix; document.body.classList.toggle("fix", fix); app.style.transform = ""; H0 = 0; layoutScene(); setKb(0, "toggle"); paint(); };
   $("#cl").onclick = () => { dbg.classList.remove("on"); };
 }
 
 bubble("Hello, friend. What has been on your mind today?");
 bubble("Tap the box below. Watch whether my face stays in view while the keyboard rises.");
 layoutScene(); apply(innerHeight, "load");
-addEventListener("resize", () => { if (!kbOpen) { H0 = 0; layoutScene(); apply(vv ? vv.height : innerHeight, "resize"); } });
+addEventListener("resize", () => { if (!kb && document.activeElement !== msg) { H0 = 0; layoutScene(); apply(H0, "resize"); } });
 }
 </script>
 </body>
