@@ -43,7 +43,8 @@ Postgres so a thread, and its support mode, survives across function instances.
 
 `/test` (redirects to `/test.html`) is the page to send testers: open the café, chat, tap **Copy chat**
 above the message box, come back, pick the philosopher, paste and submit. Submissions go to the
-`test_submissions` table in the same Postgres (`app/submissions.py`); they hold only the philosopher,
+`test_submissions` table in the same Postgres (`app/submissions.py`); they hold only the philosopher
+(several are comma-separated, such as `socrates,seneca`),
 the pasted text, its turn count and the time, and the daily purge never touches them. Submitting does
 not need the access code (on iPhone the home-screen app keeps its storage apart from Safari).
 

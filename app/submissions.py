@@ -4,7 +4,8 @@ Unlike the café itself (D8: nothing about a conversation is written on the serv
 are kept on purpose: the tester copies the chat, can edit it, and submits it for the class
 research with the consent line shown under the Submit button. They are never purged by the
 daily checkpoint purge. Nothing identifying is stored with them (no IP, no user agent, no
-thread ID): only the philosopher, the pasted text, its turn count and the time.
+thread ID): only the philosopher (or philosophers, comma-separated, such as "socrates,seneca"),
+the pasted text, its turn count and the time.
 
 On Vercel they go to the same Postgres as the checkpoints (table test_submissions); locally,
 without a database URL, they stay in memory.
@@ -19,7 +20,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 MAX_TRANSCRIPT = 20000
-SEVERAL = "several"          # the "More than one" choice on the test page
+SEVERAL = "several"          # what the first test page sent for "More than one"; now it sends the names
 _ME = re.compile(r"^\s*me\s*:", re.IGNORECASE | re.MULTILINE)
 
 
