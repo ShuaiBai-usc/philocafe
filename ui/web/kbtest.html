@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Keyboard test for the full-screen scene chat (PRD 7.5/7.8 redesign). Not linked from the app.
+     interactive-widget only affects Chrome on Android; iOS ignores it. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="KB test">
+<title>Philocafé keyboard test</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500&display=swap">
+<style>
+:root { --paper:#fffae0; --ink:#6b4e2e; --floor:#8a6440; --vvh:100vh; --vvtop:0px; --lift:0px; --chat-top:50%; --dur:260ms; }
+* { box-sizing:border-box; }
+html, body { margin:0; height:100%; background:var(--floor); color:var(--ink); font-family:"Pixelify Sans","Courier New",monospace; }
+body.fix { position:fixed; inset:0; overflow:hidden; overscroll-behavior:none; }
+#app { position:relative; width:100%; height:100dvh; overflow:hidden; background:var(--floor); }
+body.fix #app { position:fixed; left:0; right:0; top:0; height:var(--vvh); transform:translateY(var(--vvtop)); }
+.px { image-rendering:pixelated; image-rendering:crisp-edges; }
+#stage { position:absolute; left:0; top:0; will-change:transform; transform:translateY(calc(-1 * var(--lift))); transition:transform var(--dur) cubic-bezier(.2,.8,.2,1); }
+#stage img { position:absolute; }
+#think { position:absolute; max-width:180px; padding:6px 10px; background:var(--paper); border:2px dashed var(--ink); border-radius:14px; font-size:15px; line-height:1.3; opacity:0; transition:opacity 200ms; }
+#think.on { opacity:1; }
+#back { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:12px; width:44px; height:44px; border:2px solid var(--ink); background:var(--paper); color:var(--ink); font:20px inherit; box-shadow:2px 3px 0 rgba(0,0,0,.25); z-index:5; }
+#chat { position:absolute; left:10px; right:10px; top:var(--chat-top); bottom:calc(var(--composer) + 8px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-top:24px;
+  -webkit-mask-image:linear-gradient(transparent, #000 24px); mask-image:linear-gradient(transparent, #000 24px); transition:top var(--dur) cubic-bezier(.2,.8,.2,1); }
+#chat .sp { margin-top:auto; }
+.b { max-width:82%; padding:8px 11px; background:var(--paper); border:2px solid var(--ink); box-shadow:2px 3px 0 rgba(0,0,0,.25); font-size:16px; line-height:1.4; }
+.b.me { align-self:flex-end; background:#e6efd7; }
+form { position:absolute; left:10px; right:10px; bottom:calc(max(env(safe-area-inset-bottom), 0px) + 10px); display:flex; gap:8px; height:52px; }
+input { flex:1; min-width:0; font:16px "Pixelify Sans",monospace; color:var(--ink); background:var(--paper); border:2px solid var(--ink); padding:0 12px; border-radius:0; }
+button.send { width:52px; border:2px solid var(--ink); background:#e6efd7; color:var(--ink); font:20px inherit; }
+#dbgBtn { position:absolute; top:calc(env(safe-area-inset-top) + 10px); right:12px; width:44px; height:44px; border:2px solid var(--ink); background:var(--paper); color:var(--ink); font:16px inherit; z-index:5; }
+#dbg { position:absolute; top:calc(env(safe-area-inset-top) + 62px); right:10px; left:10px; z-index:6; background:rgba(255,250,224,.96); border:2px solid var(--ink); padding:8px 10px; font:12px/1.45 ui-monospace,Menlo,monospace; display:none; }
+#dbg.on { display:block; }
+#dbg button { font:13px inherit; margin:4px 6px 0 0; padding:6px 8px; border:1px solid var(--ink); background:#fff; color:var(--ink); }
+#probe { position:absolute; visibility:hidden; padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+@media (prefers-reduced-motion: reduce) { :root { --dur:0ms; } }
+</style>
+</head>
+<body class="fix">
+<div id="app">
+  <div id="stage">
+    <img id="bg" class="px" src="assets/scene_socrates.png" alt="">
+    <img id="who" class="px" src="assets/socrates_01_rest.png" alt="Socrates in his armchair">
+    <div id="think" aria-live="polite"></div>
+  </div>
+  <button id="back" aria-label="Back to the café">‹</button>
+  <button id="dbgBtn" aria-label="Show measurements">i</button>
+  <div id="dbg" role="status"></div>
+  <div id="chat" aria-live="polite"><div class="sp"></div></div>
+  <form id="f" autocomplete="off">
+    <input id="msg" type="text" enterkeyhint="send" placeholder="Share a thought..." aria-label="Your message">
+    <button class="send" type="submit" aria-label="Send">↑</button>
+  </form>
+  <div id="probe"></div>
+</div>
+<script>
+{
+const $ = s => document.querySelector(s);
+const app = $("#app"), stage = $("#stage"), bg = $("#bg"), who = $("#who"), think = $("#think"), chat = $("#chat"), msg = $("#msg"), dbg = $("#dbg");
+const root = document.documentElement.style;
+const vv = window.visualViewport;
+const SCENE = { w: 1242, h: 662, box: [377, 313, 598, 535], head: [430, 313, 545, 395] };   // head: face region of the seated sprite
+const A = "assets/";
+let fix = true, H0 = innerHeight, kbOpen = false, kbEst = +(localStorage.getItem("kbtest.kb") || 0) || Math.round(innerHeight * 0.42);
+let tFocus = 0, log = [], sceneH = 0, sceneTop0 = 0, headC0 = 0, headHalf = 0;
+root.setProperty("--composer", "62px");
+
+function note(e) { log.unshift(`${String(Math.round(performance.now() - tFocus)).padStart(5)}ms ${e}`); log = log.slice(0, 9); paint(); }
+function safe() { const p = getComputedStyle($("#probe")); return { top: parseFloat(p.paddingTop) || 0, bottom: parseFloat(p.paddingBottom) || 0 }; }
+
+function layoutScene() {
+  // Scene as tall as the screen, Socrates centred, his face at 24% of the screen (below the notch).
+  const W = innerWidth; H0 = Math.max(H0, fix ? (vv ? vv.height : innerHeight) : innerHeight);
+  sceneH = Math.round(H0); const k = sceneH / SCENE.h, sceneW = SCENE.w * k;
+  const [hx0, hy0, hx1, hy1] = SCENE.head, cx = (SCENE.box[0] + SCENE.box[2]) / 2;
+  headHalf = (hy1 - hy0) * k / 2;
+  const targetC = safe().top + Math.max(H0 * 0.24, 130);
+  sceneTop0 = targetC - ((hy0 + hy1) / 2) * k; headC0 = targetC;
+  const left = W / 2 - cx * k;
+  Object.assign(stage.style, { width: W + "px", height: sceneH + sceneTop0 + "px" });
+  Object.assign(bg.style, { left: left + "px", top: sceneTop0 + "px", width: sceneW + "px", height: sceneH + "px" });
+  const [x0, y0, x1, y1] = SCENE.box;
+  Object.assign(who.style, { left: left + x0 * k + "px", top: sceneTop0 + y0 * k + "px", width: (x1 - x0) * k + "px", height: (y1 - y0) * k + "px" });
+  Object.assign(think.style, { left: Math.min(W - 248, left + hx1 * k + 4) + "px", top: Math.max(safe().top + 58, targetC - headHalf - 30) + "px" });
+}
+
+function apply(h, why) {
+  // h = visible height. Lift the scene so the face stays in view, and start the chat under the face.
+  const open = h < H0 - 120;
+  const target = safe().top + 60 + headHalf;           // face just under the back button
+  const lift = open ? Math.max(0, headC0 - target) : 0;
+  const headBottom = headC0 - lift + headHalf;
+  root.setProperty("--lift", lift + "px");
+  root.setProperty("--chat-top", (open ? headBottom + 8 : Math.max(headBottom + 12, h * 0.48)) + "px");
+  if (open !== kbOpen) { kbOpen = open; note((open ? "open" : "close") + " via " + why); }
+  requestAnimationFrame(() => { chat.scrollTop = chat.scrollHeight; });
+}
+
+function onViewport() {
+  if (!fix || !vv) return;
+  root.setProperty("--vvh", vv.height + "px");
+  root.setProperty("--vvtop", vv.offsetTop + "px");
+  if (window.scrollY) window.scrollTo(0, 0);            // undo Safari pushing the page up
+  const kb = Math.round(innerHeight - vv.height);
+  if (kb > 120) { kbEst = kb; try { localStorage.setItem("kbtest.kb", kb); } catch {} }
+  apply(vv.height, "viewport");
+  paint();
+}
+
+msg.addEventListener("focus", () => {
+  tFocus = performance.now(); log = []; note("focus (estimate " + kbEst + "px)");
+  if (fix) apply(H0 - kbEst, "estimate");                // start moving with the keyboard, correct on resize
+});
+msg.addEventListener("blur", () => {
+  note("blur");
+  if (!fix) return;
+  apply(H0, "blur");
+  setTimeout(() => {                                      // iOS 26 can leave offsetTop > 0 after the keyboard closes
+    window.scrollTo(0, 0); root.setProperty("--vvtop", "0px");
+    if (vv) root.setProperty("--vvh", Math.max(vv.height, H0) + "px");
+    note("reset after blur, vv.offsetTop=" + (vv ? Math.round(vv.offsetTop) : "n/a")); paint();
+  }, 350);
+});
+if (vv) { vv.addEventListener("resize", () => { note("vv resize " + Math.round(vv.height)); onViewport(); });
+          vv.addEventListener("scroll", () => { note("vv scroll " + Math.round(vv.offsetTop)); onViewport(); }); }
+addEventListener("scroll", () => { if (fix && window.scrollY) window.scrollTo(0, 0); }, { passive: true });
+addEventListener("orientationchange", () => setTimeout(() => { H0 = 0; layoutScene(); apply(vv ? vv.height : innerHeight, "rotate"); }, 300));
+
+function bubble(text, me) { const b = document.createElement("div"); b.className = "b" + (me ? " me" : ""); b.textContent = text; chat.append(b); chat.scrollTop = chat.scrollHeight; return b; }
+const THOUGHTS = ["What does this friend mean by that?", "Is it pleasure they want, or something steadier?", "Better to ask than to tell."];
+const REPLIES = ["Then tell me: is a pleasant life always a good one?", "You say that easily. But what would you give up for it?", "Let us look closely, you and I. What do you call good?"];
+let n = 0, busy = false;
+$("#f").addEventListener("submit", e => {
+  e.preventDefault(); const v = msg.value.trim(); if (!v || busy) return;
+  msg.value = ""; bubble(v, true); busy = true;
+  who.src = A + "socrates_03_ponder_up_hmm.png"; let i = 0;
+  think.textContent = THOUGHTS[0]; think.classList.add("on");
+  const roll = setInterval(() => { think.textContent = THOUGHTS[++i % THOUGHTS.length]; }, 900);
+  setTimeout(() => { clearInterval(roll); think.classList.remove("on"); who.src = A + "socrates_15_rest_smile.png"; bubble(REPLIES[n++ % REPLIES.length]); busy = false; }, 2700);
+});
+$("#back").onclick = () => bubble("(Back would return to the café.)");
+$("#dbgBtn").onclick = () => { dbg.classList.toggle("on"); paint(); };
+
+function paint() {
+  if (!dbg.classList.contains("on")) return;
+  const s = safe();
+  dbg.innerHTML = `<b>Fix ${fix ? "ON" : "OFF"}</b> · ${navigator.standalone ? "home screen" : "browser"}<br>
+innerHeight ${innerHeight} · vv.height ${vv ? Math.round(vv.height) : "n/a"} · vv.offsetTop ${vv ? Math.round(vv.offsetTop) : "n/a"} · scrollY ${Math.round(scrollY)}<br>
+H0 ${Math.round(H0)} · kb estimate ${kbEst} · lift ${root.getPropertyValue("--lift")} · safe ${s.top}/${s.bottom}<br>
+<pre style="margin:4px 0 0;white-space:pre-wrap">${log.join("\n")}</pre>
+<button id="tg">Turn fix ${fix ? "off" : "on"}</button><button id="cl">Close</button>`;
+  $("#tg").onclick = () => { fix = !fix; document.body.classList.toggle("fix", fix); root.setProperty("--lift", "0px"); root.setProperty("--vvtop", "0px"); H0 = 0; layoutScene(); apply(innerHeight, "toggle"); paint(); };
+  $("#cl").onclick = () => { dbg.classList.remove("on"); };
+}
+
+bubble("Hello, friend. What has been on your mind today?");
+bubble("Tap the box below. Watch whether my face stays in view while the keyboard rises.");
+layoutScene(); apply(innerHeight, "load");
+addEventListener("resize", () => { if (!kbOpen) { H0 = 0; layoutScene(); apply(vv ? vv.height : innerHeight, "resize"); } });
+}
+</script>
+</body>
+</html>
