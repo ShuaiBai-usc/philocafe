@@ -138,7 +138,7 @@ p { margin: 0; }
 .acts button { width: 30px; height: 30px; display: grid; place-items: center; }
 .acts button:focus-visible { outline: 2px dashed var(--clay); outline-offset: -2px; }
 .acts button:disabled { opacity: .4; cursor: default; }
-.acts:not(.latest) .regen { display: none; }
+.acts:not(.latest) .regen, .acts:not(.latest) .speak { display: none; }
 .acts button { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .feedback { text-align: left; }
 .feedback .inner { padding: 14px 18px 16px; gap: 10px; }
@@ -158,11 +158,24 @@ p { margin: 0; }
 .toast { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -6px); background: var(--ink); color: var(--paper); font-size: 13px; padding: 6px 10px; white-space: nowrap; animation: popin .2s steps(3); }
 
 .dock { flex: none; padding: 0 var(--pad-r) calc(12px + env(safe-area-inset-bottom, 0px)) var(--pad-l); position: relative; }
-.composer { height: 62px; background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 8px; display: flex; gap: 9px; align-items: center; }
-.composer input { flex: 1; min-width: 0; height: 40px; border: 1px solid var(--ink); background: var(--paper); padding: 0 10px; font: 16px var(--f-pixel); color: var(--ink); border-radius: 0; }
-.composer input::placeholder { color: var(--ink); opacity: .55; }
-.composer .send { width: 36px; height: 40px; border: 2px solid var(--ink); background: var(--sage); font-size: 18px; flex: none; }
-.composer .send:disabled, .composer input:disabled { opacity: .5; cursor: default; }
+/* Composer (7.6): one field and one action button: the mic while the field is empty (hold to talk),
+   the send arrow once there is text. */
+.composer { background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 8px; display: flex; gap: 8px; align-items: flex-end; position: relative; }
+.composer textarea { flex: 1; min-width: 0; box-sizing: border-box; height: 42px; max-height: 108px; resize: none; overflow-y: auto; border: 1px solid var(--ink); background: var(--paper);
+  padding: 9px 10px; font: 16px/22px var(--f-pixel); color: var(--ink); border-radius: 0; display: block; }
+.composer textarea::placeholder { color: var(--ink); opacity: .55; }
+.composer .send { width: 42px; height: 42px; border: 2px solid var(--ink); background: var(--clay); flex: none; display: grid; place-items: center;
+  -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: none; }
+.composer .send:disabled, .composer textarea:disabled { opacity: .5; cursor: default; }
+.composer.recording .send { background: var(--rust); }
+.composer .rec { flex: 1; min-width: 0; height: 42px; box-sizing: border-box; display: none; align-items: center; gap: 10px; padding: 0 10px; border: 1px dashed var(--rust); background: var(--paper); font-size: 15px; white-space: nowrap; overflow: hidden; }
+.composer.recording textarea, .composer.transcribing textarea { display: none; }
+.composer.recording .rec, .composer.transcribing .rec { display: flex; }
+.composer .rec .dot { width: 10px; height: 10px; background: var(--rust); flex: none; animation: blink 1s steps(1) infinite; }
+.composer.transcribing .rec .dot { background: var(--muted); }
+.composer .rec .hint { margin-left: auto; color: var(--muted); font-size: 12px; }
+.composer .rec .what { flex: none; }
+.composer .rec .hint { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .dock .note { text-align: center; margin-top: 8px; }
 
 /* 07 distress state */
@@ -422,6 +435,10 @@ const ICONS = {
   up: "M3 10h4v9H3zM7 10h2v9H7zM9 6h2v4H9zM11 3h2v7h-2zM13 9h5v2h-5zM17 11h2v6h-2zM9 17h8v2H9z",
   upFull: "M3 10h4v9H3zM7 10h2v9H7zM9 6h2v13H9zM11 3h2v16h-2zM13 9h4v10h-4zM17 11h2v6h-2z",
   // two arrows chasing each other round (a single arrow read as "back" or "undo")
+  mic: "M8 2h6v12H8zM6 4h2v8H6zM14 4h2v8h-2zM3 9h2v4H3zM17 9h2v4h-2zM5 13h2v2H5zM15 13h2v2h-2zM7 15h8v2H7zM10 17h2v3h-2zM7 20h8v2H7z",
+  speaker: "M3 8h4v6H3zM7 6h2v10H7zM9 4h2v14H9zM14 7h2v2h-2zM16 9h2v4h-2zM14 13h2v2h-2zM17 3h2v2h-2zM19 5h2v12h-2zM17 17h2v2h-2z",
+  stop: "M6 6h10v10H6z",
+  send: "M10 4h2v15h-2zM8 6h2v2H8zM12 6h2v2h-2zM6 8h2v2H6zM14 8h2v2h-2zM4 10h2v2H4zM16 10h2v2h-2z",
   regen: "M2 6h2v4H2zM4 4h2v2H4zM6 2h9v2H6zM15 0h2v6h-2zM17 1h2v4h-2zM19 2h2v2h-2zM18 12h2v4h-2zM16 16h2v2h-2zM7 18h9v2H7zM5 16h2v6H5zM3 17h2v4H3zM1 18h2v2H1z",
   more: "M3 9h4v4H3zM9 9h4v4H9zM15 9h4v4h-4z",
   close: "M6 6h2v2h-2zM8 8h2v2h-2zM10 10h2v2h-2zM12 12h2v2h-2zM14 14h2v2h-2zM14 6h2v2h-2zM12 8h2v2h-2zM8 12h2v2h-2zM6 14h2v2h-2z"   // window close: an X in the back arrow's 2-pixel steps
@@ -547,7 +564,7 @@ const backend = {
       this.live = true;
     } catch { this.live = false; return; }
     if (!this.token()) return askAccount();
-    try { await this.loadMe(); await loadNotes(); } catch {}
+    try { await this.loadMe(); refreshComposer(); await loadNotes(); } catch {}
   },
   available(id) { return !this.live || this.ids.has(id); },
   // JSON calls to the café's API; a lost sign-in or access code asks again.
@@ -644,7 +661,7 @@ function askAccount(message = "") {
                                   { method: "POST", body: { nickname: $('[name="nickname"]', veil).value.trim(), passcode: pass.value } });
       backend.setToken(j.token);
       veil.remove();
-      await backend.loadMe(); await importLocalNotes(); await loadNotes();
+      await backend.loadMe(); refreshComposer(); await importLocalNotes(); await loadNotes();
       toast(`Welcome, ${j.nickname}`);
       if (screen === "convos") renderConvos(); else if (screen === "notes") renderNotes();
     } catch (x) {
@@ -791,6 +808,7 @@ function toggleMenu(btn) {
   const menu = el("div", "card menu");
   menu.setAttribute("role", "menu");
   menu.innerHTML = `<div class="inner"><button role="menuitem" data-a="copy">Copy chat</button>
+    ${voiceOn() ? `<button role="menuitemcheckbox" aria-checked="${readAloud.get()}" data-a="aloud">Read replies aloud: ${readAloud.get() ? "on" : "off"}</button>` : ""}
     <p class="t11 muted style">REPLY STYLE · ${style ? esc(style.toUpperCase()) : "AS THE PHILOSOPHER LIKES"}</p>
     ${style ? `<button role="menuitem" data-a="reset">Reset reply style</button>` : `<p class="t14 muted" style="padding:2px 14px 6px">Thumbs up or down on a reply to tune it.</p>`}
     ${backend.me ? `<p class="t11 muted style">SIGNED IN AS ${esc(backend.me.nickname.toUpperCase())}</p>
@@ -798,6 +816,9 @@ function toggleMenu(btn) {
   const close = () => { menu.remove(); btn.setAttribute("aria-expanded", "false"); document.removeEventListener("click", outside); };
   const outside = e => { if (!menu.contains(e.target)) close(); };
   menu.querySelector('[data-a="copy"]').onclick = () => { close(); copyChat(); };
+  const aloud = menu.querySelector('[data-a="aloud"]');
+  if (aloud) aloud.onclick = () => { close(); unlockAudio(); readAloud.set(!readAloud.get()); if (!readAloud.get()) stopSpeaking();
+                                      toast(readAloud.get() ? "Replies will be read aloud" : "Reading aloud is off"); };
   const reset = menu.querySelector('[data-a="reset"]');
   if (reset) reset.onclick = async () => { close(); try { await prefs.reset(); toast("Reply style reset"); } catch { toast("Couldn’t reset just now"); } };
   const out = menu.querySelector('[data-a="out"]'), del = menu.querySelector('[data-a="del"]');
@@ -822,10 +843,11 @@ function buildChat(id) {
     <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">→  ${esc(s)}</button>`).join("")}</div>`;
   scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => send(c.dataset.s));
   const dock = el("div", "dock");
-  dock.innerHTML = `<form class="composer">${icon("cup", "ink", 30)}
-    <input id="msg" type="text" placeholder="Share a thought..." autocomplete="off" aria-label="Your message">
-    <button class="send" type="submit" aria-label="Send">↑</button></form>`;
-  $("form", dock).onsubmit = e => { e.preventDefault(); const v = $("#msg").value.trim(); if (v) { $("#msg").value = ""; send(v); } };
+  dock.innerHTML = `<form class="composer">
+    <textarea id="msg" rows="1" placeholder="Share a thought..." autocomplete="off" enterkeyhint="send" aria-label="Your message"></textarea>
+    <div class="rec" aria-live="polite"><span class="dot"></span><span class="what">Listening 0:00</span><span class="hint">release</span></div>
+    <button class="send" type="submit" aria-label="Send">${icon("send", "ink", 22)}</button></form>`;
+  wireComposer(dock);
   chat.append(header(id, "A table for your thoughts"), sceneFor(p), scroll, dock);
   setMode();
   show("chat");
@@ -865,12 +887,12 @@ function openChat(id) {
   veil.querySelector('[data-a="yes"]').focus();
 }
 
-function stopChat() { pauseScene(); clearInterval(typer); cur = null; curId = null; }
+function stopChat() { pauseScene(); clearInterval(typer); stopSpeaking(); cur = null; curId = null; }
 function pauseScene() { sceneActor?.stop(); sceneActor = null; }
 
 // Leaving for the café keeps the conversation; the Conversation tab brings it back.
 let backTo = "home";
-function leaveChat() { pauseScene(); if (backTo === "convos") { renderConvos(); show("convos"); } else show("home"); }
+function leaveChat() { pauseScene(); stopSpeaking(); if (backTo === "convos") { renderConvos(); show("convos"); } else show("home"); }
 function resumeChat() {
   syncBookmarks();
   if (paused && isPaused()) return restorePaused();
@@ -1043,6 +1065,7 @@ async function sendLive(text, intent = null) {
   } catch (e) { r = { failed: { code: e.code || "network" } }; }
   busy = false; $(".send").disabled = false;
   if (r.voice === "system") {
+    stopSpeaking();                                  // FR-35: playback stops at the exit
     b.closest(".row").remove();
     backend.setPaused(true);
     if (r.reason === "tier_3") return distress(id, text, { text: r.said, resources: r.resources });
@@ -1055,8 +1078,145 @@ async function sendLive(text, intent = null) {
     return scrollDown();
   }
   history.push({ role: "assistant", content: r.said });
-  addActions(b, { who: id, you: text, them: b.textContent, cites: r.cites, thread: curThread, messageId: r.messageId });
+  const acts = addActions(b, { who: id, you: text, them: b.textContent, cites: r.cites, thread: curThread, messageId: r.messageId });
   scrollDown();
+  if (readAloud.get() && voiceOn() && r.messageId) speak(acts);
+}
+
+/* ---------- Composer and voice (7.6, FR-08, FR-09) ---------- */
+// Voice is on when the server has it set up (GET /me) and this browser can record.
+const canRecord = () => !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+const voiceOn = () => backend.live && !!backend.me?.voice;
+let micDenied = false;
+function wireComposer(dock) {
+  const form = $("form", dock), msg = $("#msg", dock), btn = $(".send", dock);
+  const grow = () => { msg.style.height = "auto"; msg.style.height = Math.max(42, Math.min(msg.scrollHeight + 2, 108)) + "px"; };
+  const mode = () => {
+    const mic = !msg.value.trim() && voiceOn() && canRecord() && !micDenied;
+    btn.dataset.mode = mic ? "mic" : "send";
+    btn.type = mic ? "button" : "submit";
+    btn.setAttribute("aria-label", mic ? "Hold to talk" : "Send");
+    btn.innerHTML = icon(mic ? "mic" : "send", "ink", 22);
+  };
+  form.onsubmit = e => {
+    e.preventDefault();
+    const v = msg.value.trim();
+    if (!v) return;
+    msg.value = ""; grow(); mode();
+    unlockAudio(); stopSpeaking();
+    send(v);
+  };
+  msg.addEventListener("input", () => { grow(); mode(); });
+  msg.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
+  // Push-to-talk: hold the mic, speak, let go; the transcript lands in the field to check before sending.
+  btn.addEventListener("pointerdown", e => { if (btn.dataset.mode === "mic" && !btn.disabled) { e.preventDefault(); startRecording(dock); } });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(ev => btn.addEventListener(ev, () => stopRecording(dock)));
+  btn.addEventListener("contextmenu", e => e.preventDefault());
+  dock._mode = mode;
+  mode();
+}
+const refreshComposer = () => $("#chat .dock")?._mode?.();
+
+let rec = null;        // {recorder, stream, chunks, started, timer}
+async function startRecording(dock) {
+  if (rec) return;
+  const form = $("form", dock);
+  rec = { chunks: [], started: Date.now(), pending: true };
+  form.classList.add("recording");
+  $(".what", dock).textContent = "Listening 0:00";
+  $(".hint", dock).textContent = "release";
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (!rec) { stream.getTracks().forEach(t => t.stop()); return; }     // let go before the mic opened
+    const type = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find(t => MediaRecorder.isTypeSupported?.(t)) || "";
+    const recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    recorder.ondataavailable = e => e.data.size && rec?.chunks.push(e.data);
+    Object.assign(rec, { recorder, stream, pending: false, started: Date.now() });
+    recorder.start(250);
+    rec.timer = setInterval(() => {
+      const s = Math.floor((Date.now() - rec.started) / 1000);
+      $(".what", dock).textContent = `Listening 0:${String(s).padStart(2, "0")}`;
+      if (s >= 60) stopRecording(dock);                               // about a minute at most
+    }, 250);
+  } catch {
+    rec = null; form.classList.remove("recording");
+    micDenied = true; refreshComposer();
+    toast("The microphone is off. You can still type.");
+  }
+}
+async function stopRecording(dock) {
+  if (!rec) return;
+  const r = rec; rec = null;
+  const form = $("form", dock), msg = $("#msg", dock);
+  clearInterval(r.timer);
+  if (r.pending || !r.recorder) { form.classList.remove("recording"); return; }
+  const done = new Promise(res => { r.recorder.onstop = res; });
+  r.recorder.stop(); await done;
+  r.stream.getTracks().forEach(t => t.stop());
+  form.classList.remove("recording");
+  if (Date.now() - r.started < 600) return toast("Hold the mic while you speak");
+  const blob = new Blob(r.chunks, { type: r.recorder.mimeType || "audio/webm" });
+  form.classList.add("transcribing");
+  $(".what", dock).textContent = "Writing it down…"; $(".hint", dock).textContent = "";
+  try {
+    if (!curThread) curThread = await backend.newThread(curId);
+    const resp = await fetch(`threads/${curThread}/transcribe`, { method: "POST", headers: backend.headers({ "Content-Type": blob.type.split(";")[0] }), body: blob });
+    if (!resp.ok) throw new Error(resp.status);
+    const { text } = await resp.json();
+    form.classList.remove("transcribing");             // the field must be visible to size itself
+    if (text) { msg.value = (msg.value ? msg.value + " " : "") + text; msg.dispatchEvent(new Event("input")); msg.focus(); }
+    else toast("I didn’t catch that. Try again?");
+  } catch { toast("Couldn’t turn that into text just now"); }
+  form.classList.remove("transcribing");
+}
+
+// Read aloud (FR-09): the shown reply, sentence by sentence, in the philosopher's voice. One audio
+// element is reused, unlocked by a tap, so iPhone lets later replies play on their own.
+const player = new Audio();
+let speaking = null;   // {stop: () => void, acts}
+function unlockAudio() {
+  if (player._unlocked) return;
+  player._unlocked = true;
+  player.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+  player.play().catch(() => {});
+}
+const readAloud = { get() { try { return localStorage.getItem("philocafe.readAloud") === "1"; } catch { return false; } },
+                    set(v) { try { localStorage.setItem("philocafe.readAloud", v ? "1" : "0"); } catch {} } };
+function sentences(text) {
+  const clean = text.replace(/\s*\[\d+\]/g, "").replace(/\s+/g, " ").trim();
+  const parts = clean.match(/[^.!?。！？]+[.!?。！？]+["”’)\]]*\s*|[^.!?。！？]+$/g) || [clean];
+  const out = [];
+  for (const p of parts.map(x => x.trim()).filter(Boolean)) {
+    if (out.length && out[out.length - 1].length < 40) out[out.length - 1] += " " + p;   // fewer, fuller requests
+    else out.push(p);
+  }
+  return out.flatMap(p => p.length <= 600 ? [p] : p.match(/.{1,580}(\s|$)/g).map(x => x.trim()));
+}
+function stopSpeaking() {
+  if (!speaking) return;
+  speaking.stop(); speaking = null;
+}
+async function speak(acts) {
+  stopSpeaking();
+  const ex = acts._ex, list = sentences(ex.them);
+  let stopped = false;
+  const btn = $(".speak", acts);
+  const paint = on => { if (btn) { btn.setAttribute("aria-pressed", on); btn.setAttribute("aria-label", on ? "Stop reading" : "Read aloud"); setIcon(btn, on ? "stop" : "speaker", on ? "ink" : "muted"); } };
+  speaking = { acts, stop: () => { stopped = true; player.pause(); player.removeAttribute("src"); paint(false); } };
+  paint(true);
+  const fetchClip = t => fetch(`threads/${ex.thread}/speech`, { method: "POST", headers: backend.headers({ "Content-Type": "application/json" }), body: JSON.stringify({ text: t }) })
+    .then(r => r.ok ? r.blob() : null).catch(() => null);
+  let next = fetchClip(list[0]);
+  for (let i = 0; i < list.length && !stopped; i++) {
+    const blob = await next;
+    next = i + 1 < list.length ? fetchClip(list[i + 1]) : null;     // fetch the next sentence while this one plays
+    if (!blob || stopped) break;
+    const url = URL.createObjectURL(blob);
+    player.src = url;
+    await new Promise(res => { player.onended = player.onerror = res; player.play().catch(res); });
+    URL.revokeObjectURL(url);
+  }
+  if (!stopped) { paint(false); speaking = null; }
 }
 
 /* ---------- Reply actions (7.9): save, copy, source, thumbs, regenerate ---------- */
@@ -1070,7 +1230,8 @@ function addActions(b, ex) {
   const btn = (a, label, ico) => `<button type="button" data-a="${a}" class="${a}" aria-label="${label}" title="${label}">${icon(ico, "muted", 18)}</button>`;
   acts.innerHTML = btn("save", "Save to My notes", "mark") + btn("copy", "Copy", "copy") +
     (ex.cites.length ? btn("source", "From the source", "book") : "") +
-    btn("up", "Good reply", "up") + btn("down", "Bad reply", "down") + btn("regen", "Regenerate", "regen");
+    btn("up", "Good reply", "up") + btn("down", "Bad reply", "down") + btn("regen", "Regenerate", "regen") +
+    (voiceOn() && ex.thread && ex.messageId ? btn("speak", "Read aloud", "speaker") : "");
   acts.querySelectorAll("button").forEach(x => x.onclick = () => { if (x._held) { x._held = false; return; } ACTIONS[x.dataset.a](acts, x); });
   acts.querySelectorAll(".up, .down").forEach(x => longPress(x, () => { if (acts._ex.rating === x.dataset.a) openFeedback(acts, x.dataset.a); }));
   row.after(acts);
@@ -1105,7 +1266,8 @@ const ACTIONS = {
   source(acts) { openSource(acts._ex.cites); },
   up(acts, x) { rate(acts, x, "up"); },
   down(acts, x) { rate(acts, x, "down"); },
-  regen(acts) { regenerate(acts); }
+  regen(acts) { stopSpeaking(); regenerate(acts); },
+  speak(acts) { unlockAudio(); if (speaking?.acts === acts) return stopSpeaking(); speak(acts); }
 };
 
 // Long press (about half a second) on a button; the click that follows it is swallowed.
