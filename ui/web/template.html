@@ -1244,10 +1244,11 @@ function sentences(text) {
   const parts = clean.match(/[^.!?。！？]+[.!?。！？]+["”’)\]]*\s*|[^.!?。！？]+$/g) || [clean];
   const out = [];
   for (const p of parts.map(x => x.trim()).filter(Boolean)) {
-    if (out.length && out[out.length - 1].length < 40) out[out.length - 1] += " " + p;   // fewer, fuller requests
+    const cjk = /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(p);       // no space between Chinese sentences
+    if (out.length && out[out.length - 1].length < 40) out[out.length - 1] += (cjk ? "" : " ") + p;   // fewer, fuller requests
     else out.push(p);
   }
-  return out.flatMap(p => p.length <= 600 ? [p] : p.match(/.{1,580}(\s|$)/g).map(x => x.trim()));
+  return out.flatMap(p => p.length <= 600 ? [p] : p.match(/[\s\S]{1,580}(?:\s|$)|[\s\S]{1,580}/g).map(x => x.trim()));
 }
 function stopSpeaking() {
   if (!speaking) return;

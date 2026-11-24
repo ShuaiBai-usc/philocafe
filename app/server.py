@@ -378,11 +378,14 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         if not text or len(text) > MAX_SPEECH_CHARS:
             return error(400, "bad_text", f"Send one sentence of up to {MAX_SPEECH_CHARS} characters.")
         msgs = (await run_in_threadpool(thread_state, thread_id)).get("messages") or []
-        replies = [(" ".join(m.content.split()), m.additional_kwargs.get("mood")) for m in msgs
+        # Compared without whitespace: the browser joins short sentences with a space, which
+        # Chinese text does not have between sentences.
+        bare = lambda s: re.sub(r"\s+", "", s)
+        replies = [(bare(m.content), m.additional_kwargs.get("mood")) for m in msgs
                    if isinstance(m, AIMessage) and m.name not in (None, "system")]
         if not replies:
             return error(409, "no_reply", "There is no persona reply to read.")
-        found = next((r for r in reversed(replies) if text in r[0]), None)
+        found = next((r for r in reversed(replies) if bare(text) in r[0]), None)
         if found is None:
             return error(400, "not_in_reply", "Only the philosopher's replies in this conversation can be read aloud.")
         mood = found[1]                       # 7.5: the tone follows the mood of the reply being read

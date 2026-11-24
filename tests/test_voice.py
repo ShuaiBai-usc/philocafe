@@ -216,3 +216,15 @@ def test_speak_picks_the_voice_by_language(monkeypatch):
     b"".join(speech.ElevenLabsVoice().speak("What is virtue?", p))
     assert p.elevenlabs_by_language["zh"] in urls[0][0] and urls[0][1]["language_code"] == "zh"
     assert p.elevenlabs_voice in urls[1][0] and "language_code" not in urls[1][1]
+
+
+def test_chinese_reply_reads_when_the_browser_joins_sentences():
+    io = FakeVoiceIO()
+    deps = fake_deps(generate=FakeVoice(['<mood label="curious" intensity="0.5"/>', "好问题。", "你觉得", "美德能教吗？"]),
+                     voice_io=io)
+    c = signed_in(create_app(deps, tokens=Tokens("k")))
+    send(c, "a", "美德可以教吗")
+    t = tid(c, "a")
+    assert c.post(f"/threads/{t}/speech", json={"text": "好问题。你觉得美德能教吗？"}).status_code == 200
+    assert c.post(f"/threads/{t}/speech", json={"text": "好问题。 你觉得美德能教吗？"}).status_code == 200
+    assert c.post(f"/threads/{t}/speech", json={"text": "别的话"}).status_code == 400
