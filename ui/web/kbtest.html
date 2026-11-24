@@ -24,7 +24,7 @@ body.fix #app { position:fixed; inset:0; height:auto; }
 #think { position:absolute; max-width:180px; padding:5px 8px; background:var(--paper); border:2px dashed var(--ink); border-radius:12px; font-size:13px; line-height:1.3; visibility:hidden; }
 /* No smooth fades anywhere: things appear and leave by a pixel dissolve (ordered dither, 4px blocks; dissolve() below). */
 #back { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:12px; width:44px; height:44px; border:2px solid var(--ink); background:var(--paper); color:var(--ink); font:20px inherit; box-shadow:2px 3px 0 rgba(0,0,0,.25); z-index:5; }
-#chat { position:absolute; left:10px; right:10px; top:var(--chat-top); bottom:calc(var(--kb) + var(--pad-b) + var(--composer) + 8px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-top:64px; transition:top var(--dur) cubic-bezier(.2,.8,.2,1), bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
+#chat { position:absolute; left:10px; right:10px; top:var(--chat-top); bottom:calc(var(--kb) + var(--pad-b) + var(--composer) + 8px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-top:16px; transition:top var(--dur) cubic-bezier(.2,.8,.2,1), bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
 #chat .sp { margin-top:auto; }
 .b { max-width:82%; padding:8px 11px; background:var(--paper); border:2px solid var(--ink); box-shadow:2px 3px 0 rgba(0,0,0,.25); font-size:16px; line-height:1.4; }
 .b.me { align-self:flex-end; background:#e6efd7; }
@@ -186,18 +186,19 @@ function dissolve(el, show, ms = 260) {
   };
   el._dz = requestAnimationFrame(step);
 }
-// The chat's top edge: a 20-block band. Visibility rises smoothly down the band, and each block's
-// random threshold decides when it appears, so old messages crumble upward instead of meeting a line.
-const EDGE_ROWS = 20;
-function edgeMask() {
-  const w = Math.ceil(chat.clientWidth / BLOCK) * BLOCK, cols = w / BLOCK, t = thresholds(cols, EDGE_ROWS, 12345);
-  const keepAt = r => { const x = (r + 0.5) / EDGE_ROWS; return x * x * (3 - 2 * x); };   // smoothstep
-  setMask(chat, [[maskUrl(w, EDGE_ROWS * BLOCK, cols, EDGE_ROWS, (k, r) => t[r * cols + k] < keepAt(r)), "0 0", `${w}px ${EDGE_ROWS * BLOCK}px`, "no-repeat"],
-                 ["linear-gradient(#000,#000)", `0 ${EDGE_ROWS * BLOCK}px`, `100% calc(100% - ${EDGE_ROWS * BLOCK}px)`, "no-repeat"]]);
-}
-edgeMask(); addEventListener("resize", edgeMask);
+// No band on the screen: each bubble dissolves on its own. When a bubble starts to leave the top of
+// the chat it crumbles away as a whole; when it comes fully back into view it dissolves in again.
+const io = new IntersectionObserver(entries => {
+  for (const e of entries) {
+    const el = e.target, leavingTop = e.boundingClientRect.top < e.rootBounds.top + 0.5;
+    if (e.intersectionRatio < 0.98 && leavingTop) { if (el._shown) { el._shown = false; dissolve(el, false, 300); } }
+    else if (e.intersectionRatio >= 0.98 && el._shown === false) { el._shown = true; dissolve(el, true, 300); }
+  }
+}, { root: chat, rootMargin: "-12px 0px 0px 0px", threshold: [0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.98, 1] });
 
-function bubble(text, me) { const b = document.createElement("div"); b.className = "b" + (me ? " me" : ""); b.textContent = text; b.style.visibility = "hidden"; chat.append(b); chat.scrollTop = chat.scrollHeight; dissolve(b, true, 200); return b; }
+function bubble(text, me) { const b = document.createElement("div"); b.className = "b" + (me ? " me" : ""); b.textContent = text; b.style.visibility = "hidden"; b._shown = true; chat.append(b);
+  chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });   // older bubbles glide up and dissolve one by one
+  dissolve(b, true, 260); io.observe(b); return b; }
 const THOUGHTS = ["What does this friend mean by that?", "Is it pleasure they want, or something steadier?", "Better to ask than to tell."];
 const REPLIES = ["Then tell me: is a pleasant life always a good one?", "You say that easily. But what would you give up for it?", "Let us look closely, you and I. What do you call good?"];
 const MOODS = ["curious", "amused", "skeptical", "pleased", "attentive"];   // one per canned reply, to see every face
