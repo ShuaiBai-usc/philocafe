@@ -32,20 +32,20 @@ FRAMES = ("open", "half", "closed", "talk1", "talk2")
 TIMING = {"half": 55, "closed": 85, "blink_every": [2800, 6500], "talk": [90, 150]}
 
 # eyes: (x0, x1, lid row, eye row) and pupil (p0, p1), image-left eye first; brows: (x0, x1, y0, y1);
-# mouth: (row, x0, x1); lips=True draws the open mouth's lip in red (for mouths inside a dark beard)
+# mouth: (row, x0, x1), the line between the lips just under the moustache, not the beard below it; lips=True draws the open mouth's lip in red (for mouths inside a dark beard)
 FACES = {
     "socrates": dict(src="socrates_restyled_gen.jpg",
                      eyes=[((64, 66, 57, 58), (65, 65)), ((74, 76, 57, 58), (75, 75))],
-                     brows=[(62, 67, 54, 56), (73, 78, 54, 56)], mouth=(69, 69, 72), lips=False),
+                     brows=[(62, 67, 54, 56), (73, 78, 54, 56)], mouth=(67, 67, 73), lips=False),
     "montaigne": dict(src="montaigne_restyled_gen.jpg",
                       eyes=[((63, 68, 60, 61), (66, 67)), ((73, 79, 60, 61), (76, 77))],
-                      brows=[(63, 69, 57, 58), (73, 79, 57, 58)], mouth=(69, 69, 74), lips=True),
+                      brows=[(63, 69, 57, 58), (73, 79, 57, 58)], mouth=(68, 69, 74), lips=True),
     "seneca": dict(src="seneca_restyled_gen.jpg",
                    eyes=[((64, 67, 57, 58), (65, 66)), ((74, 77, 57, 58), (75, 76))],
-                   brows=[(62, 69, 54, 56), (72, 79, 54, 56)], mouth=(69, 69, 72), lips=True),
+                   brows=[(62, 69, 54, 56), (72, 79, 54, 56)], mouth=(67, 68, 74), lips=True),
     "epictetus": dict(src="epictetus_restyled_gen.jpg",
                       eyes=[((64, 67, 57, 58), (66, 66)), ((73, 76, 57, 58), (75, 75))],
-                      brows=[(63, 68, 54, 56), (72, 78, 54, 56)], mouth=(69, 69, 72), lips=False),
+                      brows=[(63, 68, 54, 56), (72, 78, 54, 56)], mouth=(67, 67, 74), lips=False),
     "schopenhauer": dict(src="schopenhauer_seated_gen.jpg",
                          eyes=[((64, 67, 58, 59), (66, 66)), ((74, 77, 58, 59), (75, 75))],
                          brows=[(62, 69, 55, 57), (72, 79, 55, 57)], mouth=(67, 68, 73), lips=False),

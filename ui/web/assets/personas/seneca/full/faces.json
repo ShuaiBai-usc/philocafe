@@ -7,7 +7,7 @@
     "x": 60,
     "y": 52,
     "w": 22,
-    "h": 21
+    "h": 19
   },
   "moods": [
     "attentive",
@@ -33,7 +33,7 @@
       56,
       38,
       85,
-      80
+      78
     ]
   },
   "source": "seneca_restyled_gen.jpg",
