@@ -172,17 +172,39 @@ function setMask(el, layers) {   // layers: [[image, position, size, repeat], ..
 }
 function clearMask(el) { for (const pre of ["webkitMask", "mask"]) for (const k of ["Image", "Position", "Size", "Repeat"]) el.style[pre + k] = ""; }
 let seedN = 7;
-function dissolve(el, show, ms = 260) {
+// Frames are clip-path polygons built from the visible blocks: applied synchronously, so no frame is
+// lost waiting for an image to decode (iOS Safari skipped mask-image frames). Mask stays as a fallback.
+const CLIP = CSS.supports("clip-path", 'path("M0 0h1v1z")');
+function blocksPath(cols, rows, keep) {
+  let d = "";
+  for (let r = 0; r < rows; r++) {               // merge runs of visible blocks on a row into one rect
+    let k = 0;
+    while (k < cols) {
+      if (!keep(k, r)) { k++; continue; }
+      const k0 = k; while (k < cols && keep(k, r)) k++;
+      d += `M${k0 * BLOCK} ${r * BLOCK}h${(k - k0) * BLOCK}v${BLOCK}h${-(k - k0) * BLOCK}z`;
+    }
+  }
+  return `path("${d || "M0 0z"}")`;
+}
+function dissolve(el, show, ms = 280, done) {
   cancelAnimationFrame(el._dz);
   if (show) el.style.visibility = "visible";
-  const w = Math.ceil(el.offsetWidth / BLOCK) * BLOCK, h = Math.ceil(el.offsetHeight / BLOCK) * BLOCK;
-  const cols = w / BLOCK, rows = h / BLOCK, t = thresholds(cols, rows, seedN++ * 2654435761);
+  const w = Math.ceil(el.offsetWidth / BLOCK) * BLOCK + BLOCK, h = Math.ceil(el.offsetHeight / BLOCK) * BLOCK + BLOCK;   // +1 block for the shadow
+  const cols = w / BLOCK, rows = h / BLOCK, t = thresholds(cols, rows, seedN++ * 2654435761), STEPS = 24;
+  const frames = [];
+  for (let i = 0; i <= STEPS; i++) {
+    const lv = i / STEPS, keep = (k, r) => t[r * cols + k] < lv;
+    frames.push(CLIP ? blocksPath(cols, rows, keep) : maskUrl(w, h, cols, rows, keep));
+  }
+  const paint = i => CLIP ? (el.style.clipPath = el.style.webkitClipPath = frames[i]) : setMask(el, [[frames[i], "0 0", `${w}px ${h}px`, "no-repeat"]]);
   const t0 = performance.now(); let last = -1;
+  paint(show ? 0 : STEPS);
   const step = now => {
-    const f = Math.min(1, (now - t0) / ms), lv = Math.round((show ? f : 1 - f) * 24) / 24;   // 24 steps
-    if (lv !== last) { last = lv; setMask(el, [[maskUrl(w, h, cols, rows, (k, r) => t[r * cols + k] < lv), "0 0", `${w}px ${h}px`, "no-repeat"]]); }
+    const f = Math.min(1, (now - t0) / ms), i = Math.round((show ? f : 1 - f) * STEPS);
+    if (i !== last) { last = i; paint(i); }
     if (f < 1) el._dz = requestAnimationFrame(step);
-    else { clearMask(el); if (!show) el.style.visibility = "hidden"; }
+    else { el.style.clipPath = el.style.webkitClipPath = ""; clearMask(el); if (!show) el.style.visibility = "hidden"; done?.(); }
   };
   el._dz = requestAnimationFrame(step);
 }
@@ -196,9 +218,24 @@ const io = new IntersectionObserver(entries => {
   }
 }, { root: chat, rootMargin: "-12px 0px 0px 0px", threshold: [0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.98, 1] });
 
-function bubble(text, me) { const b = document.createElement("div"); b.className = "b" + (me ? " me" : ""); b.textContent = text; b.style.visibility = "hidden"; b._shown = true; chat.append(b);
-  chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });   // older bubbles glide up and dissolve one by one
-  dissolve(b, true, 260); io.observe(b); return b; }
+// A new bubble: first the bubbles that the scroll would push past the top dissolve where they stand,
+// in full view; then the chat scrolls and the new bubble dissolves in. The dissolve is never hidden by the clip.
+const EXIT_ZONE = 10;
+function exitBefore(scrollTo) {
+  let n = 0;
+  for (const el of chat.querySelectorAll(".b")) {
+    if (el._shown && el.offsetTop - scrollTo < EXIT_ZONE) { el._shown = false; dissolve(el, false, 280); n++; }
+  }
+  return n;
+}
+function bubble(text, me) {
+  const b = document.createElement("div"); b.className = "b" + (me ? " me" : ""); b.textContent = text;
+  b.style.visibility = "hidden"; b._shown = true; chat.append(b);
+  const target = chat.scrollHeight - chat.clientHeight;
+  const wait = exitBefore(target) ? 220 : 0;      // let the old ones mostly crumble before anything moves
+  setTimeout(() => { chat.scrollTo({ top: target, behavior: "smooth" }); dissolve(b, true, 280); io.observe(b); }, wait);
+  return b;
+}
 const THOUGHTS = ["What does this friend mean by that?", "Is it pleasure they want, or something steadier?", "Better to ask than to tell."];
 const REPLIES = ["Then tell me: is a pleasant life always a good one?", "You say that easily. But what would you give up for it?", "Let us look closely, you and I. What do you call good?"];
 const MOODS = ["curious", "amused", "skeptical", "pleased", "attentive"];   // one per canned reply, to see every face
