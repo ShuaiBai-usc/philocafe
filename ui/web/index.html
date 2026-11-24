@@ -135,9 +135,8 @@ p { margin: 0; }
 /* Reply actions (7.9): small pixel icons under each persona reply */
 .acts { display: flex; gap: 2px; margin: -8px 0 0 58px; }
 #chat.convo .acts { margin-top: -12px; }
-.acts button { width: 30px; height: 30px; display: grid; place-items: center; border: 2px solid transparent; }
-.acts button:hover, .acts button:focus-visible { border-color: var(--clay); }
-.acts button[aria-pressed="true"] { background: var(--sage); border-color: var(--ink); }
+.acts button { width: 30px; height: 30px; display: grid; place-items: center; }
+.acts button:focus-visible { outline: 2px dashed var(--clay); outline-offset: -2px; }
 .acts button:disabled { opacity: .4; cursor: default; }
 .acts:not(.latest) .regen { display: none; }
 .more { width: 30px; height: 30px; display: grid; place-items: center; flex: none; align-self: flex-start; margin: 2px -6px 0 -4px; border: 2px solid transparent; }
@@ -386,7 +385,8 @@ const ICONS = {
   markFull: "M5 2h12v18h-2v-2h-2v-2H9v2H7v2H5z",
   copy: "M4 4h10v2H4zM4 6h2v10H4zM4 14h4v2H4zM12 6h2v2h-2zM8 8h10v2H8zM8 10h2v8H8zM16 10h2v8h-2zM8 16h10v2H8z",
   book: "M2 4h8v2H2zM12 4h8v2h-8zM2 6h2v12H2zM18 6h2v12h-2zM10 6h2v14h-2zM4 16h6v2H4zM12 16h6v2h-6zM5 9h3v2H5zM14 9h3v2h-3zM5 12h3v2H5zM14 12h3v2h-3z",
-  up: "M3 10h4v9H3zM7 10h2v9H7zM9 6h2v4H9zM11 3h2v7h-2zM13 9h5v2h-5zM17 11h2v6h-2zM9 17h8v2H9z",
+  up: "M2 9h6v2H2zM2 11h2v6H2zM2 17h6v2H2zM6 11h2v6H6zM8 5h2v12H8zM10 3h2v2h-2zM12 5h2v4h-2zM12 9h6v2h-6zM18 11h2v6h-2zM8 17h10v2H8z",
+  upFull: "M2 9h6v10H2zM8 5h2v14H8zM10 3h2v16h-2zM12 5h2v14h-2zM14 9h4v10h-4zM18 11h2v6h-2z",
   // two arrows chasing each other round (a single arrow read as "back" or "undo")
   regen: "M2 6h2v4H2zM4 4h2v2H4zM6 2h9v2H6zM15 0h2v6h-2zM17 1h2v4h-2zM19 2h2v2h-2zM18 12h2v4h-2zM16 16h2v2h-2zM7 18h9v2H7zM5 16h2v6H5zM3 17h2v4H3zM1 18h2v2H1z",
   more: "M3 9h4v4H3zM9 9h4v4H9zM15 9h4v4h-4z"
@@ -394,8 +394,8 @@ const ICONS = {
 const COLORS = { ink: "#6b4e2e", paper: "#fffae0", clay: "#d4aa73", muted: "#79694f" };
 const icon = (name, color = "ink", size = 22) => {
   const box = name === "back" ? '<rect x=".5" y=".5" width="21" height="21" fill="none" stroke="#d4aa73"/>' : "";
-  const down = name === "down";                       // thumbs down = thumbs up flipped
-  return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 22 22" shape-rendering="crispEdges" aria-hidden="true">${box}<path fill="${COLORS[color]}" d="${ICONS[down ? "up" : name]}"${down ? ' transform="matrix(1 0 0 -1 0 22)"' : ""}/></svg>`;
+  const down = name.startsWith("down");               // thumbs down = thumbs up flipped
+  return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 22 22" shape-rendering="crispEdges" aria-hidden="true">${box}<path fill="${COLORS[color]}" d="${ICONS[down ? name.replace("down", "up") : name]}"${down ? ' transform="matrix(1 0 0 -1 0 22)"' : ""}/></svg>`;
 };
 const TAIL = {
   them: '<svg class="tail" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="#6b4e2e" d="M0 0h14v2H0zM12 2h2v2h-2zM10 4h2v2h-2zM12 6h2v2h-2zM12 8h2v2h-2z"/><path fill="#faedcd" d="M0 2h12v2H0zM0 4h10v2H0z"/></svg>',
@@ -718,6 +718,7 @@ function pauseScene() { sceneActor?.stop(); sceneActor = null; }
 // Leaving for the café keeps the conversation; the Conversation tab brings it back.
 function leaveChat() { pauseScene(); show("home"); }
 function resumeChat() {
+  syncBookmarks();
   if (paused && isPaused()) return restorePaused();
   if (!cur || !$(".dock", chat)) return noChatYet();
   const wrap = $(".scene-wrap", chat);
@@ -915,15 +916,25 @@ function addActions(b, ex) {
   row.after(acts);
   return acts;
 }
+// Selected = the filled icon, unselected = the outline; no frame or background.
 const setIcon = (x, name, color = "muted") => { x.innerHTML = icon(name, color, 18); };
+const markSaved = (x, on) => { x.setAttribute("aria-pressed", on); x.setAttribute("aria-label", on ? "Remove from My notes" : "Save to My notes"); setIcon(x, on ? "markFull" : "mark", on ? "ink" : "muted"); };
+// A note deleted in My notes empties its bookmark when the chat comes back.
+const syncBookmarks = () => document.querySelectorAll(".acts").forEach(a => {
+  if (a._ex.noteId && !notes.some(n => n.id === a._ex.noteId)) { a._ex.noteId = null; markSaved($(".save", a), false); }
+});
 
 const ACTIONS = {
-  async save(acts, x) {
+  async save(acts, x) {             // tap again to take the note back out of My notes
     const ex = acts._ex;
-    if (ex.noteId && notes.some(n => n.id === ex.noteId)) return toast("Already in My notes");
+    if (ex.noteId && notes.some(n => n.id === ex.noteId)) {
+      notes = notes.filter(n => n.id !== ex.noteId); store.set(notes); ex.noteId = null;
+      markSaved(x, false);
+      return toast("Removed from My notes");
+    }
     x.disabled = true;
     ex.noteId = await saveExchange(ex);
-    x.disabled = false; x.setAttribute("aria-pressed", "true"); setIcon(x, "markFull", "ink");
+    x.disabled = false; markSaved(x, true);
     toast("Saved to My notes");
   },
   async copy(acts) {
@@ -940,15 +951,12 @@ async function rate(acts, x, rating) {
   const ex = acts._ex;
   const off = ex.rating === rating;
   ex.rating = off ? null : rating;
-  acts.querySelectorAll(".up, .down").forEach(b => { const on = b.dataset.a === ex.rating; b.setAttribute("aria-pressed", on); setIcon(b, b.dataset.a, on ? "ink" : "muted"); });
+  acts.querySelectorAll(".up, .down").forEach(b => { const on = b.dataset.a === ex.rating; b.setAttribute("aria-pressed", on); setIcon(b, b.dataset.a + (on ? "Full" : ""), on ? "ink" : "muted"); });
   if (off) return;
-  const before = prefs.get();
   let next = null;
   if (backend.live) { try { next = await backend.rate(rating, ex); } catch {} }
   next = next || prefs.rule(rating, ex.them);
-  prefs.set(next);
-  const moved = Object.keys(DIALS).filter(k => next[k] !== before[k]).map(k => DIALS[k][next[k] > before[k] ? 1 : 0]);
-  toast(moved.length ? `Noted: ${moved.join(", ")} from now on` : "Thanks for the feedback");
+  prefs.set(next);                   // silent: the ⋯ menu shows the reply style
 }
 
 // Regenerate (FR-41): the latest reply is answered again and replaces the old one in place.
