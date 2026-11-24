@@ -20,6 +20,7 @@ from app.personas import PersonaConfig
 from app.prefs import prefs_note
 from app.quotes import LeadingNotesFilter, QuoteFilter
 from app.retrieval import Chunk
+from app.suggest import NEXT_RULE, NextFilter, parse
 from app.state import TurnState
 from app.translate import needs_translation, script_language
 
@@ -39,7 +40,7 @@ def quoting_rules(persona: PersonaConfig) -> str:
 
 
 REPLY_RULE = ("Write only what you say to the person. Never include notes to yourself, drafts, reasoning, "
-              "or any tags other than the opening mood tag and <q>.")
+              "or any tags other than the opening mood tag, <q> and the closing <next> block.")
 
 REENTRY_NOTE = ("The person stepped away from your conversation for a while to get support, and has now asked "
                 "to continue with you. Welcome them back warmly in a sentence, don't bring up the difficult "
@@ -63,7 +64,7 @@ def language_note(text: str) -> str:
 def system_prompt(persona: PersonaConfig) -> str:
     style = "\n".join(f"- {rule}" for rule in persona.style)
     return (f"{persona.prompt}\n\nHow you talk:\n{style}\n- {REPLY_RULE}\n\n{mood_rule(persona.moods)}"
-            f"\n\n{quoting_rules(persona)}")
+            f"\n\n{quoting_rules(persona)}\n\n{NEXT_RULE}")
 
 
 def passages_note(chunks: Sequence[Chunk], retrieved: bool, texts: str = "your writings") -> str:
@@ -134,7 +135,8 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
             log.error("retrieval failed for %s: %s: %s", persona.corpus, type(e).__name__, e)
 
     # 7.5: the mood tag comes off first. From tier 2 up the mood is locked and the tag ignored (FR-34).
-    moodf, notes, quotes = MoodTagFilter(persona.moods), LeadingNotesFilter(), QuoteFilter(chunks)
+    # 7.9: the <next> block at the end comes off before the quote check too.
+    moodf, notes, nextf, quotes = MoodTagFilter(persona.moods), LeadingNotesFilter(), NextFilter(), QuoteFilter(chunks)
     locked = state["safety"]["tier"] >= 2
     mood, candidate = (dict(LOCKED), None) if locked else (None, state.get("mood_candidate"))
     if locked:
@@ -170,16 +172,23 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
     for delta in deps.generate(system_prompt(persona), messages):
         text = moodf.feed(delta)
         settle()
-        send(quotes.feed(notes.feed(text)))
+        send(quotes.feed(nextf.feed(notes.feed(text))))
     text = moodf.close()
     settle()
-    send(quotes.feed(notes.feed(text)))
-    send(quotes.feed(notes.close()))
+    send(quotes.feed(nextf.feed(notes.feed(text))))
+    send(quotes.feed(nextf.feed(notes.close())))
+    send(quotes.feed(nextf.close()))
     send(quotes.close())
+    # Suggestions only while the conversation is ordinary (tier 0-1); none from tier 2 up.
+    suggestions = [] if locked else parse(nextf.block)
+    if suggestions:
+        emit("suggestions", items=suggestions)
     if notes.dropped:
         log.warning("dropped notes the voice model wrote before its reply")
 
-    reply = "".join(parts)
+    reply = "".join(parts).rstrip()
     return {"retrieved": chunks, "reply": reply, "citations": quotes.cited, "quotes": quotes.checks,
             "retrieval_query": query, "mode": "persona", "mood": mood, "mood_candidate": candidate,
-            "messages": [AIMessage(reply, name=persona.id, additional_kwargs={"citations": cited, "mood": mood})]}
+            "suggestions": suggestions,
+            "messages": [AIMessage(reply, name=persona.id,
+                                   additional_kwargs={"citations": cited, "mood": mood, "suggestions": suggestions})]}

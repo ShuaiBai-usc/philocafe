@@ -116,6 +116,11 @@ p { margin: 0; }
 .say.typing::after { content: "▌"; position: static; animation: none; }
 .label { font: 8px/10px var(--f-label); letter-spacing: .1em; text-transform: uppercase; }
 .chips { display: flex; flex-direction: column; gap: 9px; }
+/* Suggested next messages (7.9, FR-46): under the latest reply, tap to send. */
+.nexts { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0 58px; }
+#chat.convo .nexts { margin-top: -6px; }
+.nexts button { text-align: left; background: var(--white); border: 1.5px solid var(--ink); box-shadow: 2px 2px 0 var(--shadow); padding: 6px 10px; font-size: 14px; line-height: 18px; color: var(--ink); }
+.nexts button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
 .chip { text-align: left; background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 8px 12px; font-size: 16px; line-height: 21px; white-space: pre-wrap; }
 
 .row { display: flex; gap: 16px; align-items: flex-start; position: relative; }
@@ -964,8 +969,21 @@ function typeInto(node, text, done) {
 }
 const scrollDown = () => { const s = $("#scroll"); if (s) s.scrollTop = s.scrollHeight; };
 
+function clearNexts() { document.querySelectorAll(".nexts").forEach(n => n.remove()); }
+function showNexts(acts, items) {
+  clearNexts();
+  if (!acts || !items?.length || isPaused()) return;
+  const box = el("div", "nexts");
+  box.setAttribute("role", "group"); box.setAttribute("aria-label", "Things you might say next");
+  for (const t of items) {
+    const b = el("button"); b.type = "button"; b.textContent = t;          // model text: never as HTML
+    b.onclick = () => { if (busy) return; unlockAudio(); clearNexts(); send(t); };
+    box.append(b);
+  }
+  acts.after(box); scrollDown();
+}
 function bubble(who, text) {
-  if (who === "me") document.querySelectorAll(".acts.latest").forEach(a => a.classList.remove("latest"));
+  if (who === "me") { document.querySelectorAll(".acts.latest").forEach(a => a.classList.remove("latest")); clearNexts(); }
   const row = el("div", "row " + who);
   if (who === "them") row.append(Object.assign(el("img", "ava px"), { src: `${A}mono_${curId}.png`, alt: "" }));
   const b = el("div", "bubble"); b.textContent = text ?? "";
@@ -1021,6 +1039,7 @@ function restorePaused() {
   enterSupport(cur);
 }
 function enterSupport(p) {
+  clearNexts();
   clearInterval(typer);
   if (!chat.classList.contains("convo")) { chat.classList.add("convo"); $("#scroll").innerHTML = ""; }
   systemCard(`This conversation is paused, and ${p.name} is waiting nearby. You can tell me how you are. When you feel ready, tap the button below.`);
@@ -1067,7 +1086,7 @@ async function checkIn(p, safe) {
 
 // Reads one turn's events into bubble `b` (7.2); shared by a new message and Regenerate.
 async function streamInto(b, events) {
-  const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null, messageId: null, mood: null };
+  const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null, messageId: null, mood: null, suggestions: [] };
   thinkingPose();
   try {
     for await (const ev of events) {
@@ -1075,6 +1094,8 @@ async function streamInto(b, events) {
       if (ev.type === "voice") {
         out.voice = d.speaker;
         if (out.voice === "persona") { b.textContent = ""; backend.setPaused(false); leaveSupport(); }
+      } else if (ev.type === "suggestions") {
+        out.suggestions = d.items || [];
       } else if (ev.type === "mood") {
         out.mood = d; showMood(d);
       } else if (ev.type === "token") {
@@ -1123,6 +1144,7 @@ async function sendLive(text, intent = null) {
   }
   history.push({ role: "assistant", content: r.said });
   const acts = addActions(b, { who: id, you: text, them: b.textContent, cites: r.cites, thread: curThread, messageId: r.messageId });
+  showNexts(acts, r.suggestions);
   scrollDown();
   if ((readAloud.get() || spoken) && voiceOn() && r.messageId) speak(acts);    // a spoken message always gets a spoken reply
 }
@@ -1451,7 +1473,8 @@ async function regenerate(acts) {
   busy = true; $(".send").disabled = true;
   acts.querySelectorAll("button").forEach(x => x.disabled = true);
   b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
-  let said = null, cites = [];
+  clearNexts();
+  let said = null, cites = [], nexts = [];
   if (backend.live) {
     const r = await streamInto(b, backend.turn(ex.thread, null, null, true));
     if (r.voice === "system") {                      // the safety node decides again; it may pause
@@ -1462,7 +1485,7 @@ async function regenerate(acts) {
       systemCard(r.said, r.resources);
       return comeBack(PH[ex.who]);
     }
-    if (!r.failed && r.voice === "persona") { said = b.textContent; cites = r.cites; ex.messageId = r.messageId; }
+    if (!r.failed && r.voice === "persona") { said = b.textContent; cites = r.cites; ex.messageId = r.messageId; nexts = r.suggestions; }
   } else {
     const p = PH[ex.who];
     const reply = p.fallback[fbIdx++ % p.fallback.length];
@@ -1474,7 +1497,7 @@ async function regenerate(acts) {
   if (said == null) { b.textContent = old; acts.querySelectorAll("button").forEach(x => x.disabled = false); return toast("Couldn’t regenerate just now"); }
   const last = history.map(m => m.role).lastIndexOf("assistant");
   if (last >= 0) history[last].content = said;
-  addActions(b, { ...ex, them: said, cites });
+  showNexts(addActions(b, { ...ex, them: said, cites }), nexts);
   scrollDown();
 }
 
@@ -1760,6 +1783,8 @@ async function openThread(r) {
   document.querySelectorAll(".acts").forEach(a => a.classList.remove("latest"));
   const lastActs = [...document.querySelectorAll("#scroll > *")].pop();
   if (lastActs?.classList.contains("acts")) lastActs.classList.add("latest");     // only a final persona reply can be regenerated
+  const lastMsg = h.messages[h.messages.length - 1];
+  if (!h.paused && lastActs?.classList.contains("acts") && lastMsg?.role === "persona") showNexts(lastActs, lastMsg.suggestions);
   backend.setPaused(h.paused);
   const lastMood = [...h.messages].reverse().find(m => m.role === "persona")?.mood;
   if (h.paused) showMood({ label: "attentive", intensity: 0.2, locked: true });   // FR-34

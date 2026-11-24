@@ -42,3 +42,4 @@ class TurnState(TypedDict, total=False):
     trace: list[NodeTiming]       # node name + ms, for the debug panel
     mood: PersonaMood             # 7.5: smoothed, carried across turns
     mood_candidate: str | None    # a new label waiting for its second turn (7.5 smoothing)
+    suggestions: list[str]        # 7.9: what the user might say next, shown under this turn's reply

@@ -273,6 +273,8 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
                 out.append({"id": m.id, "role": "system" if system else "persona", "text": m.content,
                             "citations": [] if system else m.additional_kwargs.get("citations", []),
                             **({} if system or not m.additional_kwargs.get("mood") else {"mood": m.additional_kwargs["mood"]}),
+                            **({} if system or not m.additional_kwargs.get("suggestions")
+                               else {"suggestions": m.additional_kwargs["suggestions"]}),
                             "rating": None if system else c["ratings"].get(m.id)})
         return JSONResponse({"thread_id": thread_id, "persona_id": c["persona_id"], "title": c["title"],
                              "messages": out, "paused": bool(user["paused"])})

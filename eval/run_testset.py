@@ -146,6 +146,7 @@ def run_item(graphs: Graphs, item: dict, persona: str, thread_id: str, safety_on
     decision = state.get("safety") or {}
     return {
         "safety": first("safety"), "error": first("error"), "mood": first("mood"),
+        "suggestions": (first("suggestions") or {}).get("items", []),
         # Tier probabilities let eval/sweep.py replay the decision rule at other thresholds (FR-61).
         "tier_probs": {str(k): v for k, v in (decision.get("tier_probs") or {}).items()},
         "mode_before": mode_before,
@@ -215,7 +216,7 @@ def run(items: list[dict], deps: Deps, run_id: str, commit: str, retries: int = 
                         "context": item.get("context", []), "expected_tier": item["expected_tier"],
                         "persona": persona, "attempts": attempt + 1,
                         "cached": calls > 0 and calls == hits,
-                        **{k: res[k] for k in ("voice", "error", "reply", "citations", "quotes", "retrieval_query",
+                        **{k: res[k] for k in ("voice", "error", "reply", "citations", "quotes", "retrieval_query", "suggestions",
                                                "retrieved", "skipped", "nodes", "ttft_ms", "total_ms",
                                                "tier_probs", "mode_before")}})
     return rows, replies
