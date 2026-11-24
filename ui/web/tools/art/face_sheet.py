@@ -8,7 +8,7 @@ anchors per persona read off the grid:
     brows   a box around each brow; the brow is whatever in the box is not skin, so it can be lifted or tilted
     mouth   the row of the mouth line and its columns
 Frames: open, half (lid down to the pupil), closed (one lash line), talk1 / talk2 (the mouth opens).
-Moods: attentive (the face as drawn), curious (brows up, eyes a row taller), amused (squint, cheeks up,
+Moods: attentive (the face as drawn), curious (brows up, eyes a row taller when 5+ cells wide), amused (squint, cheeks up,
 corners up, blush), skeptical (one brow up, the other's inner end down, that eye half shut), pondering
 (inner brow ends down, eyes to the side), pleased (closed smiling eyes, corners up, blush).
 
@@ -129,12 +129,15 @@ class Face:
             for x in range(x0, x1 + 1):
                 p[t, x] = self.shade
                 p[b, x] = self.pupil if p0 <= x <= p1 else self.lash
-        elif how == "wide":
-            for x in range(x0 + 1, x1): p[t - 1, x] = self.lash
-            for x in range(x0 + 1, x1): p[t, x] = self.pupil if p0 <= x <= p1 else self.white
-        elif how == "squint":
-            p[b, x0] = p[b, x1] = self.lash
-            for x in range(x0, x1 + 1): p[b + 1, x] = self.light
+        elif how == "wide":                     # a row taller; an eye under 5 cells wide stays as drawn
+            if x1 - x0 + 1 >= 5:
+                for x in range(x0 + 1, x1): p[t - 1, x] = self.lash
+                for x in range(x0 + 1, x1): p[t, x] = self.pupil if p0 <= x <= p1 else self.white
+        elif how == "squint":                   # the whites go to lid shade, the cheek rises under the eye
+            for x in range(x0, x1 + 1):
+                if not (p0 <= x <= p1) and lum(p[b, x]) > lum(self.skin) + 15:
+                    p[b, x] = self.shade
+                p[b + 1, x] = self.light
         elif how == "side":                     # both pupils one column to the image-right
             for y in (t, b):
                 row = [tuple(p[y, x]) for x in range(x0, x1 + 1)]
