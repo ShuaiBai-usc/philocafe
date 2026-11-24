@@ -63,6 +63,18 @@ def dith(x0, y0, x1, y1, c1, c2):
         for x in range(x0, x1): put(x, y, c1 if (x + y) % 2 else c2)
 
 # ---------- room ----------
+def band(stops, f, x, y, d=.07):
+    """The bust's way of shading: flat tones whose borders are a checkerboard of the two
+    neighbours, a few cells wide. stops = ((colour, up_to_f), ...), last up_to_f = 1."""
+    for i, (c, up) in enumerate(stops[:-1]):
+        nxt = stops[i + 1][0]
+        if f < up - d: return c
+        if f < up + d: return c if (x + y) % 2 else nxt
+    return stops[-1][0]
+ROBE = (('robehi', .16), ('robe', .58), ('robe2', .86), ('robe3', 1))
+ROBE_TOP = (('robehi', .3), ('robe', .78), ('robe2', 1))
+ROBE_LOW = (('robe', .22), ('robe2', .72), ('robe3', 1))
+CHAIR = (('chairhi', .12), ('chair', .8), ('chair2', 1))
 P.update(floor=(150,108,72), floor2=(138,98,64), floorhi=(164,120,80), floordk=(118,82,52),
          rug=(178,186,150), rug2=(160,170,132), rugedge=(132,142,104), rughi=(196,202,170),
          shadow=(120,86,58), sandal=(122,84,52), sandal2=(98,66,40), strap=(148,87,61))
@@ -70,19 +82,22 @@ CX = 54                          # Socrates' centre line
 FLOOR = 162                      # where the wall meets the floor (the chair stands here)
 for x in range(W):
     for y in range(0, 116):
-        put(x, y, 'wall2' if (x // 3) % 3 == 0 else 'wall')
-dith(0, 0, W, 6, 'wall', 'wall2')
+        stripe = (x // 3) % 3 == 0
+        g = (x + y * .6) / (W + 70)                  # light falls from the upper left
+        put(x, y, band((('wallhi', .18), ('wall', .62), ('wall2', 1)), g, x, y, .05) if not stripe else
+                  band((('wall', .4), ('wall2', 1)), g, x, y, .06))
 rect(0, 116, W, FLOOR, 'panel'); rect(0, 116, W, 118, 'panelhi'); rect(0, 118, W, 119, 'paneldk')
 for x in range(4, W, 13):
     rect(x, 122, x + 10, 123, 'panelhi'); rect(x, 123, x + 1, 157, 'panelhi'); rect(x + 9, 123, x + 10, 157, 'panel2'); rect(x, 156, x + 10, 157, 'panel2')
 rect(0, FLOOR - 2, W, FLOOR, 'paneldk')
 rect(0, FLOOR, W, H, 'floor')
-for y in range(FLOOR + 7, H, 9): rect(0, y, W, y + 1, 'floor2')
+for y in range(FLOOR + 7, H, 9):
+    rect(0, y, W, y + 1, 'floor2'); dith(0, y + 1, W, y + 2, 'floor', 'floor2')
 RUG_TOP = 172
 for y in range(RUG_TOP, H):
     k = (y - RUG_TOP) // 5
     l, r = 16 - k, W - 17 + k
-    rect(l, y, r + 1, y + 1, 'rug')
+    for x in range(l, r + 1): put(x, y, band((('rug2', .2), ('rug', .7), ('rughi', 1)), (y - RUG_TOP) / (H - RUG_TOP) * .8 + (x - l) / (r - l) * .2, x, y, .06))
     if y == RUG_TOP + 2: rect(l + 2, y, r - 1, y + 1, 'rug2')
     elif y > RUG_TOP + 2: put(l + 2, y, 'rug2'); put(r - 2, y, 'rug2')
 # bookshelf
@@ -134,7 +149,7 @@ BACK_TOP = SHOULDER - 2          # the low back meets his shoulders
 for y in range(BACK_TOP, WAIST + 8):
     half = 42 if y > BACK_TOP + 4 else 42 - (BACK_TOP + 4 - y) // 2 * 2
     for x in range(CX - half, CX + half):
-        c = 'chairhi' if x < CX - half + 3 or y < BACK_TOP + 2 else 'chair2' if x > CX + half - 4 else 'chair'
+        c = 'chairhi' if y < BACK_TOP + 2 else band(CHAIR, (x - CX + half) / (2 * half), x, y)
         put(x, y, c)
     put(CX - half - 1, y, 'chairdk'); put(CX + half, y, 'chairdk')
 rect(CX - 28, WAIST + 8, CX + 28, FLOOR - 3, 'chair2')          # seat front, behind his legs
@@ -142,8 +157,8 @@ def arm_rest(x0, x1, light):
     for y in range(ARM_TOP, FLOOR - 3):
         for x in range(x0, x1):
             f = (x - x0) / (x1 - x0)
-            if y < ARM_TOP + 7: c = 'chairhi' if y < ARM_TOP + 3 else 'chair'
-            else: c = ('chairhi' if f < .25 else 'chair' if f < .8 else 'chair2') if light else ('chair' if f < .2 else 'chair2' if f < .85 else 'chairdk')
+            if y < ARM_TOP + 7: c = band((('chairhi', .5), ('chair', 1)), (y - ARM_TOP) / 7, x, y, .15)
+            else: c = band((('chairhi', .25), ('chair', .8), ('chair2', 1)), f, x, y) if light else band((('chair', .2), ('chair2', .85), ('chairdk', 1)), f, x, y)
             put(x, y, c)
         put(x0 - 1 if light else x1, y, 'chairdk')
 arm_rest(CX - 47, CX - 27, True); arm_rest(CX + 27, CX + 47, False)
@@ -157,6 +172,7 @@ for by in range(9, 48):                                     # head and beard
         if c not in BG: put(bx + DX, by + DY, c)
 def shade(f):            # light from the left
     return 'robehi' if f < .16 else 'robe' if f < .58 else 'robe2' if f < .86 else 'robe3'
+def rshade(f, x, y): return band(ROBE, f, x, y)
 # shoulder line: the bust's own slope (rows 47-55) carried out to the shoulder points
 def torso_lr(y):
     top = DY + 47
@@ -167,7 +183,7 @@ def torso_lr(y):
     return round(CX - 31 + 9 * t), round(CX + 31 - 9 * t)      # the body below the arms
 for y in range(DY + 47, WAIST + 1):
     l, r = torso_lr(y)
-    for x in range(l, r + 1): put(x, y, shade((x - l) / (r - l)))
+    for x in range(l, r + 1): put(x, y, rshade((x - l) / (r - l), x, y))
     put(r + 1, y, 'robeedge')
 for by in range(47, 64):                                     # the bust's chest and sash, where they fit
     for bx in range(56):
@@ -188,12 +204,12 @@ def arm(side):
         if side == 'L':
             xo, xi = round(CX - 32 - 6 * t), round(CX - 23 - 6 * t)
             for x in range(xi + 1, tl): put(x, y, 'chair2')
-            for x in range(xo, xi + 1): put(x, y, 'robehi' if x < xo + 2 else 'robe' if x < xi else 'robe2')
+            for x in range(xo, xi + 1): put(x, y, band((('robehi', .3), ('robe', .8), ('robe2', 1)), (x - xo) / max(1, xi - xo), x, y, .12))
             put(xo - 1, y, 'robeedge')
         else:
             xo, xi = round(CX + 32 + 6 * t), round(CX + 23 + 6 * t)
             for x in range(tr + 2, xi): put(x, y, 'chairdk' if x == tr + 2 else 'chair2')
-            for x in range(xi, xo + 1): put(x, y, 'robe2' if x < xo - 1 else 'robe3')
+            for x in range(xi, xo + 1): put(x, y, band((('robe', .2), ('robe2', .7), ('robe3', 1)), (x - xi) / max(1, xo - xi), x, y, .12))
             put(xo + 1, y, 'robeedge')
 arm('L'); arm('R')
 # forearms along the chair arms, hands over their front ends
@@ -212,7 +228,7 @@ for y in range(WAIST, KNEE):
     l, r = CX - 25, CX + 25
     for x in range(l, r + 1):
         f = (x - l) / (r - l)
-        c = 'robehi' if f < .3 else 'robe' if f < .78 else 'robe2'
+        c = band(ROBE_TOP, f, x, y)
         for kx in KNEES:
             if ((x - kx) / 10) ** 2 + ((y - (KNEE - 5)) / 6) ** 2 < 1: c = 'robehi' if kx < CX and x < kx else 'robe' if kx < CX or x < kx + 3 else 'robe2'
         put(x, y, c)
@@ -228,7 +244,7 @@ for y in range(KNEE + 1, HEM):
     l = CX - 23 + (y - KNEE) // 8; r = CX + 23 - (y - KNEE) // 8
     for x in range(l, r + 1):
         f = (x - l) / (r - l)
-        put(x, y, 'robe' if f < .22 else 'robe2' if f < .72 else 'robe3')
+        put(x, y, band(ROBE_LOW, f, x, y))
     put(r + 1, y, 'robeedge')
     for xf, d in ((CX - 13, 1), (CX + 13, -1)): put(xf + d * (y - KNEE) // 10, y, 'robe2' if xf < CX else 'robe3')
     put(CX, y, 'robe3')
