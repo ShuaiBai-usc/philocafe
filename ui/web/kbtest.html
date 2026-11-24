@@ -24,7 +24,7 @@ body.fix #app { position:fixed; inset:0; height:auto; }
 #think { position:absolute; max-width:180px; padding:5px 8px; background:var(--paper); border:2px dashed var(--ink); border-radius:12px; font-size:13px; line-height:1.3; visibility:hidden; }
 /* No smooth fades anywhere: things appear and leave by a pixel dissolve (ordered dither, 4px blocks; dissolve() below). */
 #back { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:12px; width:44px; height:44px; border:2px solid var(--ink); background:var(--paper); color:var(--ink); font:20px inherit; box-shadow:2px 3px 0 rgba(0,0,0,.25); z-index:5; }
-#chat { position:absolute; left:10px; right:10px; top:var(--chat-top); bottom:calc(var(--kb) + var(--pad-b) + var(--composer) + 8px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-top:16px; transition:top var(--dur) cubic-bezier(.2,.8,.2,1), bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
+#chat { position:absolute; left:10px; right:10px; top:var(--chat-top); bottom:calc(var(--kb) + var(--pad-b) + var(--composer) + 8px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-top:80px; transition:top var(--dur) cubic-bezier(.2,.8,.2,1), bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
 #chat .sp { margin-top:auto; }
 .b { max-width:82%; padding:8px 11px; background:var(--paper); border:2px solid var(--ink); box-shadow:2px 3px 0 rgba(0,0,0,.25); font-size:16px; line-height:1.4; }
 .b.me { align-self:flex-end; background:#e6efd7; }
@@ -208,32 +208,44 @@ function dissolve(el, show, ms = 280, done) {
   };
   el._dz = requestAnimationFrame(step);
 }
-// No band on the screen: each bubble dissolves on its own. When a bubble starts to leave the top of
-// the chat it crumbles away as a whole; when it comes fully back into view it dissolves in again.
-const io = new IntersectionObserver(entries => {
-  for (const e of entries) {
-    const el = e.target, leavingTop = e.boundingClientRect.top < e.rootBounds.top + 0.5;
-    if (e.intersectionRatio < 0.98 && leavingTop) { if (el._shown) { el._shown = false; dissolve(el, false, 300); } }
-    else if (e.intersectionRatio >= 0.98 && el._shown === false) { el._shown = true; dissolve(el, true, 300); }
-  }
-}, { root: chat, rootMargin: "-12px 0px 0px 0px", threshold: [0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.98, 1] });
-
-// A new bubble: first the bubbles that the scroll would push past the top dissolve where they stand,
-// in full view; then the chat scrolls and the new bubble dissolves in. The dissolve is never hidden by the clip.
-const EXIT_ZONE = 10;
-function exitBefore(scrollTo) {
-  let n = 0;
-  for (const el of chat.querySelectorAll(".b")) {
-    if (el._shown && el.offsetTop - scrollTo < EXIT_ZONE) { el._shown = false; dissolve(el, false, 280); n++; }
-  }
-  return n;
+// The chat's top edge: a dissolve band whose pixels belong to the content, not the screen. Every 4px
+// block of the conversation has a fixed random threshold; the higher it sits in the band, the more
+// likely it is hidden. So a bubble crumbles block by block as it scrolls up into the band and fills
+// back in as it scrolls down, and nothing in the band stands still while the chat moves.
+const BAND_ROWS = 20, NOISE_ROWS = 256;
+let bandCols = 0, bandT = null, bandRaf = 0;
+function bandSetup() {
+  bandCols = Math.ceil((chat.clientWidth + 8) / BLOCK);
+  bandT = thresholds(bandCols, NOISE_ROWS, 12345);
+  bandUpdate();
 }
+function bandUpdate() {
+  const st = chat.scrollTop, off = ((st % BLOCK) + BLOCK) % BLOCK, r0 = Math.floor(st / BLOCK), Hb = BAND_ROWS * BLOCK;
+  let d = "";
+  for (let r = 0; r <= BAND_ROWS; r++) {
+    const y0 = Math.max(0, r * BLOCK - off), y1 = Math.min(Hb, r * BLOCK - off + BLOCK);
+    if (y1 <= y0) continue;
+    const x = ((y0 + y1) / 2) / Hb, keepP = x * x * (3 - 2 * x);          // smoothstep down the band
+    const row = ((r0 + r) % NOISE_ROWS) * bandCols;
+    let k = 0;
+    while (k < bandCols) {
+      if (!(bandT[row + k] < keepP)) { k++; continue; }
+      const k0 = k; while (k < bandCols && bandT[row + k] < keepP) k++;
+      d += `M${k0 * BLOCK} ${y0}h${(k - k0) * BLOCK}v${y1 - y0}h${-(k - k0) * BLOCK}z`;
+    }
+  }
+  d += `M0 ${Hb}h${bandCols * BLOCK}v99999h${-bandCols * BLOCK}z`;   // everything below the band
+  if (CLIP) chat.style.clipPath = chat.style.webkitClipPath = `path("${d}")`;
+}
+chat.addEventListener("scroll", () => { if (!bandRaf) bandRaf = requestAnimationFrame(() => { bandRaf = 0; bandUpdate(); }); }, { passive: true });
+addEventListener("resize", bandSetup);
+bandSetup();
+
 function bubble(text, me) {
   const b = document.createElement("div"); b.className = "b" + (me ? " me" : ""); b.textContent = text;
-  b.style.visibility = "hidden"; b._shown = true; chat.append(b);
-  const target = chat.scrollHeight - chat.clientHeight;
-  const wait = exitBefore(target) ? 220 : 0;      // let the old ones mostly crumble before anything moves
-  setTimeout(() => { chat.scrollTo({ top: target, behavior: "smooth" }); dissolve(b, true, 280); io.observe(b); }, wait);
+  b.style.visibility = "hidden"; chat.append(b);
+  chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });   // the band crumbles old bubbles as they pass
+  dissolve(b, true, 280);
   return b;
 }
 const THOUGHTS = ["What does this friend mean by that?", "Is it pleasure they want, or something steadier?", "Better to ask than to tell."];
