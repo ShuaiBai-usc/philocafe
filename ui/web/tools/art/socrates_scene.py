@@ -1,17 +1,16 @@
 """Socrates' full-screen chat scene: a generated picture, put on the bust's pixel grid.
 
 1. sources/socrates_seated_gen.jpg was generated (ElevenLabs, Nano Banana 2, 9:16) from the
-   bust and the café scene as references. Generated "pixel art" is not on a true grid, so
-   each 5.9 px cell is read back as its most common colour onto a 130 x 232 grid: on a
-   390 x 844 phone a cell is 3.64 px, the same as the bust on the Meet page.
-2. Every cell takes the nearest colour of one palette: the bust's 28 colours plus the few
-   the room needs that the bust lacks. So skin, robe, sash and greens are the bust's own
-   tones everywhere, and the face matches the arms and hands.
-3. Lone cells that match fewer than two neighbours take their neighbours' colour (less noise).
-4. The generated head is taken out and the bust's head goes in, drawn again a little smaller
-   (the bust read onto a 48 x 55 grid instead of 56 x 64, eyes repainted), so the head sits
-   in proportion with the generated body.
-5. Expressions are small patches over the face (eyes, brows, mouth, cheeks).
+   bust and the café scene as references. It is median-filtered (generated "pixel art" is
+   noisy and not on a true grid), then each 5.9 px cell is read back as its most common
+   colour onto a 130 x 232 grid: on a 390 x 844 phone a cell is 3.64 px, as on the bust.
+2. The grid is reduced to 20 colours and lone cells (fewer than three matching neighbours)
+   take their neighbours' colour, so areas read as flat, clean shapes.
+3. The generated head is taken out (wall stripes run down the columns, the frame and the
+   wainscot are continued) and the bust's head goes in, drawn at 40 x 46 cells instead of
+   56 x 64 so it sits in proportion with the body. Its skin is mapped onto the arms' own
+   tones (base, shadow, deep shadow), so face and hands are one skin.
+4. Expressions are small patches over the face (eyes, brows, mouth, cheeks).
 
     .venv/bin/python ui/web/tools/art/socrates_scene.py
 
@@ -25,17 +24,16 @@ from collections import Counter
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[4]
 OUT = ROOT / "ui/web/assets/personas/socrates/full"
 SOURCE = Path(__file__).resolve().parent / "sources/socrates_seated_gen.jpg"
 PORTRAIT = ROOT / "ui/web/assets/portrait_socrates.png"
 W, H = 130, 232
-HEAD_GRID = (48, 55)             # the bust's 56 x 64 grid, about 86%: the head in proportion
-DX, DY = 41, 34                  # where the small bust's grid sits on the scene's
-BG = {(171, 175, 136), (162, 168, 128), (179, 182, 145), (153, 160, 120), (144, 153, 111)}   # bust background
-WEIGHT = np.array([.30, .59, .11])
+COLOURS = 20
+HEAD_GRID = (40, 46)             # the bust's 56 x 64 grid at 5/7: the head in proportion with the body
+DX, DY = 45, 39                  # where the small bust's grid sits on the scene's
 
 
 def cells(src, gw, gh, inset=0, bucket=1):
@@ -55,85 +53,90 @@ def cells(src, gw, gh, inset=0, bucket=1):
     return Image.fromarray(out)
 
 
-def palette_for(img, bust):
-    """The bust's colours, plus the room's own where none of the bust's is close."""
-    pal = sorted(set(bust.get_flattened_data()))
-    room = img.quantize(colors=20, method=Image.Quantize.MEDIANCUT, kmeans=3, dither=Image.Dither.NONE).convert("RGB")
-    for c in sorted(set(room.get_flattened_data())):
-        if min((((np.array(c) - np.array(p)) * WEIGHT) ** 2).sum() for p in pal) > 60:
-            pal.append(c)
-    return pal
-
-
-def to_palette(img, pal):
-    p = np.array(pal, float)
-    a = np.asarray(img).reshape(-1, 3).astype(float)
-    idx = ((((a[:, None, :] - p[None]) * WEIGHT) ** 2).sum(-1)).argmin(1)
-    return Image.fromarray(p[idx].reshape(img.height, img.width, 3).astype(np.uint8))
-
-
-def despeckle(img, passes=2, keep=2):
-    """A cell that matches fewer than `keep` of its 8 neighbours takes their most common colour."""
+def despeckle(img, passes=3, keep=3):
+    """A cell that matches fewer than `keep` of its neighbours takes their most common colour."""
     a = np.asarray(img).copy()
     h, w, _ = a.shape
     for _ in range(passes):
         b = a.copy()
-        for y in range(1, h - 1):
-            for x in range(1, w - 1):
+        for y in range(h):
+            for x in range(w):
                 c = tuple(a[y, x])
-                nb = [tuple(a[y + dy, x + dx]) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx]
+                nb = [tuple(a[y + dy, x + dx]) for dy in (-1, 0, 1) for dx in (-1, 0, 1)
+                      if (dy or dx) and 0 <= y + dy < h and 0 <= x + dx < w]
                 if sum(n == c for n in nb) < keep:
                     b[y, x] = Counter(nb).most_common(1)[0][0]
         a = b
     return Image.fromarray(a)
 
 
-# ---------- the head, a little smaller than the bust's ----------
-SMALL = cells(Image.open(PORTRAIT), *HEAD_GRID)
-_s = SMALL.load()
-for x0 in (18, 27):              # the downscale loses the eyes: white, dark, brown, white as in the bust
-    for k, c in enumerate([(246, 239, 226), (63, 45, 28), (91, 66, 42), (246, 239, 226)]):
-        _s[x0 + k, 21] = c
-HEAD_ROWS = range(6, 41)         # top of the head to the bottom of the beard
+def remove_head(base, keep):
+    """Take the generated head out; `keep` is the cells the new head will cover."""
+    bp = base.load(); out = base.copy(); op = out.load()
+    wall = {(231, 221, 187), (239, 219, 177)}
+    fx0, fy0, fy1 = 63, 13, 42                 # the painting's frame: left edge, top, bottom
+    frame = Counter(bp[x, y] for y in range(fy0, fy1 + 1) for x in range(78, 97))
+    mask = set()
+    for y in range(28, 58):
+        for x in range(46, 84):
+            if x >= fx0 and y <= fy1:
+                if frame[bp[x, y]] < 6: mask.add((x, y))
+            elif bp[x, y] not in wall:
+                mask.add((x, y))
+    around = Counter(bp[x, y] for y in range(56, 80) for x in [*range(38, 48), *range(84, 94)])
+    headish = {c for c in Counter(bp[x, y] for y in range(56, 78) for x in range(52, 80)) if around[c] < 4}
+    mask |= {(x, y) for y in range(56, 80) for x in range(48, 84) if bp[x, y] in headish}
+    for (x, y) in sorted(mask - keep, key=lambda p: p[1]):
+        if x >= fx0 and y <= fy1:
+            if x <= fx0 + 1: op[x, y] = bp[x, 25]          # the frame's left edge
+            elif y >= fy1 - 2: op[x, y] = bp[86, y]        # its bottom edge
+            else: op[x, y] = bp[x + 12, y]                 # the painting, from further right
+        elif y < 58:
+            op[x, y] = bp[x, 10]                           # wall stripes run down the columns
+        else:                                              # wainscot, chair, robe: nearest in the row
+            for d in range(1, 40):
+                if (x - d, y) not in mask: op[x, y] = bp[x - d, y]; break
+                if (x + d, y) not in mask: op[x, y] = bp[x + d, y]; break
+    return out
+
 
 # ---------- the scene ----------
-_raw = cells(Image.open(SOURCE), W, H, inset=1, bucket=12)
-PALETTE = palette_for(_raw, SMALL)
-base = despeckle(to_palette(_raw, PALETTE))
+_raw = cells(Image.open(SOURCE).convert("RGB").filter(ImageFilter.MedianFilter(5)), W, H, inset=1, bucket=10)
+_q = despeckle(_raw.quantize(colors=COLOURS, method=Image.Quantize.MEDIANCUT, kmeans=5,
+                             dither=Image.Dither.NONE).convert("RGB"))
+SKIN, SHADE, DEEP = (221, 175, 128), (201, 154, 109), (188, 141, 100)   # the arms' tones
+LIGHT = (233, 193, 148)          # the one highlight, on the crown
+
+# ---------- the head, smaller than the bust's, in the arms' skin ----------
+DROP = {(171, 175, 136), (162, 168, 128), (153, 160, 120), (179, 182, 145), (144, 153, 111), (124, 122, 87),   # background
+        (253, 250, 240), (242, 236, 218), (221, 209, 178), (187, 169, 138),                                    # robe
+        (184, 112, 79), (148, 87, 61), (111, 63, 44), (211, 140, 104)}                                         # sash
+_bust = cells(Image.open(PORTRAIT), *HEAD_GRID)
+_bp = _bust.load()
+HEAD = {}
+for by in range(6, 36):          # top of the head to the bottom of the beard
+    for bx in range(HEAD_GRID[0]):
+        c = _bp[bx, by]
+        if c in DROP:
+            continue
+        HEAD[(bx, by)] = {(242, 207, 168): LIGHT if by <= 11 else SKIN, (226, 180, 132): SKIN,
+                          (201, 154, 108): SHADE, (168, 119, 79): DEEP}.get(c, c)
+base = remove_head(_q, {(x + DX, y + DY) for (x, y) in HEAD})
 _b = base.load()
-# take the generated head out: its colours inside its box, filled from what is around it
-_box = (49, 34, 82, 76)
-_around = Counter(_b[x, y] for y in range(28, 76) for x in [*range(40, 49), *range(82, 92)])
-_around.update(_b[x, y] for y in range(20, 34) for x in range(49, 82))
-_headish = {c for c, n in Counter(_b[x, y] for y in range(37, 74) for x in range(53, 77)).items() if _around[c] < 3}
-_mask = {(x, y) for y in range(_box[1], _box[3]) for x in range(_box[0], _box[2]) if _b[x, y] in _headish}
-_new = {(bx + DX, by + DY) for by in HEAD_ROWS for bx in range(HEAD_GRID[0]) if _s[bx, by] not in BG}
-_orig = base.copy().load()
-for (x, y) in sorted((p for p in _mask if p not in _new), key=lambda p: p[1]):
-    if y < DY + 8:               # above the new head: copy down the column, so the frame keeps its edges
-        yy = y
-        while (x, yy) in _mask and yy > 0:
-            yy -= 1
-        _b[x, y] = _b[x, yy]
-    else:                        # beside it: the nearest cell in the row that is not head
-        for d in range(1, 30):
-            if (x - d, y) not in _mask and x - d >= 0:
-                _b[x, y] = _orig[x - d, y]; break
-            if (x + d, y) not in _mask and x + d < W:
-                _b[x, y] = _orig[x + d, y]; break
-for (x, y) in _new:
-    _b[x, y] = _s[x - DX, y - DY]
+for (x, y), c in HEAD.items():
+    _b[x + DX, y + DY] = c
+PALETTE = sorted(set(base.get_flattened_data()))
 
 
 # ---------- expressions ----------
-C = dict(x=(246,239,226), A=(63,45,28), B=(91,66,42), k=(156,148,128), t=(168,119,79), u=(148,87,61),
+C = dict(x=(246,239,226), A=(63,45,28), B=(91,66,42), k=(156,148,128), t=(164,112,75), u=(164,112,75),
          z=(156,90,68), v=(111,63,44), y=(232,162,131), m=(112,104,90))
 # Where the features are, on the small bust's grid.
-EYE_ROW, EYES = 21, {'L': (18, 21), 'R': (27, 30)}
-BROW_ROW, BROWS = 19, {'L': (18, 21), 'R': (27, 30)}
-MOUTH_ROW, MOUTH = 31, (23, 25)
-CHEEKS = [(17, 25), (18, 25), (19, 25), (18, 26), (28, 25), (29, 25), (30, 25), (29, 26)]
-PATCH = (14, 16, 35, 35)         # box that holds every change (x0, y0, x1, y1)
+EYE_ROW, EYES = 18, {'L': (16, 18), 'R': (23, 25)}
+BROW_ROW, BROWS = 16, {'L': (15, 18), 'R': (23, 26)}
+MOUTH_ROW, MOUTH = 26, (19, 21)
+CHEEKS = [(15, 21), (16, 21), (17, 21), (24, 21), (25, 21), (26, 21)]
+PATCH = (13, 14, 29, 29)         # box that holds every change (x0, y0, x1, y1)
 BROW_SHAPES = {                  # rows relative to BROW_ROW, one per brow column (left, right)
     'neutral': ([0] * 4, [0] * 4), 'raised': ([-1] * 4, [-1] * 4),
     'one_up': ([0, 0, 1, 1], [-1] * 4), 'inner_up': ([0, 0, -1, -1], [-1, -1, 0, 0]),
@@ -142,7 +145,7 @@ BROW_SHAPES = {                  # rows relative to BROW_ROW, one per brow colum
 MOODS = {
     'attentive': dict(brows='neutral', eyes='open', mouth='rest'),
     'curious':   dict(brows='raised', eyes='wide', mouth='o'),
-    'amused':    dict(brows='relaxed', eyes='smile', mouth='grin', blush=True),
+    'amused':    dict(brows='raised', eyes='smile', mouth='grin', blush=True),
     'skeptical': dict(brows='one_up', eyes=('half', 'side'), mouth='side'),
     'pondering': dict(brows='inner_up', eyes='up', mouth='hmm'),
     'pleased':   dict(brows='relaxed', eyes='soft', mouth='smile', blush=True),
@@ -164,11 +167,11 @@ def face(mood='attentive', eyes=None, mouth=None):
     def eye(side, state):
         x0, x1 = EYES[side]; dark = 't' if side == 'L' else 'u'
         for x in range(x0, x1 + 1): s(x, EYE_ROW, skin(x, EYE_ROW + 1))
-        seq = {'open': 'xABx', 'half': dark + 'AB' + dark, 'closed': dark * 4, 'soft': dark + 'AB' + dark,
-               'side': 'xxAB', 'wide': 'xABx', 'up': 'xxxx', 'smile': dark + '..' + dark}[state]
-        if state == 'smile': s(x0 + 1, EYE_ROW - 1, dark); s(x0 + 2, EYE_ROW - 1, dark)       # happy closed eyes
-        if state == 'up': s(x0 + 1, EYE_ROW - 1, 'A'); s(x0 + 2, EYE_ROW - 1, 'B')            # iris above, white below
-        if state == 'wide': s(x0 + 1, EYE_ROW - 1, 'x'); s(x0 + 2, EYE_ROW - 1, 'x')
+        seq = {'open': 'xAx', 'half': dark + 'A' + dark, 'closed': dark * 3, 'soft': dark + 'A' + dark,
+               'side': 'xxA', 'wide': 'xAx', 'up': 'xxx', 'smile': dark + '.' + dark}[state]
+        if state == 'smile': s(x0 + 1, EYE_ROW - 1, dark)                       # happy closed eyes: a little arch
+        if state == 'up': s(x0 + 1, EYE_ROW - 1, 'A')                           # iris above, white below
+        if state == 'wide': s(x0 + 1, EYE_ROW - 1, 'x')
         for x, ch in zip(range(x0, x1 + 1), seq):
             if ch != '.': s(x, EYE_ROW, ch)
     base_eyes = spec['eyes'] if isinstance(spec['eyes'], tuple) else (spec['eyes'], spec['eyes'])
@@ -211,7 +214,7 @@ def main():
     x0, y0, x1, y1 = PATCH
     px0, py0, pw, ph = x0 + DX, y0 + DY, x1 - x0, y1 - y0
     face("attentive").save(OUT / "scene.png")
-    base.crop((DX - 4, DY - 2, DX + 52, DY + 62)).save(OUT / "bust.png")     # the bust's framing, cut from the scene
+    base.crop((DX, DY, DX + HEAD_GRID[0], DY + HEAD_GRID[1])).save(OUT / "bust.png")     # the bust's framing, cut from the scene
     sheet = Image.new("RGB", (pw * len(FRAMES), ph * len(MOODS)))
     for r, mood in enumerate(MOODS):
         for c, name in enumerate(FRAMES):
@@ -220,7 +223,7 @@ def main():
     meta = {
         "grid": [W, H], "patch": {"x": px0, "y": py0, "w": pw, "h": ph},
         "moods": list(MOODS), "frames": list(FRAMES),
-        "anchor": {"face": [DX + 24, DY + 23], "head": [DX + 10, DY + 6, DX + 38, DY + 41]},
+        "anchor": {"face": [DX + 20, DY + 20], "head": [DX + 9, DY + 6, DX + 32, DY + 36]},
         "source": SOURCE.name, "palette": len(PALETTE),
         # A blink and a change of mood share one path, so expressions never jump:
         # open -> half -> closed (the new mood's brows and mouth arrive here) -> half -> open.
