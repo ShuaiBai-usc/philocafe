@@ -77,17 +77,14 @@ for x in range(4, W, 12):
 rect(0, FLOOR - 2, W, FLOOR, 'paneldk')                       # skirting
 rect(0, FLOOR, W, H, 'floor')
 for y in range(FLOOR + 6, H, 8): rect(0, y, W, y + 1, 'floor2')
-random.seed(5)
-for y in range(FLOOR + 2, H, 8):
-    for x in range((y * 7) % 23, W, 23): rect(x, y, x + 1, y + 6, 'floordk')
-# rug under the chair, seen from slightly above
-for y in range(152, H):
-    inset = max(0, 8 - (y - 152) // 3)
-    rect(4 + inset, y, W - 4 - inset, y + 1, 'rug')
-    put(4 + inset, y, 'rugedge'); put(W - 5 - inset, y, 'rugedge')
-rect(8, 152, W - 8, 153, 'rugedge')
-for y in range(158, H, 10):
-    for x in range(14, W - 14, 8): put(x, y, 'rug2'); put(x + 1, y, 'rug2'); put(x, y + 1, 'rug2')
+# rug under the chair: a clean trapezoid (straight sides in even steps) with one inset border
+RUG_TOP = 152
+for y in range(RUG_TOP, H):
+    k = (y - RUG_TOP) // 5                       # one pixel wider every five rows
+    l, r = 14 - k, W - 15 + k
+    rect(l, y, r + 1, y + 1, 'rug')
+    if y in (RUG_TOP + 2,): rect(l + 2, y, r - 1, y + 1, 'rug2')
+    elif y > RUG_TOP + 2: put(l + 2, y, 'rug2'); put(r - 2, y, 'rug2')
 # bookshelf on the left, standing on the floor
 rect(0, 10, 17, FLOOR, 'shelf'); rect(16, 10, 17, FLOOR, 'shelfdk'); rect(0, 10, 17, 12, 'shelfhi')
 random.seed(7)
@@ -128,10 +125,8 @@ for y in range(BACK_TOP, 120):
         c = 'chairhi' if x < CX - half + 3 or y < BACK_TOP + 2 else 'chair2' if x > CX + half - 4 else 'chair'
         put(x, y, c)
     put(CX - half - 1, y, 'chairdk'); put(CX + half, y, 'chairdk')
-for x in range(CX - half - 1, CX + half + 1): put(x, BACK_TOP - 1, 'chairdk')
-for x in range(20, 78, 6): put(x, BACK_TOP + 5, 'chair2'); put(x + 1, BACK_TOP + 5, 'chair2')
 # seat front between the arms (behind his legs), and the chair's feet
-rect(22, 120, 74, FLOOR - 3, 'chair2'); rect(22, 120, 74, 122, 'chair'); rect(22, FLOOR - 4, 74, FLOOR - 3, 'chairdk')
+rect(22, 120, 74, FLOOR - 3, 'chair2')
 ARM_TOP = 102                    # top of the rolled arms: his elbows and hands rest here
 def arm_rest(x0, x1, light):
     for y in range(ARM_TOP, FLOOR - 3):
@@ -142,14 +137,11 @@ def arm_rest(x0, x1, light):
             else:
                 c = ('chairhi' if f < .25 else 'chair' if f < .8 else 'chair2') if light else ('chair' if f < .2 else 'chair2' if f < .85 else 'chairdk')
             put(x, y, c)
-        put(x0 - 1, y, 'chairdk'); put(x1, y, 'chairdk')
-    rect(x0, ARM_TOP + 7, x1, ARM_TOP + 8, 'chairdk')
-    for x in range(x0, x1): put(x, ARM_TOP - 1, 'chairdk')
-    put(x0 - 1, ARM_TOP, 'wall'); put(x1, ARM_TOP, 'wall')               # rounded corners
+        put(x0 - 1 if light else x1, y, 'chairdk')
 arm_rest(6, 24, True); arm_rest(72, 90, False)
-for x0 in (7, 20, 73, 86):
-    rect(x0, FLOOR - 3, x0 + 3, FLOOR + 3, 'shelf'); rect(x0 + 2, FLOOR - 3, x0 + 3, FLOOR + 3, 'shelfdk')
-rect(6, FLOOR + 3, 90, FLOOR + 5, 'shadow')
+for x0 in (7, 86):
+    rect(x0, FLOOR - 3, x0 + 3, FLOOR + 2, 'shelf')
+rect(6, FLOOR + 2, 90, FLOOR + 4, 'shadow')
 
 # ---------- Socrates ----------
 DX, DY = 20, 31
@@ -183,7 +175,7 @@ for y in range(92, 106):                                     # the sash goes on 
     x0 = 34 - int((y - 92) * 1.0)
     for k, c in enumerate(SASH):
         if torso_lr(y)[0] < x0 + k < 44 - (y - 92): put(x0 + k, y, c)
-for (x, y0, ln, c) in [(42, 100, 12, 'robe2'), (55, 98, 14, 'robe2'), (61, 102, 10, 'robe3')]:
+for (x, y0, ln, c) in [(55, 98, 12, 'robe2')]:
     for t in range(ln): put(x, y0 + t, c)
 
 # arms: from the shoulders out and down to the chair arms, the chair back showing between arm and body
@@ -237,7 +229,7 @@ for y in range(127, HEM):
         f = (x - l) / (r - l)
         put(x, y, 'robe' if f < .22 else 'robe2' if f < .72 else 'robe3')
     put(r + 1, y, 'robeedge')
-    for xf, d in ((34, 1), (42, 0), (54, 0), (62, -1)): put(xf + d * (y - 127) // 8, y, 'robe2' if xf < 60 else 'robe3')
+    for xf, d in ((36, 1), (60, -1)): put(xf + d * (y - 127) // 10, y, 'robe2' if xf < 48 else 'robe3')
     put(48, y, 'robe3')
 rect(29, HEM - 2, 68, HEM - 1, 'robe3'); rect(29, HEM - 1, 68, HEM, 'robeedge')
 # shins and sandalled feet on the rug
@@ -247,9 +239,8 @@ for (x0, light) in ((34, True), (56, False)):
     fy = HEM + 10
     rect(x0 - 2, fy, x0 + 9, fy + 4, 'skin'); rect(x0 - 2, fy + 3, x0 + 9, fy + 4, 'skin2')
     rect(x0 - 3, fy + 4, x0 + 10, fy + 6, 'sandal'); rect(x0 - 3, fy + 5, x0 + 10, fy + 6, 'sandal2')
-    rect(x0 - 1, fy, x0 + 8, fy + 1, 'strap'); rect(x0 + 2, fy - 4, x0 + 5, fy - 3, 'strap')
+    rect(x0 - 1, fy, x0 + 8, fy + 1, 'strap')
     for k in range(0, 11, 2): put(x0 - 2 + k, fy + 2, 'skin2')
-rect(29, HEM + 16, 69, HEM + 17, 'rugedge')
 
 
 # ---------- expressions ----------
