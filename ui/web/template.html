@@ -246,6 +246,11 @@ p { margin: 0; }
 .ccard .ctitle { font-size: 17px; line-height: 22px; }
 .ccard .inner { padding: 10px 16px 12px; gap: 4px; }
 .ccard .last { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* Take a seat (02): earlier conversations with this philosopher, or a new one */
+.pop.seat { display: flex; flex-direction: column; max-height: 100%; }
+.seat-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.seat-body .past { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; min-height: 0; max-height: 52vh; padding: 2px 6px 6px 2px; margin: 0 -6px 0 -2px; }
+.seat-body .btn { flex: none; width: 100%; }
 .cempty { border: 2px dashed var(--clay); padding: 12px 14px; text-align: left; width: 100%; color: var(--muted); }
 .btn.danger { background: var(--rust); color: var(--paper); }
 .menu .danger-text { color: var(--rust); }
@@ -572,8 +577,33 @@ function openMeet(id) {
       ${open ? "" : `<p class="t11 muted coming">${p.name} joins the café at the final showcase.</p>`}</div>`;
   paintIcons(m);
   $(".backlink", m).onclick = () => show("home");
-  $(".primary", m).onclick = () => openChat(id);
+  $(".primary", m).onclick = () => takeSeat(id);
   show("meet");
+}
+
+// Taking a seat: with earlier conversations with this philosopher, offer them beside a new one;
+// without any, the new conversation starts at once (no "sit down?" question).
+async function takeSeat(id) {
+  if (!backend.live || !backend.me || (isPaused() && paused?.id === id)) return openChat(id);
+  let rows = [];
+  try { rows = (await backend.threads()).filter(r => r.persona_id === id); } catch {}
+  if (!rows.length) return openChat(id);
+  const p = PH[id];
+  const veil = el("div", "veil");
+  veil.innerHTML = `<div class="pop card seat" role="dialog" aria-label="Your table with ${p.name}">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">Your table with ${p.name}<button class="x" aria-label="Close">${icon("close", "ink", 22)}</button></div>
+    <div class="seat-body"><p class="t14 muted">Pick up where you left off, or start a new conversation.</p>
+      <div class="past">${rows.map(r => `<button class="card ccard" data-t="${r.thread_id}">
+          <div class="titlebar"><span class="when">${ago(r.updated_at)}</span></div>
+          <div class="inner"><p class="ctitle">${esc(r.title)}</p><p class="t14 muted last">${esc(r.last_line)}</p></div></button>`).join("")}</div>
+      <button class="btn go" data-a="new">NEW CONVERSATION</button></div></div>`;
+  const close = () => veil.remove();
+  veil.querySelector(".x").onclick = close;
+  veil.onclick = e => { if (e.target === veil) close(); };
+  veil.querySelector('[data-a="new"]').onclick = () => { close(); openChat(id); };
+  veil.querySelectorAll(".ccard").forEach(b => b.onclick = () => { close(); openThread(rows.find(r => r.thread_id === b.dataset.t), "home"); });
+  $(".screens").append(veil);
+  veil.querySelector('[data-a="new"]').focus();
 }
 
 /* ---------- Backend (design doc 7.2) ---------- */
@@ -898,37 +928,13 @@ function buildChat(id) {
   return p;
 }
 
-// Taking a seat starts a new conversation (7.10); the Conversations tab reopens old ones.
+// A new conversation (7.10); takeSeat() and the Conversations tab offer the old ones.
 function openChat(id) {
   if (isPaused() && paused?.id === id) return restorePaused();     // back to the conversation the pause set aside
-  // Kept aside until the visitor sits down, so "Not yet" leaves the last conversation as it was.
-  const prev = cur ? { nodes: [...chat.childNodes], cls: chat.className, cur, curId, history, fbIdx, citations, curThread } : null;
   const p = buildChat(id);
   backTo = "home";
   if (isPaused()) return enterSupport(p);
-
-  // "A table for you" popup, as in the design
-  const veil = el("div", "veil");
-  veil.innerHTML = `<div class="pop card" role="dialog" aria-label="A table for you">
-    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">A table for you<button class="x" aria-label="Not yet">${icon("close", "ink", 22)}</button></div>
-    <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
-      <div>${p.name} has saved you a seat.<br>Would you like to sit down?</div>
-      <div class="btns"><button class="btn" data-a="no">NOT YET</button><button class="btn go" data-a="yes">SIT DOWN</button></div></div></div>`;
-  const back = () => {
-    veil.remove();
-    if (prev) {
-      pauseScene();
-      chat.replaceChildren(...prev.nodes); chat.className = prev.cls;
-      ({ cur, curId, history, fbIdx, citations, curThread } = prev);
-      busy = false; const s = $(".send", chat); if (s) s.disabled = false;
-    } else stopChat();
-    openMeet(id);
-  };
-  veil.querySelector('[data-a="no"]').onclick = back;
-  veil.querySelector(".x").onclick = back;
-  veil.querySelector('[data-a="yes"]').onclick = () => { veil.remove(); typeInto($("#say"), p.greet); };
-  $(".screens").append(veil);
-  veil.querySelector('[data-a="yes"]').focus();
+  typeInto($("#say"), p.greet);
 }
 
 function stopChat() { pauseScene(); clearInterval(typer); stopSpeaking(); cur = null; curId = null; }
@@ -1762,11 +1768,11 @@ async function deleteConvo(r) {
   renderConvos();
 }
 // Reopen a stored conversation with its history (7.10); replies keep their sources, ratings and bookmarks.
-async function openThread(r) {
+async function openThread(r, from = "convos") {
   let h;
   try { h = await backend.history(r.thread_id); } catch { return; }
   const p = buildChat(r.persona_id);
-  curThread = r.thread_id; backTo = "convos";
+  curThread = r.thread_id; backTo = from;
   startConvo(p);
   let you = "";
   for (const m of h.messages) {
