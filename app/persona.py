@@ -112,9 +112,14 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
                 query = deps.translate(query)
             except Exception as e:   # search with the original words rather than fail the turn
                 log.warning("query translation failed: %s", type(e).__name__)
-        chunks = deps.retrieve(persona.corpus, query,
-                               k=persona.k or deps.config.k,
-                               min_score=persona.min_score if persona.min_score is not None else deps.config.min_score)
+        try:
+            chunks = deps.retrieve(persona.corpus, query,
+                                   k=persona.k or deps.config.k,
+                                   min_score=persona.min_score if persona.min_score is not None else deps.config.min_score)
+        except Exception as e:
+            # A corpus missing from the database (ValueError: unknown persona) or a broken index:
+            # the persona still answers, without quoting and saying it speaks from memory (UC-01).
+            log.error("retrieval failed for %s: %s: %s", persona.corpus, type(e).__name__, e)
 
     # 7.5: the mood tag comes off first. From tier 2 up the mood is locked and the tag ignored (FR-34).
     moodf, notes, quotes = MoodTagFilter(persona.moods), LeadingNotesFilter(), QuoteFilter(chunks)

@@ -59,12 +59,20 @@ def default_deps(config: Config | None = None) -> Deps:
     from app.voice import ClaudeVoice
 
     config = config or load_config()
-    retrieval.open_db()
+    con = retrieval.open_db()
+    personas = load_personas()
+    missing = sorted({p.corpus for p in personas.values()
+                      if not con.execute("SELECT 1 FROM passages WHERE persona = ? LIMIT 1", (p.corpus,)).fetchone()})
+    if missing:   # those personas answer without quotes until the database is rebuilt
+        import logging
+        logging.getLogger(__name__).error(
+            "corpus database has no passages for %s; rebuild it with: .venv/bin/python deploy/vercel_build.py",
+            ", ".join(missing))
     return Deps(config=config,
                 safety_models=[JevModel(config.safety), FallbackModel(config.safety)],
                 retrieve=retrieval.retrieve,
                 generate=ClaudeVoice(config.voice_model, effort=config.voice_effort),
-                personas=load_personas(),
+                personas=personas,
                 resources=load_resources(),
                 translate=ClaudeTranslator(config.translate_model, config.translate_timeout_s),
                 distill_note=NoteDistiller(config.notes_model),

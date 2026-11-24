@@ -177,3 +177,15 @@ def test_leaked_notes_are_not_shown():
     events, state = turn(fake_deps(generate=voice))
     assert state["reply"] == "Tell me more."
     assert "reasoning" not in "".join(e["data"].get("text", "") for e in events if e["type"] == "token")
+
+
+def test_a_missing_corpus_does_not_stop_the_reply():
+    from app.fakes import fake_deps
+    from app.graph import build_graph, run_turn
+
+    def missing(persona, query, k=5, min_score=None):
+        raise ValueError(f"unknown persona: {persona!r}")
+
+    events = list(run_turn(build_graph(fake_deps(retrieve=missing)), "t", "is virtue teachable", "montaigne"))
+    kinds = [e["type"] for e in events]
+    assert "error" not in kinds and "token" in kinds and kinds[-1] == "done"
