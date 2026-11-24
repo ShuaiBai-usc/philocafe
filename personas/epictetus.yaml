@@ -42,6 +42,6 @@ moods: [amused, skeptical, grave, pondering, pleased, attentive]
 voice:
   elevenlabs: jsSE6b3qmZL9jOxuseza   # chosen by Christopher
   elevenlabs_by_language:            # replies in these languages use this voice instead
-    zh: AAYMKjNBrET5q9uPiIQS   # chosen by Christopher
+    zh: hFamrilbAE6WDMtWgKvu   # chosen by Christopher
   name: echo
   style: Plain, firm and encouraging, like a teacher in a simple classroom; direct, never harsh.
