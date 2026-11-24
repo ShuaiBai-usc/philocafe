@@ -42,5 +42,7 @@ moods: [grave, skeptical, wry, pondering, pleased, attentive]
 # Voice output (design doc 7.6): an ElevenLabs voice id, or an OpenAI stock voice with a one-line style.
 voice:
   elevenlabs: Jvf6TAXwMUVTSR20U0f9   # chosen by Christopher
+  elevenlabs_by_language:            # replies in these languages use this voice instead
+    zh: YBS7vt5CeZiqlZYGamwR   # Jerry Lin: deep, calm, serious (Taiwan Mandarin)
   name: onyx
   style: Low, dry and measured, with sardonic wit; calm rather than gloomy.

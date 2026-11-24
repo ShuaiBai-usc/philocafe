@@ -10,7 +10,9 @@ zero-retention mode (enable_logging=false) is for enterprise accounts only and i
 otherwise.
 
 speak(text, persona, mood) uses the persona config's voice for that provider: `voice.elevenlabs`
-(a voice id) or `voice.name` plus `voice.style`. The reply's mood (7.5) sets the tone:
+(a voice id), or `voice.elevenlabs_by_language[<lang>]` when the sentence is Chinese, Japanese or
+Korean (replies follow the user's language), or `voice.name` plus `voice.style` for OpenAI,
+whose voices read every language. The reply's mood (7.5) sets the tone:
 - ElevenLabs Flash / Multilingual: voice settings per mood (stability, style, speed), blended
   from attentive by the mood's intensity.
 - ElevenLabs v3: an audio tag at the start of each sentence ([curious], [thoughtfully], ...).
@@ -25,6 +27,7 @@ import struct
 from collections.abc import Iterator
 
 import logging
+import re
 
 import httpx
 
@@ -84,6 +87,29 @@ class OpenAIVoice:
         with httpx.stream("POST", f"{API}/speech", headers=self._headers(), json=body, timeout=self.timeout_s) as r:
             r.raise_for_status()
             yield from r.iter_bytes()
+
+
+# ---------- language of what is read (7.6) ----------
+# Replies come in the language of the user's message, so each sentence is checked on its own.
+HAN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+KANA = re.compile(r"[\u3040-\u30ff]")
+HANGUL = re.compile(r"[\uac00-\ud7af]")
+LETTER = re.compile(r"\w", re.UNICODE)
+# Flash and Turbo v2.5 take a language_code that holds them to one language; other models refuse it.
+LANGUAGE_CODE_MODELS = ("eleven_flash_v2_5", "eleven_turbo_v2_5")
+
+
+def speech_language(text: str) -> str | None:
+    """'zh', 'ja' or 'ko' when that script makes up a good part of the sentence, else None
+    (the persona's default voice, which reads English and other Latin-script languages)."""
+    letters = len(LETTER.findall(text)) or 1
+    if len(KANA.findall(text)) / letters > 0.1:
+        return "ja"
+    if len(HANGUL.findall(text)) / letters > 0.3:
+        return "ko"
+    if len(HAN.findall(text)) / letters > 0.3:
+        return "zh"
+    return None
 
 
 # ---------- tone from the mood (7.5, 7.6) ----------
@@ -159,7 +185,13 @@ class ElevenLabsVoice:
         j = r.json()
         return {"text": (j.get("text") or "").strip(), "language": j.get("language_code")}
 
-    def body(self, text: str, mood: dict | None) -> dict:
+    def body(self, text: str, mood: dict | None, language: str | None = None) -> dict:
+        out = self._body(text, mood)
+        if language and self.tts_model in LANGUAGE_CODE_MODELS:
+            out["language_code"] = language
+        return out
+
+    def _body(self, text: str, mood: dict | None) -> dict:
         if self.tts_model.startswith("eleven_v3"):
             # v3 takes its tone from audio tags; its stability has three steps (0, 0.5, 1).
             out = {"text": v3_text(text, mood), "model_id": self.tts_model}
@@ -176,8 +208,10 @@ class ElevenLabsVoice:
                             params={"output_format": "mp3_44100_128"}, json=body, timeout=self.timeout_s)
 
     def speak(self, text: str, persona, mood: dict | None = None) -> Iterator[bytes]:
-        voice_id = persona.elevenlabs_voice or ELEVEN_FALLBACK_VOICE
-        body = self.body(text, mood)
+        language = speech_language(text)
+        voice_id = (persona.elevenlabs_by_language.get(language or "") or persona.elevenlabs_voice
+                    or ELEVEN_FALLBACK_VOICE)
+        body = self.body(text, mood, language)
         with self._stream(voice_id, body) as r:
             if r.status_code in (400, 401, 404, 422) and voice_id != ELEVEN_FALLBACK_VOICE:
                 # A library voice not in this account (or not allowed on this plan): use the premade fallback.

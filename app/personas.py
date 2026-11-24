@@ -30,6 +30,7 @@ class PersonaConfig:
     voice: str = "ash"              # stock text-to-speech voice (7.6); never a real person's voice
     voice_style: str = ""           # one-line speaking style sent with each sentence
     elevenlabs_voice: str = ""      # ElevenLabs voice id, when voice.provider is elevenlabs
+    elevenlabs_by_language: dict[str, str] = field(default_factory=dict)   # e.g. {"zh": id} for Chinese replies
     moods: tuple[str, ...] = (CALM,)   # 7.5: at most six, intellectual only, always with attentive
 
 
@@ -51,6 +52,8 @@ def load_persona(path: Path) -> PersonaConfig:
                          voice=(raw.get("voice") or {}).get("name", PersonaConfig.voice),
                          voice_style=((raw.get("voice") or {}).get("style") or "").strip(),
                          elevenlabs_voice=((raw.get("voice") or {}).get("elevenlabs") or "").strip(),
+                         elevenlabs_by_language={str(k).lower(): str(v).strip() for k, v in
+                                                 ((raw.get("voice") or {}).get("elevenlabs_by_language") or {}).items()},
                          moods=moods)
 
 

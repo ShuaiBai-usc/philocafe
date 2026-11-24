@@ -179,3 +179,40 @@ def test_speech_passes_the_replys_mood():
     assert io.spoken[-1][3] == {"label": "pondering", "intensity": 0.7, "locked": False}
     msgs = c.get(f"/threads/{t}").json()["messages"]
     assert [m for m in msgs if m["role"] == "persona"][-1]["mood"]["label"] == "pondering"
+
+
+def test_chinese_sentences_use_the_chinese_voice():
+    from app.personas import load_personas
+    from app.speech import ElevenLabsVoice, speech_language
+    assert speech_language("你觉得什么样的生活才算好？") == "zh"
+    assert speech_language("What makes a life good?") is None
+    assert speech_language("我读过 Meno 这篇对话。") == "zh"
+    assert speech_language("Socrates 说") is None or speech_language("Socrates 说") == "zh"
+    assert speech_language("こんにちは、元気ですか") == "ja" and speech_language("안녕하세요 반갑습니다") == "ko"
+    v = ElevenLabsVoice()
+    assert v.body("你好。", None, "zh")["language_code"] == "zh"
+    assert "language_code" not in ElevenLabsVoice(tts_model="eleven_multilingual_v2").body("你好。", None, "zh")
+    socrates = load_personas()["socrates"]
+    assert socrates.elevenlabs_by_language["zh"] and socrates.elevenlabs_by_language["zh"] != socrates.elevenlabs_voice
+
+
+def test_speak_picks_the_voice_by_language(monkeypatch):
+    import httpx
+    from app import speech
+    from app.personas import load_personas
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    urls = []
+
+    class Resp:
+        status_code = 200
+        def raise_for_status(self): pass
+        def iter_bytes(self): yield b"mp3"
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+
+    monkeypatch.setattr(httpx, "stream", lambda m, url, **kw: urls.append((url, kw["json"])) or Resp())
+    p = load_personas()["socrates"]
+    b"".join(speech.ElevenLabsVoice().speak("什么是美德？", p))
+    b"".join(speech.ElevenLabsVoice().speak("What is virtue?", p))
+    assert p.elevenlabs_by_language["zh"] in urls[0][0] and urls[0][1]["language_code"] == "zh"
+    assert p.elevenlabs_voice in urls[1][0] and "language_code" not in urls[1][1]

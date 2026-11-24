@@ -40,5 +40,7 @@ moods: [curious, amused, wry, pondering, pleased, attentive]
 # Voice output (design doc 7.6): an ElevenLabs voice id, or an OpenAI stock voice with a one-line style.
 voice:
   elevenlabs: I1T6PEfqPxl45yKRN4aS   # chosen by Christopher
+  elevenlabs_by_language:            # replies in these languages use this voice instead
+    zh: bMOVbN89zTelT1wK4qNE   # 大飛: relaxed, curious, a little humour (Taiwan Mandarin)
   name: fable
   style: Relaxed, wry and conversational, like a friend musing over wine; easy pauses, never preachy.

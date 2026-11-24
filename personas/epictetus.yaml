@@ -41,5 +41,7 @@ moods: [amused, skeptical, grave, pondering, pleased, attentive]
 # Voice output (design doc 7.6): an ElevenLabs voice id, or an OpenAI stock voice with a one-line style.
 voice:
   elevenlabs: jsSE6b3qmZL9jOxuseza   # chosen by Christopher
+  elevenlabs_by_language:            # replies in these languages use this voice instead
+    zh: cIgfFHYNnHGsenWoEwaO   # Zhan: steady and composed
   name: echo
   style: Plain, firm and encouraging, like a teacher in a simple classroom; direct, never harsh.
