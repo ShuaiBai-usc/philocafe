@@ -37,6 +37,6 @@ risk_sensitivity: null
 
 # Voice output (design doc 7.6): an ElevenLabs voice id, or an OpenAI stock voice with a one-line style.
 voice:
-  elevenlabs: KTGs4eAh7Cq96ke9BQfP   # Hayden: refined, measured, dry humour
+  elevenlabs: Jvf6TAXwMUVTSR20U0f9   # chosen by Christopher
   name: onyx
   style: Low, dry and measured, with sardonic wit; calm rather than gloomy.

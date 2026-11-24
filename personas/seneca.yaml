@@ -35,6 +35,6 @@ risk_sensitivity: null
 
 # Voice output (design doc 7.6): an ElevenLabs voice id, or an OpenAI stock voice with a one-line style.
 voice:
-  elevenlabs: JBFqnCBsd6RMkjVDRZzb   # George (premade): warm, mature storyteller
+  elevenlabs: KTGs4eAh7Cq96ke9BQfP   # chosen by Christopher
   name: sage
   style: Steady, kind and composed, like a mentor writing a letter to a friend; clear and unhurried.
