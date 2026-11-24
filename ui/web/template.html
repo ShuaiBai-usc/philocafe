@@ -170,10 +170,16 @@ p { margin: 0; }
 .pill[aria-pressed="true"] { background: var(--sage); }
 .note-card { text-align: left; width: 100%; }
 .note-card .inner { padding: 12px 22px 14px; }
-.note-card.sel { outline: 2px dashed var(--ink); outline-offset: 3px; }
+.note-card .meta { margin-top: 2px; }
+.note-card.example .titlebar { font-style: italic; }
 .notehead { display: flex; gap: 8px; align-items: center; }
-.reflect textarea { width: 100%; min-height: 84px; resize: vertical; cursor: text; border: 1px solid var(--clay); background: var(--paper); padding: 8px 10px; font-size: 16px; line-height: 21px; }
-.reflect textarea::placeholder { color: var(--muted); }
+.notepop { max-height: 100%; overflow-y: auto; text-align: left; }
+.notepop .inner { padding: 14px 20px 18px; gap: 10px; }
+.notepop .t11 + .t28 { margin-top: -2px; }
+.notepop hr { border: 0; border-top: 1px dashed var(--clay); margin: 4px 0; width: 100%; }
+.notepop .btn.del { color: var(--muted); }
+.notepop textarea { width: 100%; min-height: 84px; resize: vertical; cursor: text; border: 1px solid var(--clay); background: var(--paper); padding: 8px 10px; font-size: 16px; line-height: 21px; }
+.notepop textarea::placeholder { color: var(--muted); }
 .empty { padding: 18px; text-align: center; }
 
 /* ---------- 06 Pause ---------- */
@@ -866,8 +872,19 @@ const store = {
   get() { try { return JSON.parse(localStorage.getItem("philocafe.notes")) || null; } catch { return null; } },
   set(v) { try { localStorage.setItem("philocafe.notes", JSON.stringify(v)); } catch {} }
 };
-let notes = store.get() || [{ id: "sample", who: "socrates", ...PH.socrates.sample, reflection: "" }];
-let filter = "all", selected = notes[0]?.id;
+const SAMPLE = "sample";            // seeded example; leaves once a real note is saved
+let notes = store.get() || [{ id: SAMPLE, who: "socrates", ...PH.socrates.sample, reflection: "" }];
+const dropSample = () => { notes = notes.filter(n => n.id !== SAMPLE || (n.reflection || "").trim()); };
+if (notes.length > 1) { dropSample(); store.set(notes); }
+let filter = "all";
+// Note ids are Date.now() in base 36, so the save date comes from the id.
+function savedOn(n) {
+  const t = parseInt(n.id, 36);
+  if (n.id === SAMPLE || !Number.isFinite(t) || t < 1.6e12) return "";
+  const d = new Date(t), opts = { month: "short", day: "numeric" };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
+  return d.toLocaleDateString("en-US", opts);
+}
 
 function toast(msg) {
   document.querySelector(".toast")?.remove();
@@ -893,8 +910,7 @@ async function saveThought() {
   }
     if (!note) note = { title: lastQuestion(said[said.length - 1].content), why: firstUser ? `From your talk about “${firstUser}”.` : "A thought to revisit later.", topic: "From your conversation" };
   const dup = notes.find(x => x.who === id && x.title === note.title);
-  if (dup) selected = dup.id;
-  else { const n = { id: Date.now().toString(36), who: id, reflection: "", ...note }; notes.unshift(n); selected = n.id; store.set(notes); }
+  if (!dup) { dropSample(); notes.unshift({ id: Date.now().toString(36), who: id, reflection: "", ...note }); store.set(notes); }
   btn.disabled = false; btn.textContent = "Save thought";
   toast("Saved to My notes");
 }
@@ -928,7 +944,6 @@ function renderNotes() {
   const people = [...new Set(notes.map(n => n.who))];
   if (filter !== "all" && !people.includes(filter)) filter = "all";
   const list = notes.filter(n => filter === "all" || n.who === filter);
-  if (!list.some(n => n.id === selected)) selected = list[0]?.id;
   v.innerHTML = `<div class="body">
     <p class="t28">Your pocket<br>of perspectives.</p>
     <p class="t16 muted">Small thoughts worth keeping.</p>
@@ -937,19 +952,46 @@ function renderNotes() {
       ${people.map(w => `<button class="pill" data-f="${w}" aria-pressed="${filter === w}">${PH[w].name}</button>`).join("")}
     </div>
     ${list.length ? "" : `<div class="card empty t16 muted">No saved thoughts yet. Tap “Save thought” during a conversation.</div>`}
-    ${list.map(n => `<button class="card note-card${n.id === selected ? " sel" : ""}" data-id="${n.id}">
-        <div class="titlebar">Saved thought</div>
-        <div class="inner"><div class="notehead">${icon("mark")}<p class="t11 muted">SAVED FROM YOUR CONVERSATION</p></div>
-          <p class="t28">${esc(n.title)}</p><p class="t16">${esc(n.why)}</p><p class="t11 muted">${PH[n.who].name} · ${esc(n.topic)}</p></div></button>
-      ${n.id === selected ? `<div class="card reflect"><div class="titlebar">Your reflection</div>
-        <div class="inner"><p class="t20">Make it your own</p>
-          <textarea data-id="${n.id}" placeholder="What does this question bring up for you?" aria-label="Your reflection">${esc(n.reflection || "")}</textarea></div></div>` : ""}`).join("")}
+    ${list.map(n => {
+      const ex = n.id === SAMPLE, when = savedOn(n);
+      return `<button class="card note-card${ex ? " example" : ""}" data-id="${n.id}" aria-haspopup="dialog">
+        <div class="titlebar">${ex ? "Example" : "Saved thought"}</div>
+        <div class="inner"><div class="notehead">${icon("mark")}<p class="t11 muted">${ex ? "LEAVES ONCE YOU SAVE YOUR OWN" : "SAVED FROM YOUR CONVERSATION"}</p></div>
+          <p class="t28">${esc(n.title)}</p><p class="t16">${esc(n.why)}</p>
+          <p class="t11 muted meta">${[PH[n.who].name, esc(n.topic), when].filter(Boolean).join(" · ")}</p></div></button>`;
+    }).join("")}
     <button class="primary" id="returnBtn">${cur ? "Return to the conversation" : "Return to the café"}</button>
   </div>`;
   v.querySelectorAll(".pill").forEach(b => b.onclick = () => { filter = b.dataset.f; renderNotes(); });
-  v.querySelectorAll(".note-card").forEach(b => b.onclick = () => { selected = b.dataset.id; renderNotes(); });
-  v.querySelectorAll("textarea").forEach(t => t.oninput = () => { const n = notes.find(x => x.id === t.dataset.id); n.reflection = t.value; store.set(notes); });
+  v.querySelectorAll(".note-card").forEach(b => b.onclick = () => openNote(b.dataset.id));
   $("#returnBtn").onclick = () => cur ? resumeChat() : show("home");
+}
+
+// Tap a note: its detail as a window over My notes, with the reflection and Delete.
+function openNote(id) {
+  const n = notes.find(x => x.id === id);
+  if (!n) return;
+  const when = savedOn(n);
+  const veil = el("div", "veil");
+  veil.innerHTML = `<div class="pop card notepop" role="dialog" aria-label="Saved thought">
+    <div class="titlebar"><span>${n.id === SAMPLE ? "Example" : "Saved thought"}</span><button class="x" type="button" aria-label="Close">×</button></div>
+    <div class="inner">
+      <p class="t11 muted">${[PH[n.who].name.toUpperCase(), esc(n.topic).toUpperCase(), when.toUpperCase()].filter(Boolean).join(" · ")}</p>
+      <p class="t28">${esc(n.title)}</p>
+      <p class="t16">${esc(n.why)}</p>
+      <hr>
+      <p class="t20">Your reflection</p>
+      <textarea placeholder="What does this question bring up for you?" aria-label="Your reflection">${esc(n.reflection || "")}</textarea>
+      <div class="btns"><button class="btn del" type="button">DELETE</button><button class="btn go done" type="button">DONE</button></div>
+    </div></div>`;
+  const close = () => { veil.remove(); renderNotes(); };
+  $("textarea", veil).oninput = e => { n.reflection = e.target.value; store.set(notes); };
+  $(".x", veil).onclick = close;
+  $(".done", veil).onclick = close;
+  $(".del", veil).onclick = () => { notes = notes.filter(x => x.id !== id); store.set(notes); close(); };
+  veil.onclick = e => { if (e.target === veil) close(); };
+  $(".screens").append(veil);
+  $(".done", veil).focus();
 }
 
 /* ---------- 07 System detects distress → 06 Pause the café ---------- */
