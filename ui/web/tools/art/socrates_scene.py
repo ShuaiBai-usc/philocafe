@@ -1,8 +1,9 @@
 """Socrates' full-screen chat scene, drawn pixel by pixel in the bust's style.
 
 The head and beard are the bust's own pixels (portrait_socrates.png read back onto its
-56 x 64 grid), so the character stays the same; the body, armchair, café and table are
-drawn here on the same grid. Expressions are small patches over the face (eyes, brows,
+56 x 64 grid), so the character stays the same; the rest of him (seated in the armchair,
+hands on his knees, sandalled feet on the rug) and the café are drawn here on the same
+grid. The table that will cover his lower half is a separate layer, added later. Expressions are small patches over the face (eyes, brows,
 mouth, cheeks), so changing mood never moves the head.
 
     .venv/bin/python ui/web/tools/art/socrates_scene.py
@@ -60,164 +61,186 @@ def dith(x0, y0, x1, y1, c1, c2):
     for y in range(y0, y1):
         for x in range(x0, x1): put(x, y, c1 if (x + y) % 2 else c2)
 
-# --- wall: cream stripes, softer and lower in contrast than Socrates
+# ---------- room ----------
+P.update(floor=(150,108,72), floor2=(138,98,64), floorhi=(164,120,80), floordk=(118,82,52),
+         rug=(178,186,150), rug2=(160,170,132), rugedge=(132,142,104), rughi=(196,202,170),
+         shadow=(120,86,58), sandal=(122,84,52), sandal2=(98,66,40), strap=(148,87,61))
+FLOOR = 140
 for x in range(W):
-    for y in range(0, 92):
+    for y in range(0, 100):
         put(x, y, 'wall2' if (x // 3) % 3 == 0 else 'wall')
 dith(0, 0, W, 6, 'wall', 'wall2')
-# wood panelling below the chair rail
-rect(0, 92, W, 112, 'panel'); rect(0, 92, W, 94, 'panelhi'); rect(0, 94, W, 95, 'paneldk')
+rect(0, 100, W, FLOOR, 'panel'); rect(0, 100, W, 102, 'panelhi'); rect(0, 102, W, 103, 'paneldk')
 for x in range(4, W, 12):
-    rect(x, 97, x + 9, 98, 'panelhi'); rect(x, 98, x + 1, 110, 'panelhi'); rect(x + 8, 98, x + 9, 110, 'panel2'); rect(x, 109, x + 9, 110, 'panel2')
-
-# --- bookshelf, left
-rect(0, 10, 17, 112, 'shelf'); rect(16, 10, 17, 112, 'shelfdk'); rect(0, 10, 17, 12, 'shelfhi')
+    rect(x, 106, x + 9, 107, 'panelhi'); rect(x, 107, x + 1, 141, 'panelhi'); rect(x + 8, 107, x + 9, 141, 'panel2'); rect(x, 140, x + 9, 141, 'panel2')
+rect(0, FLOOR - 2, W, FLOOR, 'paneldk')                       # skirting
+rect(0, FLOOR, W, H, 'floor')
+for y in range(FLOOR + 6, H, 8): rect(0, y, W, y + 1, 'floor2')
+random.seed(5)
+for y in range(FLOOR + 2, H, 8):
+    for x in range((y * 7) % 23, W, 23): rect(x, y, x + 1, y + 6, 'floordk')
+# rug under the chair, seen from slightly above
+for y in range(152, H):
+    inset = max(0, 8 - (y - 152) // 3)
+    rect(4 + inset, y, W - 4 - inset, y + 1, 'rug')
+    put(4 + inset, y, 'rugedge'); put(W - 5 - inset, y, 'rugedge')
+rect(8, 152, W - 8, 153, 'rugedge')
+for y in range(158, H, 10):
+    for x in range(14, W - 14, 8): put(x, y, 'rug2'); put(x + 1, y, 'rug2'); put(x, y + 1, 'rug2')
+# bookshelf on the left, standing on the floor
+rect(0, 10, 17, FLOOR, 'shelf'); rect(16, 10, 17, FLOOR, 'shelfdk'); rect(0, 10, 17, 12, 'shelfhi')
 random.seed(7)
-for sy in (13, 33, 53, 73):
-    rect(0, sy + 17, 17, sy + 19, 'shelfhi'); rect(0, sy + 19, 17, sy + 20, 'shelfdk')
+for sy in (13, 34, 55, 76, 97):
+    rect(0, sy + 18, 17, sy + 20, 'shelfhi'); rect(0, sy + 20, 17, sy + 21, 'shelfdk')
     x = 0
     while x < 15:
         w = random.choice((2, 2, 3)); h = random.choice((13, 14, 15, 16)); c = random.choice(('bk1', 'bk2', 'bk3', 'bk4', 'bk5', 'bk6'))
         if random.random() < .12: x += 1; continue
-        rect(x, sy + 17 - h, min(x + w, 16), sy + 17, c); rect(x, sy + 17 - h, min(x + w, 16), sy + 18 - h, 'shelfhi' if c != 'bk3' else 'bk4')
+        rect(x, sy + 18 - h, min(x + w, 16), sy + 18, c); rect(x, sy + 18 - h, min(x + w, 16), sy + 19 - h, 'shelfhi' if c != 'bk3' else 'bk4')
         x += w
-# a trailing plant on top of the shelf
 for (x, y) in [(3,9),(4,8),(5,8),(6,9),(7,8),(8,9),(2,10),(9,10),(10,9),(11,10),(12,11),(13,12),(13,14),(14,16)]:
     put(x, y, 'leaf'); put(x, y + 1, 'leaf2')
 rect(5, 9, 9, 11, 'pot')
-
-# --- framed landscape, right
+# framed landscape and lamp
 rect(64, 16, 90, 36, 'frame'); rect(64, 16, 90, 17, 'framehi'); rect(64, 16, 65, 36, 'framehi')
 rect(66, 18, 88, 34, 'sky')
 for x in range(66, 88):
-    h1 = 27 + int(2 * math.sin(x / 3)); rect(x, h1, x + 1, 34, 'hill')
-    h2 = 30 + int(1.5 * math.cos(x / 2.2)); rect(x, h2, x + 1, 34, 'hill2')
+    rect(x, 27 + int(2 * math.sin(x / 3)), x + 1, 34, 'hill'); rect(x, 30 + int(1.5 * math.cos(x / 2.2)), x + 1, 34, 'hill2')
 rect(78, 24, 80, 29, 'town'); rect(81, 26, 83, 29, 'town'); put(79, 23, 'potdk')
-
-# --- hanging lamp, centre-right (above his head, not over it)
 rect(76, 0, 77, 8, 'cord')
-for i, y in enumerate(range(8, 13)):
-    rect(76 - 2 - i, y, 77 + 2 + i, y + 1, 'lamp')
-rect(71, 12, 82, 13, 'lampdk'); rect(73, 8, 76, 10, 'lamphi')
-dith(72, 13, 81, 15, 'glow', 'wall')
-
-# --- plant, right of the chair
-rect(84, 96, 95, 108, 'pot'); rect(84, 96, 95, 98, 'potdk'); rect(93, 98, 95, 108, 'potdk')
-for (x0, y0, ln, dx) in [(89, 95, 18, -0.3), (90, 95, 22, 0.15), (88, 95, 14, -0.8), (91, 95, 16, 0.6)]:
+for i, y in enumerate(range(8, 13)): rect(76 - 2 - i, y, 77 + 2 + i, y + 1, 'lamp')
+rect(71, 12, 82, 13, 'lampdk'); rect(73, 8, 76, 10, 'lamphi'); dith(72, 13, 81, 15, 'glow', 'wall')
+# plant in a pot on the floor, right
+rect(85, 122, 95, FLOOR + 2, 'pot'); rect(85, 122, 95, 124, 'potdk'); rect(93, 124, 95, FLOOR + 2, 'potdk')
+for (x0, y0, ln, dx) in [(90, 121, 24, -0.25), (91, 121, 30, 0.12), (89, 121, 18, -0.7), (92, 121, 20, 0.5)]:
     for t in range(ln):
-        x = int(x0 + dx * t); y = y0 - t
-        put(x, y, 'leaf2')
+        x = int(x0 + dx * t); y = y0 - t; put(x, y, 'leaf2')
         if t % 3 == 0:
             for k in range(1, 4): put(x - k, y + k // 2, 'leaf'); put(x + k, y + k // 2, 'leafhi' if k == 1 else 'leaf')
 
-# --- armchair behind him
-def chair_back():
-    for y in range(52, 112):
-        half = 34 if y > 60 else int(34 - (60 - y) ** 1.6 / 4)
-        for x in range(48 - half, 48 + half):
-            c = 'chair'
-            if x < 48 - half + 3: c = 'chairhi'
-            elif x > 48 + half - 4: c = 'chair2'
-            if y < 55: c = 'chairhi'
+# ---------- armchair: back, then the rolled arms ----------
+CX = 48
+for y in range(50, 128):                                   # back, with rounded wings
+    half = 35 if y > 60 else int(35 - (60 - y) ** 1.55 / 4)
+    for x in range(CX - half, CX + half):
+        c = 'chairhi' if x < CX - half + 3 or y < 53 else 'chair2' if x > CX + half - 4 else 'chair'
+        put(x, y, c)
+    put(CX - half - 1, y, 'chairdk'); put(CX + half, y, 'chairdk')
+for x in range(16, 82, 6): put(x, 58, 'chair2'); put(x + 1, 58, 'chair2')
+def arm_rest(x0, x1, light):
+    # a rolled arm: the round top, then the flat front down to the floor
+    for y in range(96, FLOOR - 3):
+        for x in range(x0, x1):
+            f = (x - x0) / (x1 - x0)
+            if y < 103:
+                c = 'chairhi' if y < 99 else 'chair'
+            else:
+                c = ('chairhi' if f < .25 else 'chair' if f < .8 else 'chair2') if light else ('chair' if f < .2 else 'chair2' if f < .85 else 'chairdk')
             put(x, y, c)
-        put(48 - half - 1, y, 'chairdk'); put(48 + half, y, 'chairdk')
-    for x in range(14, 82, 6): put(x, 58, 'chair2'); put(x + 1, 58, 'chair2')     # buttons / seams
-chair_back()
-# chair arms
-rect(10, 88, 24, 112, 'chair'); rect(10, 86, 24, 89, 'chairhi'); rect(10, 88, 12, 112, 'chairhi'); rect(23, 88, 24, 112, 'chairdk')
-rect(72, 88, 86, 112, 'chair2'); rect(72, 86, 86, 89, 'chair'); rect(85, 88, 86, 112, 'chairdk'); rect(72, 88, 73, 112, 'chairdk')
+        put(x0 - 1, y, 'chairdk'); put(x1, y, 'chairdk')
+    rect(x0, 103, x1, 104, 'chairdk')
+    for x in range(x0 - 1, x1 + 1): put(x, 95, 'chairdk')
+# seat cushion, seen beside his hips, and the front of the seat below it
+rect(14, 104, 82, 122, 'chair'); rect(14, 104, 82, 106, 'chairhi'); rect(14, 121, 82, 122, 'chairdk')
+rect(14, 122, 82, FLOOR - 3, 'chair2'); rect(14, FLOOR - 4, 82, FLOOR - 3, 'chairdk')
+arm_rest(3, 15, True); arm_rest(81, 93, False)
+for x0 in (4, 16, 77, 89):
+    rect(x0, FLOOR - 3, x0 + 3, FLOOR + 3, 'shelf'); rect(x0 + 2, FLOOR - 3, x0 + 3, FLOOR + 3, 'shelfdk')
+rect(4, FLOOR + 3, 92, FLOOR + 5, 'shadow')
 
-# --- Socrates: the bust's head and beard, pixel for pixel
+# ---------- Socrates ----------
 DX, DY = 20, 31
-for by in range(9, 48):
+for by in range(9, 48):                                     # head and beard: the bust's pixels
     for bx in range(56):
         c = bp[bx, by]
         if c not in BG: put(bx + DX, by + DY, c)
 
-# torso: the bust's chest (rows 47-63, sash included) continued with the same shading
-def outline_x(y):
-    # silhouette from the bust's own shoulder line, carried on outward and down
-    t = y - 78
-    left = max(15, 33 - int(t * 1.05) if t < 14 else 19 - int((t - 14) * .45))
-    right = min(81, 68 + int(t * .55) if t < 14 else 76 + int((t - 14) * .3))
-    return left, right
-for y in range(78, 113):
-    l, r = outline_x(y)
-    for x in range(l, r + 1):
-        f = (x - l) / max(1, r - l)
-        c = 'robehi' if f < .2 else 'robe' if f < .6 else 'robe2' if f < .86 else 'robe3'
-        put(x, y, c)
+def shade(f):            # light from the left
+    return 'robehi' if f < .16 else 'robe' if f < .58 else 'robe2' if f < .86 else 'robe3'
+
+LEFT = {78: 33, 79: 31, 80: 29, 81: 27, 82: 26, 83: 25, 84: 24, 85: 23, 86: 23, 87: 22, 88: 22}
+RIGHT = {78: 67, 79: 68, 80: 69, 81: 70, 82: 71, 83: 72, 84: 72, 85: 73, 86: 73, 87: 74, 88: 74}
+WAIST = 106                      # where the body meets the lap
+def body_lr(y):
+    if y <= 88: return LEFT[y], RIGHT[y]
+    return 22 - (y - 88) // 9, 74 + (y - 88) // 9       # upper arms, a touch outward
+# torso and upper arms
+for y in range(78, WAIST + 2):
+    l, r = body_lr(y)
+    for x in range(l, r + 1): put(x, y, shade((x - l) / (r - l)))
     put(r + 1, y, 'robeedge')
-for by in range(47, 64):                      # the bust's chest and sash on top
+for by in range(47, 64):                                     # the bust's own chest and sash
     for bx in range(56):
         c = bp[bx, by]
         if c not in BG and by + DY >= 78: put(bx + DX, by + DY, c)
-# the sash slips under the drape on his left side, as in the bust, so it simply ends there
-# soft folds in the robe below the chest
-for (x, y0, ln, c) in [(52, 97, 12, 'robe2'), (60, 99, 10, 'robe2'), (44, 100, 8, 'robe2'), (68, 96, 14, 'robe3'), (36, 102, 7, 'robe2')]:
-    for t in range(ln): put(x + t // 4, y0 + t, c)
-# upper arms under the robe at both sides, a shade darker so the arms read
-for y in range(88, 113):
-    l, r = outline_x(y)
-    for x in range(l, l + 5): put(x, y, 'robe' if x > l + 1 else 'robehi')
-    put(l + 5, y, 'robe2')
-    for x in range(r - 4, r + 1): put(x, y, 'robe3' if x > r - 2 else 'robe2')
-    put(r - 5, y, 'robe3')
-
-# hands resting on the table edge, fingers towards the middle
-LEFT_HAND = [
-    "..ssss....",
-    ".sHHsss...",
-    "sHHssssss.",
-    "sHsssssss2",
-    "sss2s2s2s2",
-    ".2222222..",
-]
-def hand(x0, y0, rows, flip=False):
-    for dy, row in enumerate(rows):
+# the sash carries on from the bust down to his left hip, where it tucks under the drape
+SASH = ('sashhi', 'sash', 'sash', 'sash', 'sash2', 'sash2', 'sashdk')
+for y in range(92, 104):
+    x0 = 34 - int((y - 92) * 1.1)
+    for k, c in enumerate(SASH):
+        if x0 + k < 44 - (y - 92): put(x0 + k, y, c)
+# creases between the upper arms and the body
+for y in range(86, WAIST):
+    l, r = body_lr(y)
+    put(l + 7, y, 'robe2'); put(r - 7, y, 'robe3')
+    if y > 90: put(l + 8, y, 'robe'); put(r - 8, y, 'robe2')
+# the lap: thighs towards us, knees catching the light, a dip between the legs
+KNEES = (35, 61)
+for y in range(WAIST, 124):
+    t = (y - WAIST) / 18
+    l = int(22 - 2 * t); r = int(74 + 2 * t)
+    for x in range(l, r + 1):
+        f = (x - l) / (r - l)
+        c = 'robehi' if f < .3 else 'robe' if f < .78 else 'robe2'     # the top of the thighs faces the light
+        for kx in KNEES:
+            d = ((x - kx) / 9) ** 2 + ((y - 119) / 5) ** 2
+            if d < 1: c = 'robehi' if (x < kx and kx < 48) else 'robe' if kx < 48 else 'robe2' if x > kx + 3 else 'robe'
+        put(x, y, c)
+    put(r + 1, y, 'robeedge')
+rect(23, WAIST, 74, WAIST + 1, 'robe2')
+for y in range(WAIST + 3, 124): put(48, y, 'robe3'); put(49, y, 'robe2')
+for (x, y0) in ((30, 110), (40, 112), (56, 112), (66, 110)):      # folds over the thighs, towards the knees
+    for t in range(6): put(x + (t if x < 48 else -t) // 2, y0 + t, 'robe2' if x < 60 else 'robe3')
+# forearms: from the elbows forward onto the thighs, hands resting on the knees
+def forearm(xe, xh, light):
+    for i, y in enumerate(range(WAIST - 4, 118)):
+        xc = round(xe + (xh - xe) * i / 15)
+        for x in range(xc - 4, xc + 4):
+            put(x, y, ('robehi' if x < xc - 2 else 'robe') if light else ('robe' if x < xc - 1 else 'robe2'))
+        put(xc - 5 if not light else xc + 4, y, 'robe3')
+forearm(24, 33, True); forearm(72, 63, False)
+HAND = ["..sssss..", ".sHsssss.", "sHssssss2", "sHssssss2", "s2s2s2s22", ".2.2.2.2."]
+def hand(x0, y0, flip=False):
+    for dy, row in enumerate(HAND):
         row = row[::-1] if flip else row
         for dx, ch in enumerate(row):
-            c = {'s': 'skin', 'H': 'skinhi', '2': 'skin2'}.get(ch)
-            if c: put(x0 + dx, y0 + dy, c)
-def sleeve(x0, x1, y0, y1):
-    rect(x0, y0, x1, y1, 'robe2'); rect(x0, y1 - 1, x1, y1, 'robe3')
-
-# --- table top (lower half): quiet planks seen from slightly above
-rect(0, 112, W, H, 'wood')
-rect(0, 112, W, 113, 'woodedge'); rect(0, 113, W, 114, 'wooddk')
-for y in range(116, H, 13):
-    rect(0, y, W, y + 1, 'wood2')
-random.seed(3)
-for y in range(118, H, 3):
-    x = random.randrange(W); ln = random.randrange(6, 18)
-    rect(x, y, min(W, x + ln), y + 1, 'woodhi' if random.random() < .5 else 'wood2')
-# forearms come in from the sides; the hands rest clasped on the table edge
-for y in range(98, 112):
-    t = (y - 98) / 13
-    xl = int(20 + t * 16); xr = int(76 - t * 16)
-    for x in range(xl - 5, xl + 4): put(x, y, 'robe' if x < xl - 1 else 'robe2')
-    put(xl + 4, y, 'robe3')
-    for x in range(xr - 3, xr + 6): put(x, y, 'robe2' if x < xr + 2 else 'robe3')
-    put(xr - 4, y, 'robe3')
-HANDS = [
-    "....ssssssssss....",
-    "..sHHsssssssss22..",
-    ".sHHssHssss2sss22.",
-    "sHHsssHssss2ssss22",
-    "sHssssHsss2sssss22",
-    "s2s2s2s2ss2s2s2s22",
-    ".222222222222222..",
-]
-for dy, row in enumerate(HANDS):
-    for dx, ch in enumerate(row):
-        c = {'s': 'skin', 'H': 'skinhi', '2': 'skin2'}.get(ch)
-        if c: put(39 + dx, 108 + dy, c)
-rect(39, 115, 57, 116, 'wooddk')
-# cup of coffee near his right hand (the viewer's left)
-rect(10, 120, 22, 123, 'saucer'); rect(11, 123, 21, 124, 'cup2')
-rect(12, 114, 20, 121, 'cup'); rect(18, 114, 20, 121, 'cup2'); rect(12, 114, 20, 115, 'coffee')
-rect(20, 116, 22, 117, 'cup'); rect(21, 116, 22, 119, 'cup'); rect(20, 118, 22, 119, 'cup2')
-
+            if ch != '.': put(x0 + dx, y0 + dy, {'s': 'skin', 'H': 'skinhi', '2': 'skin2'}[ch])
+hand(29, 116); hand(59, 116, flip=True)
+# the edge of the knees, then the robe falls from them to mid-shin, in shade
+for x in range(22, 77):                      # the knee edge: rounded under each knee
+    dy = 1 if min(abs(x - KNEES[0]), abs(x - KNEES[1])) < 6 else 0
+    put(x, 123 + dy, 'robe3')
+    if dy: put(x, 123, 'robehi' if x < 48 else 'robe')
+HEM = 148
+for y in range(124, HEM):
+    l = 25 + (y - 124) // 6; r = 71 - (y - 124) // 6
+    for x in range(l, r + 1):
+        f = (x - l) / (r - l)
+        put(x, y, 'robe' if f < .22 else 'robe2' if f < .72 else 'robe3')
+    put(r + 1, y, 'robeedge')
+    for xf, d in ((33, 1), (41, 0), (55, 0), (63, -1)): put(xf + d * (y - 124) // 8, y, 'robe2' if xf < 60 else 'robe3')
+rect(29, HEM - 2, 68, HEM - 1, 'robe3'); rect(29, HEM - 1, 68, HEM, 'robeedge')
+for y in range(125, HEM - 2): put(48, y, 'robe3')                  # the hollow between the legs
+# shins and sandalled feet on the rug
+for (x0, light) in ((33, True), (57, False)):
+    for y in range(HEM, HEM + 11):
+        for x in range(x0, x0 + 7): put(x, y, ('skinhi' if x < x0 + 2 else 'skin') if light else ('skin' if x < x0 + 4 else 'skin2'))
+    fy = HEM + 11
+    rect(x0 - 2, fy, x0 + 9, fy + 4, 'skin'); rect(x0 - 2, fy + 3, x0 + 9, fy + 4, 'skin2')
+    rect(x0 - 3, fy + 4, x0 + 10, fy + 6, 'sandal'); rect(x0 - 3, fy + 5, x0 + 10, fy + 6, 'sandal2')
+    rect(x0 - 1, fy, x0 + 8, fy + 1, 'strap'); rect(x0 + 2, fy - 4, x0 + 5, fy - 3, 'strap')
+    for k in range(0, 11, 2): put(x0 - 2 + k, fy + 2, 'skin2')
+rect(28, HEM + 17, 70, HEM + 18, 'rugedge')
 
 
 # ---------- expressions ----------
@@ -318,7 +341,7 @@ def main():
     meta = {
         "grid": [W, H], "patch": {"x": px0, "y": py0, "w": pw, "h": ph},
         "moods": list(MOODS), "frames": list(FRAMES),
-        "anchor": {"face": [DX + 28, DY + 27], "head": [DX + 12, DY + 9, DX + 45, DY + 48]},
+        "anchor": {"face": [DX + 28, DY + 27], "head": [DX + 12, DY + 9, DX + 45, DY + 48], "lap": 106, "feet": 165},
         # A blink and a change of mood share one path, so expressions never jump:
         # open -> half -> closed (the new mood's brows and mouth arrive here) -> half -> open.
         "timing_ms": {"half": 55, "closed": 85, "blink_every": [2800, 6500], "talk": [90, 150]},
