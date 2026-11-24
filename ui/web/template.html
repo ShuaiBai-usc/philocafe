@@ -96,7 +96,8 @@ p { margin: 0; }
 .back { width: 32px; height: 44px; display: grid; place-items: center; flex: none; }
 .mono { width: 52px; height: 52px; border: 1px solid var(--clay); flex: none; }
 .convhead h1 { margin: 0; font: 400 20px/1.3 var(--f-display); }
-.convhead .sub { font: 11px/1.4 var(--f-mono); color: var(--muted); white-space: nowrap; }
+.convhead > div { min-width: 0; }
+.convhead .sub { font: 11px/1.4 var(--f-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mode { margin-left: auto; align-self: flex-start; margin-top: 6px; font: 9px var(--f-label); letter-spacing: .08em; border: 2px solid var(--muted); color: var(--muted); padding: 1px 4px; }
 .mode.live { border-color: #6f8a55; color: #55703d; }
 
@@ -131,9 +132,21 @@ p { margin: 0; }
 .dots i { width: 7px; height: 7px; background: var(--ink); animation: hop .9s steps(2) infinite; }
 .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
 
-.tools { flex: none; display: flex; gap: 20px; padding: 0 var(--pad-r) 12px var(--pad-l); font: 10px/13px var(--f-label); letter-spacing: .06em; text-transform: uppercase; }
-.tools button { padding: 6px 0; text-transform: uppercase; }
-.tools button:disabled { opacity: .45; cursor: default; }
+/* Reply actions (7.9): small pixel icons under each persona reply */
+.acts { display: flex; gap: 2px; margin: -8px 0 0 58px; }
+#chat.convo .acts { margin-top: -12px; }
+.acts button { width: 30px; height: 30px; display: grid; place-items: center; border: 2px solid transparent; }
+.acts button:hover, .acts button:focus-visible { border-color: var(--clay); }
+.acts button[aria-pressed="true"] { background: var(--sage); border-color: var(--ink); }
+.acts button:disabled { opacity: .4; cursor: default; }
+.acts:not(.latest) .regen { display: none; }
+.more { width: 30px; height: 30px; display: grid; place-items: center; flex: none; align-self: flex-start; margin: 2px -6px 0 -4px; border: 2px solid transparent; }
+.more[aria-expanded="true"] { border-color: var(--ink); background: var(--white); }
+.menu { position: absolute; right: var(--pad-r); top: 58px; z-index: 15; width: 230px; animation: popin .2s steps(3); }
+.menu .inner { padding: 6px 0 8px; gap: 0; }
+.menu button { display: block; width: 100%; text-align: left; padding: 9px 14px; font-size: 15px; line-height: 20px; }
+.menu button:hover, .menu button:focus-visible { background: var(--sage); }
+.menu .style { padding: 8px 14px 4px; border-top: 1px dashed var(--clay); margin-top: 4px; }
 .toast { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -6px); background: var(--ink); color: var(--paper); font-size: 13px; padding: 6px 10px; white-space: nowrap; animation: popin .2s steps(3); }
 
 .dock { flex: none; padding: 0 var(--pad-r) calc(12px + env(safe-area-inset-bottom, 0px)) var(--pad-l); position: relative; }
@@ -368,12 +381,20 @@ const ICONS = {
   cup: "M3 7h12v2H3zM3 9h2v7H3zM13 9h2v7h-2zM5 16h8v2H5zM15 9h3v2h-3zM18 11h2v3h-2zM15 14h3v2h-3zM6 3h2v3H6zM10 2h2v4h-2z",
   chat: "M3 3h16v2H3zM3 5h2v10H3zM17 5h2v10h-2zM3 15h6v2H3zM11 15h8v2h-8zM7 17h2v2H7zM9 17h2v2H9z",
   mark: "M5 2h12v2H5zM5 4h2v16H5zM15 4h2v16h-2zM7 16h2v2H7zM9 14h4v2H9zM13 16h2v2h-2z",
-  back: "M12 5h2v2h-2zM10 7h2v2h-2zM8 9h2v4H8zM10 13h2v2h-2zM12 15h2v2h-2z"
+  back: "M12 5h2v2h-2zM10 7h2v2h-2zM8 9h2v4H8zM10 13h2v2h-2zM12 15h2v2h-2z",
+  // reply actions (7.9)
+  markFull: "M5 2h12v18h-2v-2h-2v-2H9v2H7v2H5z",
+  copy: "M4 4h10v2H4zM4 6h2v10H4zM4 14h4v2H4zM12 6h2v2h-2zM8 8h10v2H8zM8 10h2v8H8zM16 10h2v8h-2zM8 16h10v2H8z",
+  book: "M2 4h8v2H2zM12 4h8v2h-8zM2 6h2v12H2zM18 6h2v12h-2zM10 6h2v14h-2zM4 16h6v2H4zM12 16h6v2h-6zM5 9h3v2H5zM14 9h3v2h-3zM5 12h3v2H5zM14 12h3v2h-3z",
+  up: "M3 10h4v9H3zM7 10h2v9H7zM9 6h2v4H9zM11 3h2v7h-2zM13 9h5v2h-5zM17 11h2v6h-2zM9 17h8v2H9z",
+  regen: "M7 3h8v2H7zM5 5h2v2H5zM3 7h2v8H3zM5 15h2v2H5zM7 17h8v2H7zM15 15h2v2h-2zM17 11h2v4h-2zM13 7h6v2h-6zM17 3h2v4h-2z",
+  more: "M3 9h4v4H3zM9 9h4v4H9zM15 9h4v4h-4z"
 };
-const COLORS = { ink: "#6b4e2e", paper: "#fffae0", clay: "#d4aa73" };
+const COLORS = { ink: "#6b4e2e", paper: "#fffae0", clay: "#d4aa73", muted: "#79694f" };
 const icon = (name, color = "ink", size = 22) => {
   const box = name === "back" ? '<rect x=".5" y=".5" width="21" height="21" fill="none" stroke="#d4aa73"/>' : "";
-  return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 22 22" shape-rendering="crispEdges" aria-hidden="true">${box}<path fill="${COLORS[color]}" d="${ICONS[name]}"/></svg>`;
+  const down = name === "down";                       // thumbs down = thumbs up flipped
+  return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 22 22" shape-rendering="crispEdges" aria-hidden="true">${box}<path fill="${COLORS[color]}" d="${ICONS[down ? "up" : name]}"${down ? ' transform="matrix(1 0 0 -1 0 22)"' : ""}/></svg>`;
 };
 const TAIL = {
   them: '<svg class="tail" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="#6b4e2e" d="M0 0h14v2H0zM12 2h2v2h-2zM10 4h2v2h-2zM12 6h2v2h-2zM12 8h2v2h-2z"/><path fill="#faedcd" d="M0 2h12v2H0zM0 4h10v2H0z"/></svg>',
@@ -495,10 +516,13 @@ const backend = {
     this.save({ thread_id, paused: false });
     return thread_id;
   },
-  async *turn(text, personaId, intent) {
+  // `regenerate` answers the latest message again (FR-41); prefs travel with every message (7.9).
+  async *turn(text, personaId, intent, regenerate = false) {
     const id = await this.thread();
+    const body = regenerate ? { regenerate: true, persona_id: personaId, prefs: prefs.get() }
+                            : { text, persona_id: personaId, prefs: prefs.get(), ...(intent ? { intent } : {}) };
     const r = await fetch(`threads/${id}/messages`, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
-                                                    body: JSON.stringify({ text, persona_id: personaId, ...(intent ? { intent } : {}) }) });
+                                                    body: JSON.stringify(body) });
     if (r.status === 401) { this.setCode(""); askCode("That code no longer opens the café."); }
     if (!r.ok) {
       let e = { code: String(r.status), message: "request failed" };
@@ -524,11 +548,32 @@ const backend = {
       }
     }
   },
-  async note() {
-    const r = await fetch(`threads/${this.visit().thread_id}/note`, { method: "POST", headers: this.headers() });
+  async note(ex) {           // 7.7: distil the exchange a bookmark saved
+    const r = await fetch(`threads/${this.visit().thread_id}/note`, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
+                                                                     body: JSON.stringify({ you: ex.you, them: ex.them, persona_id: ex.who }) });
     if (!r.ok) throw new Error(r.status);
     return r.json();
+  },
+  async rate(rating, ex) {   // 7.9: one thumb -> updated reply preferences
+    const r = await fetch("preferences", { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
+                                           body: JSON.stringify({ rating, persona_id: ex.who, user_text: ex.you, reply: ex.them, prefs: prefs.get() }) });
+    if (!r.ok) throw new Error(r.status);
+    return (await r.json()).prefs;
   }
+};
+
+/* ---------- Reply preferences (7.9): four dials from -2 to +2, kept on this device (D8) ---------- */
+const DIALS = { length: ["shorter replies", "longer replies"], plain: ["plainer words", "richer vocabulary"],
+                questions: ["fewer questions back", "more questions back"], quotes: ["fewer quotes", "more quotes"] };
+const prefs = {
+  get() { let v = {}; try { v = JSON.parse(localStorage.getItem("philocafe.prefs")) || {}; } catch {}
+          return Object.fromEntries(Object.keys(DIALS).map(k => [k, Math.max(-2, Math.min(2, Math.trunc(+v[k] || 0)))])); },
+  set(v) { try { localStorage.setItem("philocafe.prefs", JSON.stringify(v)); } catch {} },
+  reset() { try { localStorage.removeItem("philocafe.prefs"); } catch {} },
+  // "shorter replies, plainer words" — what the dials currently ask for
+  summary(v = this.get()) { return Object.keys(DIALS).filter(k => v[k]).map(k => (Math.abs(v[k]) === 2 ? "much " : "") + DIALS[k][v[k] > 0 ? 1 : 0]).join(", "); },
+  // the offline rule (no server, or it failed): a thumbs-down on a long reply asks for shorter ones
+  rule(rating, reply) { const v = this.get(); if (rating === "down" && reply.split(/\s+/).length > 120) v.length = Math.max(-2, v.length - 1); return v; }
 };
 const setMode = () => {
   const live = backend.live;
@@ -588,9 +633,33 @@ function header(id, sub) {
   head.innerHTML = `<button class="back" aria-label="Back to the café">${icon("back")}</button>
     <img class="mono px" src="${A}mono_${id}.png" alt="">
     <div><h1>${p.name}</h1><p class="sub">${sub}</p></div>
-    <span class="mode"></span>`;
+    <span class="mode"></span>
+    <button class="more" aria-label="More" aria-haspopup="menu" aria-expanded="false">${icon("more")}</button>`;
   $(".back", head).onclick = leaveChat;
+  $(".more", head).onclick = e => { e.stopPropagation(); toggleMenu($(".more", head)); };
   return head;
+}
+
+// The ⋯ menu: Copy chat (the user test page relies on it) and the reply style the thumbs have set.
+function toggleMenu(btn) {
+  const open = document.querySelector(".menu");
+  open?.remove(); document.querySelectorAll(".more").forEach(b => b.setAttribute("aria-expanded", "false"));
+  if (open) return;
+  const style = prefs.summary();
+  const menu = el("div", "card menu");
+  menu.setAttribute("role", "menu");
+  menu.innerHTML = `<div class="inner"><button role="menuitem" data-a="copy">Copy chat</button>
+    <p class="t11 muted style">REPLY STYLE · ${style ? esc(style.toUpperCase()) : "AS THE PHILOSOPHER LIKES"}</p>
+    ${style ? `<button role="menuitem" data-a="reset">Reset reply style</button>` : `<p class="t14 muted" style="padding:2px 14px 6px">Thumbs up or down on a reply to tune it.</p>`}</div>`;
+  const close = () => { menu.remove(); btn.setAttribute("aria-expanded", "false"); document.removeEventListener("click", outside); };
+  const outside = e => { if (!menu.contains(e.target)) close(); };
+  menu.querySelector('[data-a="copy"]').onclick = () => { close(); copyChat(); };
+  const reset = menu.querySelector('[data-a="reset"]');
+  if (reset) reset.onclick = () => { close(); prefs.reset(); toast("Reply style reset"); };
+  $(".screens").append(menu);
+  btn.setAttribute("aria-expanded", "true");
+  setTimeout(() => document.addEventListener("click", outside));
+  menu.querySelector("button").focus();
 }
 
 function openChat(id) {
@@ -608,17 +677,12 @@ function openChat(id) {
     <div class="label">Try a conversation starter</div>
     <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">→  ${esc(s)}</button>`).join("")}</div>`;
   scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => send(c.dataset.s));
-  const tools = el("div", "tools"); tools.hidden = true;
-  tools.innerHTML = `<button id="saveBtn">Save thought</button><button id="copyBtn">Copy chat</button><button id="srcBtn" hidden>From the source ↗</button>`;
   const dock = el("div", "dock");
   dock.innerHTML = `<form class="composer">${icon("cup", "ink", 30)}
     <input id="msg" type="text" placeholder="Share a thought..." autocomplete="off" aria-label="Your message">
     <button class="send" type="submit" aria-label="Send">↑</button></form>`;
   $("form", dock).onsubmit = e => { e.preventDefault(); const v = $("#msg").value.trim(); if (v) { $("#msg").value = ""; send(v); } };
-  chat.append(header(id, "A table for your thoughts"), sceneFor(p), scroll, tools, dock);
-  $("#saveBtn").onclick = saveThought;
-  $("#copyBtn").onclick = copyChat;
-  $("#srcBtn").onclick = openSource;
+  chat.append(header(id, "A table for your thoughts"), sceneFor(p), scroll, dock);
   setMode();
   show("chat");
   if (isPaused()) return enterSupport(p);
@@ -684,6 +748,7 @@ function typeInto(node, text, done) {
 const scrollDown = () => { const s = $("#scroll"); if (s) s.scrollTop = s.scrollHeight; };
 
 function bubble(who, text) {
+  if (who === "me") document.querySelectorAll(".acts.latest").forEach(a => a.classList.remove("latest"));
   const row = el("div", "row " + who);
   if (who === "them") row.append(Object.assign(el("img", "ava px"), { src: `${A}mono_${curId}.png`, alt: "" }));
   const b = el("div", "bubble"); b.textContent = text ?? "";
@@ -701,7 +766,6 @@ function startConvo(p) {
   clearInterval(typer);
   chat.classList.add("convo");
   $("#scroll").innerHTML = "";
-  $(".tools").hidden = false;
   bubble("them", p.greet);
   history.push({ role: "assistant", content: p.greet });
 }
@@ -742,7 +806,6 @@ function restorePaused() {
 function enterSupport(p) {
   clearInterval(typer);
   if (!chat.classList.contains("convo")) { chat.classList.add("convo"); $("#scroll").innerHTML = ""; }
-  $(".tools").hidden = true;
   systemCard(`This conversation is paused, and ${p.name} is waiting nearby. You can tell me how you are. When you feel ready, tap the button below.`);
   $("#msg").placeholder = "Say how you are…";
   comeBack(p);
@@ -765,7 +828,6 @@ function comeBack(p, step = "ask") {
 function leaveSupport() {
   $(".comeback", chat)?.remove();
   $("#msg").placeholder = "Share a thought...";
-  $(".tools").hidden = false;
 }
 async function checkIn(p, safe) {
   if (busy) return;
@@ -782,7 +844,31 @@ async function checkIn(p, safe) {
   const b = bubble("them");
   await new Promise(r => typeInto(b, "I’m glad you’re here. Let’s go on gently, at your own pace. Where would you like to begin?", r));
   history.push({ role: "assistant", content: b.textContent });
+  addActions(b, { who: curId, you: text, them: b.textContent, cites: [] });
   busy = false;
+}
+
+// Reads one turn's events into bubble `b` (7.2); shared by a new message and Regenerate.
+async function streamInto(b, events) {
+  const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null };
+  try {
+    for await (const ev of events) {
+      const d = ev.data;
+      if (ev.type === "voice") {
+        out.voice = d.speaker;
+        if (out.voice === "persona") { b.textContent = ""; backend.save({ paused: false }); leaveSupport(); }
+      } else if (ev.type === "token") {
+        out.said += d.text;
+        if (out.voice === "persona") { b.textContent += d.text; scrollDown(); }
+      } else if (ev.type === "citation" && out.voice === "persona") {
+        citations.push(d); out.cites.push({ ...d, n: citations.length });
+        b.textContent += ` [${citations.length}]`;     // matches the numbered entry in "From the source"
+      } else if (ev.type === "exit") { out.resources = d.resources; out.reason = d.reason; }
+      else if (ev.type === "error") out.failed = d;
+      if (DEBUG && (ev.type === "safety" || ev.type === "trace")) debugShow(ev);
+    }
+  } catch (e) { out.failed = { code: "network", message: String(e) }; }
+  return out;
 }
 
 async function sendLive(text, intent = null) {
@@ -793,41 +879,110 @@ async function sendLive(text, intent = null) {
   history.push({ role: "user", content: text });
   const b = bubble("them");
   b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
-  let voice = null, said = "", resources = null, reason = null, failed = null;
-  try {
-    for await (const ev of backend.turn(text, id, intent)) {
-      const d = ev.data;
-      if (ev.type === "voice") {
-        voice = d.speaker;
-        if (voice === "persona") { b.textContent = ""; backend.save({ paused: false }); leaveSupport(); }
-      } else if (ev.type === "token") {
-        said += d.text;
-        if (voice === "persona") { b.textContent += d.text; scrollDown(); }
-      } else if (ev.type === "citation" && voice === "persona") {
-        citations.push(d);
-        b.textContent += ` [${citations.length}]`;     // matches the numbered entry in "From the source"
-        $("#srcBtn").hidden = false;
-      } else if (ev.type === "exit") { resources = d.resources; reason = d.reason; }
-      else if (ev.type === "error") failed = d;
-      if (DEBUG && (ev.type === "safety" || ev.type === "trace")) debugShow(ev);
-    }
-  } catch (e) { failed = { code: "network", message: String(e) }; }
+  const r = await streamInto(b, backend.turn(text, id, intent));
   busy = false; $(".send").disabled = false;
-  if (voice === "system") {
+  if (r.voice === "system") {
     b.closest(".row").remove();
     backend.save({ paused: true });
-    if (reason === "tier_3") return distress(id, text, { text: said, resources });
-    $(".tools").hidden = true;
-    systemCard(said, resources);
+    if (r.reason === "tier_3") return distress(id, text, { text: r.said, resources: r.resources });
+    systemCard(r.said, r.resources);
     return comeBack(PH[id]);
   }
-  if (failed || voice !== "persona") {          // never stand in for the persona with a made-up reply
+  if (r.failed || r.voice !== "persona") {          // never stand in for the persona with a made-up reply
     b.closest(".row").remove();
     $("#scroll").append(el("p", "t11 muted netnote", "The café could not answer just now. Please try again."));
     return scrollDown();
   }
-  history.push({ role: "assistant", content: said });
-  $(".tools").hidden = false; scrollDown();
+  history.push({ role: "assistant", content: r.said });
+  addActions(b, { who: id, you: text, them: b.textContent, cites: r.cites });
+  scrollDown();
+}
+
+/* ---------- Reply actions (7.9): save, copy, source, thumbs, regenerate ---------- */
+function addActions(b, ex) {
+  const row = b.closest(".row");
+  row.nextElementSibling?.classList.contains("acts") && row.nextElementSibling.remove();
+  document.querySelectorAll(".acts.latest").forEach(a => a.classList.remove("latest"));
+  const acts = el("div", "acts latest");
+  acts.setAttribute("role", "toolbar"); acts.setAttribute("aria-label", "Reply actions");
+  acts._ex = { ...ex, rating: null, noteId: null };
+  const btn = (a, label, ico) => `<button type="button" data-a="${a}" class="${a}" aria-label="${label}" title="${label}">${icon(ico, "muted", 18)}</button>`;
+  acts.innerHTML = btn("save", "Save to My notes", "mark") + btn("copy", "Copy", "copy") +
+    (ex.cites.length ? btn("source", "From the source", "book") : "") +
+    btn("up", "Good reply", "up") + btn("down", "Bad reply", "down") + btn("regen", "Regenerate", "regen");
+  acts.querySelectorAll("button").forEach(x => x.onclick = () => ACTIONS[x.dataset.a](acts, x));
+  row.after(acts);
+  return acts;
+}
+const setIcon = (x, name, color = "muted") => { x.innerHTML = icon(name, color, 18); };
+
+const ACTIONS = {
+  async save(acts, x) {
+    const ex = acts._ex;
+    if (ex.noteId && notes.some(n => n.id === ex.noteId)) return toast("Already in My notes");
+    x.disabled = true;
+    ex.noteId = await saveExchange(ex);
+    x.disabled = false; x.setAttribute("aria-pressed", "true"); setIcon(x, "markFull", "ink");
+    toast("Saved to My notes");
+  },
+  async copy(acts) {
+    toast(await copyText(acts._ex.them) ? "Copied" : "Couldn’t copy. Press and hold the reply to copy it.");
+  },
+  source(acts) { openSource(acts._ex.cites); },
+  up(acts, x) { rate(acts, x, "up"); },
+  down(acts, x) { rate(acts, x, "down"); },
+  regen(acts) { regenerate(acts); }
+};
+
+// A thumb (7.9): toggles the rating; a new rating asks the server how to move the reply style.
+async function rate(acts, x, rating) {
+  const ex = acts._ex;
+  const off = ex.rating === rating;
+  ex.rating = off ? null : rating;
+  acts.querySelectorAll(".up, .down").forEach(b => { const on = b.dataset.a === ex.rating; b.setAttribute("aria-pressed", on); setIcon(b, b.dataset.a, on ? "ink" : "muted"); });
+  if (off) return;
+  const before = prefs.get();
+  let next = null;
+  if (backend.live) { try { next = await backend.rate(rating, ex); } catch {} }
+  next = next || prefs.rule(rating, ex.them);
+  prefs.set(next);
+  const moved = Object.keys(DIALS).filter(k => next[k] !== before[k]).map(k => DIALS[k][next[k] > before[k] ? 1 : 0]);
+  toast(moved.length ? `Noted: ${moved.join(", ")} from now on` : "Thanks for the feedback");
+}
+
+// Regenerate (FR-41): the latest reply is answered again and replaces the old one in place.
+async function regenerate(acts) {
+  if (busy) return;
+  const ex = acts._ex, row = acts.previousElementSibling, b = $(".bubble", row);
+  const old = b.textContent;
+  busy = true; $(".send").disabled = true;
+  acts.querySelectorAll("button").forEach(x => x.disabled = true);
+  b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
+  let said = null, cites = [];
+  if (backend.live) {
+    const r = await streamInto(b, backend.turn(null, ex.who, null, true));
+    if (r.voice === "system") {                      // the safety node decides again; it may pause
+      busy = false; $(".send").disabled = false;
+      row.remove(); acts.remove(); history.pop();
+      backend.save({ paused: true });
+      if (r.reason === "tier_3") return distress(ex.who, ex.you, { text: r.said, resources: r.resources });
+      systemCard(r.said, r.resources);
+      return comeBack(PH[ex.who]);
+    }
+    if (!r.failed && r.voice === "persona") { said = b.textContent; cites = r.cites; }
+  } else {
+    const p = PH[ex.who];
+    const reply = p.fallback[fbIdx++ % p.fallback.length];
+    await new Promise(r => setTimeout(r, reduce ? 0 : 700));
+    await new Promise(r => typeInto(b, reply, r));
+    said = reply;
+  }
+  busy = false; $(".send").disabled = false;
+  if (said == null) { b.textContent = old; acts.querySelectorAll("button").forEach(x => x.disabled = false); return toast("Couldn’t regenerate just now"); }
+  const last = history.map(m => m.role).lastIndexOf("assistant");
+  if (last >= 0) history[last].content = said;
+  addActions(b, { ...ex, them: said, cites });
+  scrollDown();
 }
 
 async function send(text) {
@@ -854,20 +1009,21 @@ async function send(text) {
   await new Promise(r => setTimeout(r, reduce ? 0 : 1100));
   await new Promise(r => typeInto(b, reply, r));
   history.push({ role: "assistant", content: reply });
+  addActions(b, { who: curId, you: text, them: reply, cites: [] });
   busy = false; $(".send").disabled = false; scrollDown();
 }
 
 /* ---------- Source card ---------- */
-function openSource() {
-  if (!citations.length) return;     // nothing quoted, nothing to show
+function openSource(list = citations.map((c, i) => ({ ...c, n: i + 1 }))) {
+  if (!list.length) return;     // nothing quoted, nothing to show
   const veil = el("div", "veil");
   veil.innerHTML = `<div class="pop card source" role="dialog" aria-label="From the source">
     <div class="titlebar">From the source</div><div class="inner"></div></div>`;
   const inner = $(".inner", veil);
-  citations.forEach((c, i) => {
+  list.forEach(c => {
     const where = c.section ? `${c.work}, ${c.section}` : c.work;
     const block = el("div", "cite");
-    block.innerHTML = `<p class="t11 muted">[${i + 1}] ${esc(where)}</p>
+    block.innerHTML = `<p class="t11 muted">[${c.n}] ${esc(where)}</p>
       ${c.quote ? `<blockquote class="t16">${esc(c.quote)}</blockquote>` : ""}
       ${c.passage ? `<details><summary class="t14">Full passage</summary><p class="t14 passage">${esc(c.passage)}</p></details>` : ""}
       <a class="t14" href="${esc(c.source_url)}" target="_blank" rel="noopener">Read it in the source ↗</a>`;
@@ -903,43 +1059,28 @@ function savedOn(n) {
 
 function toast(msg) {
   document.querySelector(".toast")?.remove();
-  const t = el("div", "toast", esc(msg)); $(".dock").append(t);
+  const dock = $("#chat .dock");
+  if (!dock) return;
+  const t = el("div", "toast", esc(msg)); dock.append(t);
   setTimeout(() => t.remove(), 1800);
 }
 
 const lastQuestion = s => { const parts = s.match(/[^.!?。！？]+[.!?。！？]*/g) || [s]; return (parts.filter(x => /[?？]/.test(x)).pop() || parts[0]).trim(); };
 
-// The exchange a note was saved from: the philosopher's last reply, the user's line before it,
-// and any passages that reply cited ([n] markers point into `citations`). Kept on the device only.
-function lastExchange() {
-  const i = history.map(m => m.role).lastIndexOf("assistant");
-  const them = history[i]?.content || "";
-  const you = history.slice(0, i).reverse().find(m => m.role === "user")?.content || "";
-  const nums = [...new Set([...them.matchAll(/\[(\d+)\]/g)].map(m => +m[1]))];
-  const cites = nums.map(n => citations[n - 1]).filter(Boolean)
-    .map(c => ({ n: citations.indexOf(c) + 1, where: c.section ? `${c.work}, ${c.section}` : c.work, quote: c.quote || "", url: c.source_url || "" }));
-  return { you, them, cites };
-}
-
-async function saveThought() {
-  const btn = $("#saveBtn");
-  const said = history.filter(m => m.role === "assistant");
-  if (!said.length || btn.disabled) return;
-  btn.disabled = true; btn.textContent = "Saving…";
-  const p = cur, id = curId, firstUser = history.find(m => m.role === "user")?.content || "";
+// Bookmark (7.7): the exchange becomes a note. The server distils a title; offline, or if it
+// fails, the reply's question stands in. Kept on this device only (D8).
+async function saveExchange(ex) {
+  const p = PH[ex.who];
   let note = null;
-  if (!backend.live && p.scripted[firstUser] && p.sample && history.length <= 3) note = { ...p.sample };
+  if (!backend.live && ex.who === "socrates" && ex.you === sampleFrom.you && ex.them === sampleFrom.them) note = { ...p.sample };
   if (!note && backend.live) {
-    try {
-      const j = await backend.note();
-      if (j.title) note = { title: j.title, why: j.why || "", topic: j.topic || "From your conversation" };
-    } catch {}
+    try { const j = await backend.note(ex); if (j.title) note = { title: j.title, why: j.why || "", topic: j.topic || "From your conversation" }; } catch {}
   }
-    if (!note) note = { title: lastQuestion(said[said.length - 1].content), why: firstUser ? `From your talk about “${firstUser}”.` : "A thought to revisit later.", topic: "From your conversation" };
-  const dup = notes.find(x => x.id !== SAMPLE && x.who === id && x.title === note.title);
-  if (!dup) { dropSample(); notes.unshift({ id: Date.now().toString(36), who: id, reflection: "", ...note, from: lastExchange() }); store.set(notes); }
-  btn.disabled = false; btn.textContent = "Save thought";
-  toast("Saved to My notes");
+  if (!note) note = { title: lastQuestion(ex.them), why: ex.you ? `From your talk about “${ex.you}”.` : "A thought to revisit later.", topic: "From your conversation" };
+  const cites = ex.cites.map(c => ({ n: c.n, where: c.section ? `${c.work}, ${c.section}` : c.work, quote: c.quote || "", url: c.source_url || "" }));
+  const n = { id: Date.now().toString(36), who: ex.who, reflection: "", ...note, from: { you: ex.you, them: ex.them, cites } };
+  dropSample(); notes.unshift(n); store.set(notes);
+  return n.id;
 }
 
 // Copy chat (user test, ui/web/test.html): the whole conversation as plain text, headed
@@ -952,7 +1093,9 @@ function chatText() {
 }
 async function copyChat() {
   if (!history.some(m => m.role === "user")) return toast("Say something first");
-  const text = chatText();
+  toast(await copyText(chatText()) ? "Chat copied" : "Couldn’t copy. Press and hold each message to copy it.");
+}
+async function copyText(text) {
   let ok = false;
   try { await navigator.clipboard.writeText(text); ok = true; } catch {}
   if (!ok) {          // older iOS, or a page opened without HTTPS
@@ -962,7 +1105,7 @@ async function copyChat() {
     try { ok = document.execCommand("copy"); } catch {}
     ta.remove();
   }
-  toast(ok ? "Chat copied" : "Couldn’t copy. Press and hold each message to copy it.");
+  return ok;
 }
 
 /* ---------- 05 My Notes ---------- */

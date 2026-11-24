@@ -16,6 +16,7 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemM
 from app.deps import Deps
 from app.events import emit
 from app.personas import PersonaConfig
+from app.prefs import prefs_note
 from app.quotes import LeadingNotesFilter, QuoteFilter
 from app.retrieval import Chunk
 from app.state import TurnState
@@ -128,6 +129,8 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
 
     returning = state.get("mode") == "support"      # FR-32: safety let the persona back in
     notes_for_turn = ([SystemMessage(REENTRY_NOTE)] if returning else []) + [SystemMessage(passages_note(chunks, wants_passages, persona.texts))]
+    if (style := prefs_note(state.get("prefs"))) is not None:     # 7.9: after the passages, so the system prompt stays cached
+        notes_for_turn.append(SystemMessage(style))
     messages = [*history, *notes_for_turn]
     for delta in deps.generate(system_prompt(persona), messages):
         send(quotes.feed(notes.feed(delta)))

@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterator
 from functools import partial
 from typing import Literal
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
@@ -61,15 +61,42 @@ def skipped_quotes(quotes) -> list[dict]:
             for q in quotes if not q["ok"] and not q["reason"].startswith("untagged")]
 
 
-def run_turn(graph, thread_id: str, text: str, persona_id: str, intent: str | None = None) -> Iterator[Event]:
+class CannotRegenerate(Exception):
+    """The latest reply is not a persona reply that can be generated again (7.9)."""
+
+
+def rewind_last_turn(graph, thread_id: str) -> tuple[str, str]:
+    """Regenerate (FR-41): drop the latest persona reply and the user message before it
+    from the checkpoint, and return (text, persona_id) to run that turn again. Refused in
+    support mode and when the latest reply is in the system voice (exit, support)."""
+    config = {"configurable": {"thread_id": thread_id}}
+    state = graph.get_state(config).values
+    messages = state.get("messages") or []
+    if state.get("mode") == "support":
+        raise CannotRegenerate("The conversation is paused.")
+    last = next((m for m in reversed(messages) if isinstance(m, AIMessage)), None)
+    if last is None or last.name in (None, "system") or messages[-1] is not last:
+        raise CannotRegenerate("There is no persona reply to generate again.")
+    i = messages.index(last)
+    asked = next((m for m in reversed(messages[:i]) if isinstance(m, HumanMessage)), None)
+    if asked is None:
+        raise CannotRegenerate("There is no message to answer again.")
+    graph.update_state(config, {"messages": [RemoveMessage(id=asked.id), RemoveMessage(id=last.id)]},
+                       as_node="persona")
+    return asked.content, last.name
+
+
+def run_turn(graph, thread_id: str, text: str, persona_id: str, intent: str | None = None,
+             prefs: dict[str, int] | None = None) -> Iterator[Event]:
     """Run one user turn and yield its UI events, ending with `done` or `error`.
-    `intent="return"` marks the web app's "ready to come back" button (FR-32)."""
+    `intent="return"` marks the web app's "ready to come back" button (FR-32).
+    `prefs` are the visitor's reply preferences (7.9); only the persona node reads them."""
     config = {"configurable": {"thread_id": thread_id}}
     # Per-turn fields are reset here; messages and mode carry over in the checkpoint.
     # The message is tagged with the persona it is addressed to, so each persona gets its own history.
     turn = {"thread_id": thread_id, "persona_id": persona_id, "messages": [HumanMessage(text, name=persona_id)],
             "trace": [], "retrieved": [], "reply": "", "citations": [], "quotes": [], "retrieval_query": "",
-            "return_request": intent == "return"}
+            "return_request": intent == "return", "prefs": dict(prefs or {})}
     try:
         yield from graph.stream(turn, config, stream_mode="custom")
         state = graph.get_state(config).values

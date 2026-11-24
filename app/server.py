@@ -29,6 +29,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI
+from langchain_core.messages import AIMessage, HumanMessage
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
@@ -37,13 +38,15 @@ from starlette.staticfiles import StaticFiles
 
 from app.config import ROOT
 from app.deps import Deps
-from app.graph import build_graph, run_turn
+from app.graph import CannotRegenerate, build_graph, rewind_last_turn, run_turn
 from app.persona import persona_history
+from app.prefs import apply_changes, clean_prefs, rule_changes
 from app.submissions import MAX_TRANSCRIPT, SEVERAL, MemorySubmissions, PostgresSubmissions, to_csv
 
 log = logging.getLogger(__name__)
 
 MAX_TEXT = 2000
+MAX_REPLY = 8000                  # a persona reply sent back for a note or a rating
 DEFAULT_RETENTION_HOURS = 168     # 7 days, for multi-day testing; 24 on showcase day (ADR-11)
 WEB_DIR = ROOT / "ui" / "web"
 CODE_HEADER = "x-philocafe-code"
@@ -147,6 +150,16 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
             body = await request.json()
         except json.JSONDecodeError:
             return error(400, "bad_json", "The request body is not JSON.")
+        thread_id = request.path_params["thread_id"]
+        prefs = clean_prefs(body.get("prefs"))           # 7.9: unknown keys dropped, values clamped
+        if body.get("regenerate") is True:               # FR-41: answer the latest message again
+            try:
+                text, persona_id = await run_in_threadpool(rewind_last_turn, graph, thread_id)
+            except CannotRegenerate as e:
+                return error(409, "cannot_regenerate", str(e))
+            events = run_turn(graph, thread_id, text, persona_id, None, prefs)
+            return StreamingResponse((sse(e) for e in events), media_type="text/event-stream",
+                                     headers={"Cache-Control": "no-cache"})
         text = str(body.get("text") or "").strip()
         persona_id = str(body.get("persona_id") or deps.config.default_persona)
         if not text:
@@ -158,7 +171,7 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         intent = body.get("intent")
         if intent not in (None, "return"):
             return error(400, "bad_intent", "intent must be \"return\" or absent.")
-        events = run_turn(graph, request.path_params["thread_id"], text, persona_id, intent)
+        events = run_turn(graph, thread_id, text, persona_id, intent, prefs)
         return StreamingResponse((sse(e) for e in events), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache"})
 
@@ -173,12 +186,52 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         if deps.distill_note is None:
             return error(501, "notes_unavailable", "Notes are not set up on this server.")
         persona = deps.personas.get(state.get("persona_id", ""))
+        messages = persona_history(state["messages"], state.get("persona_id", ""))
+        try:
+            body = await request.json() if await request.body() else {}
+        except json.JSONDecodeError:
+            return error(400, "bad_json", "The request body is not JSON.")
+        if isinstance(body, dict) and body.get("them"):   # 7.7: the exchange a bookmark saved
+            persona = deps.personas.get(str(body.get("persona_id") or "")) or persona
+            you, them = str(body.get("you") or "")[:MAX_TEXT], str(body["them"])[:MAX_REPLY]
+            messages = ([HumanMessage(you)] if you else []) + [AIMessage(them, name=persona.id if persona else "")]
         try:
             result = await run_in_threadpool(deps.distill_note, persona.name if persona else "the philosopher",
-                                             persona_history(state["messages"], state.get("persona_id", "")))
+                                             messages)
         except Exception as e:
             return error(502, "note_failed", type(e).__name__)
         return JSONResponse(result)
+
+    async def preferences(request: Request) -> JSONResponse:
+        """7.9: one thumb -> the visitor's updated reply preferences. Stateless: the browser
+        holds the preferences and nothing about the rating is stored here (D8)."""
+        if denied := locked(request):
+            return denied
+        try:
+            body = await request.json()
+        except json.JSONDecodeError:
+            return error(400, "bad_json", "The request body is not JSON.")
+        rating = body.get("rating") if isinstance(body, dict) else None
+        if rating not in ("up", "down"):
+            return error(400, "bad_rating", "rating must be \"up\" or \"down\".")
+        persona = deps.personas.get(str(body.get("persona_id") or ""))
+        if persona is None:
+            return error(404, "unknown_persona", "No such persona.")
+        reply = str(body.get("reply") or "")[:MAX_REPLY]
+        user_text = str(body.get("user_text") or "")[:MAX_TEXT]
+        if not reply.strip():
+            return error(400, "empty_reply", "The rated reply is empty.")
+        prefs = clean_prefs(body.get("prefs"))
+        changes, source = None, "rule"
+        if deps.tune_prefs is not None:
+            try:
+                changes = await run_in_threadpool(deps.tune_prefs, rating, persona.name, user_text, reply, prefs)
+                source = "model"
+            except Exception as e:
+                log.warning("preference update failed, using the offline rule: %s", type(e).__name__)
+        if changes is None:
+            changes = rule_changes(rating, reply)
+        return JSONResponse({"prefs": apply_changes(prefs, changes), "source": source})
 
     async def purge(request: Request) -> JSONResponse:
         # Vercel Cron sends "Authorization: Bearer $CRON_SECRET".
@@ -241,6 +294,7 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
               Route("/threads", new_thread, methods=["POST"]),
               Route("/threads/{thread_id}/messages", messages, methods=["POST"]),
               Route("/threads/{thread_id}/note", note, methods=["POST"]),
+              Route("/preferences", preferences, methods=["POST"]),
               Route("/internal/purge", purge),
               Route("/test/submissions", submit_test, methods=["POST"]),
               Route("/test/submissions.csv", export_tests)]
