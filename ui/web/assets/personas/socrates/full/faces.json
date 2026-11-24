@@ -36,7 +36,7 @@
       82
     ]
   },
-  "source": "socrates_seated_gen.webp",
+  "source": "socrates_restyled_gen.jpg",
   "palette": 48,
   "timing_ms": {
     "half": 55,
@@ -49,5 +49,6 @@
       90,
       150
     ]
-  }
+  },
+  "static": true
 }

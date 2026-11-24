@@ -36,7 +36,7 @@
       77
     ]
   },
-  "source": "epictetus_seated_gen.jpg",
+  "source": "epictetus_restyled_gen.jpg",
   "palette": 48,
   "timing_ms": {
     "half": 55,
@@ -49,5 +49,6 @@
       90,
       150
     ]
-  }
+  },
+  "static": true
 }

@@ -6,8 +6,8 @@
   "patch": {
     "x": 60,
     "y": 53,
-    "w": 21,
-    "h": 17
+    "w": 22,
+    "h": 18
   },
   "moods": [
     "attentive",
@@ -27,13 +27,13 @@
   "anchor": {
     "face": [
       70,
-      61
+      62
     ],
     "head": [
       56,
       40,
-      84,
-      76
+      85,
+      77
     ]
   },
   "source": "schopenhauer_seated_gen.jpg",
