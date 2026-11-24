@@ -97,7 +97,7 @@ def run_turn(graph, thread_id: str, text: str, persona_id: str, intent: str | No
     # Per-turn fields are reset here; messages and mode carry over in the checkpoint.
     # The message is tagged with the persona it is addressed to, so each persona gets its own history.
     turn = {"thread_id": thread_id, "persona_id": persona_id, "messages": [HumanMessage(text, name=persona_id)],
-            "trace": [], "retrieved": [], "reply": "", "citations": [], "quotes": [], "retrieval_query": "", "suggestions": [],
+            "trace": [], "retrieved": [], "reply": "", "citations": [], "quotes": [], "retrieval_query": "", "suggestions": [], "thinking": [],
             "return_request": intent == "return", "prefs": dict(prefs or {})}
     if paused is not None:
         turn["mode"] = "support" if paused else "persona"

@@ -8,6 +8,7 @@ from app.graph import build_graph, run_turn
 from app.config import ROOT
 from app.persona import passages_note, quoting_rules, retrieval_query, system_prompt
 from app.personas import load_persona, load_personas
+from app.thinking import Thought, clean
 
 CHUNK = FAKE_CHUNKS[0]
 GOOD = ["Well, ", f'<q id="{CHUNK["chunk_id"]}">can either a young man', ' or an elder one be good</q>', "? Tell me."]
@@ -203,3 +204,49 @@ def test_the_reply_language_note_comes_last():
     voice = FakeVoice()
     list(run_turn(build_graph(fake_deps(generate=voice)), "t", "美德可以教吗？", "socrates"))
     assert "in Chinese" in voice.last_messages[-1].content
+
+
+
+THINKING = [Thought("Behind whom, I wonder? I should ask them "), Thought("before I answer.\nThe passage on Meno fits"),
+            Thought(" here. Let me ask about “goodness” itself.")]
+
+
+def test_thinking_streams_sentence_by_sentence_before_the_reply():
+    events, state = turn(fake_deps(generate=FakeVoice([*THINKING, *GOOD])))
+    shown = of(events, "thinking")
+    # the sentence naming a passage is held back; quotation marks never reach the bubble
+    assert [t["text"] for t in shown] == ["Behind whom, I wonder?", "I should ask them before I answer.",
+                                          "Let me ask about goodness itself."]
+    types = [e["type"] for e in events]
+    assert max(i for i, t in enumerate(types) if t == "thinking") < types.index("token")
+    assert "Behind whom" not in state["reply"]                   # thinking never becomes reply text
+    assert state["thinking"] == [t["text"] for t in shown]
+
+
+def test_the_system_prompt_steers_the_thinking():
+    voice = FakeVoice(GOOD)
+    turn(fake_deps(generate=voice))
+    assert "think as yourself, in the first person" in voice.last_system
+
+
+def test_no_thinking_from_tier_2_up():
+    events, state = turn(fake_deps(generate=FakeVoice([*THINKING, *GOOD])), text="TEST_TIER2 I can't sleep and nothing helps")
+    assert of(events, "thinking") == [] and state["thinking"] == []
+
+
+def test_a_turn_without_thinking_sends_none():
+    events, _ = turn(fake_deps(generate=FakeVoice(GOOD)))
+    assert of(events, "thinking") == []
+
+
+@pytest.mark.parametrize("line, shown", [
+    ("What does she mean by fairness?", "What does she mean by fairness?"),
+    ("The passages don't cover this.", None),
+    ("My instructions say to be brief.", None),
+    ('I could quote <q id="x">this</q>.', None),
+    ("It's tier 1, so I can go on.", None),
+    ("这段落正好合适。", None),
+    ("她说的“公平”是什么意思？", "她说的公平是什么意思？"),
+])
+def test_thinking_lines_that_show_the_machinery_are_dropped(line, shown):
+    assert clean(line) == shown

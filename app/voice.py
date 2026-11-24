@@ -1,4 +1,4 @@
-"""Voice model: streams the persona's reply from Claude.
+"""Voice model: streams the persona's reply from Claude, and its thinking summary (7.8).
 
 The system prompt is marked for prompt caching, since it is the same on every
 turn of a persona. A SystemMessage becomes a mid-conversation system message,
@@ -13,6 +13,7 @@ import anthropic
 from langchain_core.messages import AnyMessage, HumanMessage, SystemMessage
 
 from app.config import secret
+from app.thinking import Thought
 
 
 class VoiceRefused(RuntimeError):
@@ -41,14 +42,22 @@ class ClaudeVoice:
         return self._client
 
     def __call__(self, system: str, messages: Sequence[AnyMessage]) -> Iterator[str]:
+        """Reply text as str; the thinking summary (7.8, ADR-16) as Thought pieces before it."""
         with self._get_client().messages.stream(
             model=self.model,
             max_tokens=self.max_tokens,
             system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+            thinking={"type": "adaptive", "display": "summarized"},
             output_config={"effort": self.effort},
             messages=to_api_messages(messages),
         ) as stream:
-            yield from stream.text_stream
+            for event in stream:
+                if event.type != "content_block_delta":
+                    continue
+                if event.delta.type == "text_delta":
+                    yield event.delta.text
+                elif event.delta.type == "thinking_delta" and event.delta.thinking:
+                    yield Thought(event.delta.thinking)
             final = stream.get_final_message()
         if final.stop_reason == "refusal":
             raise VoiceRefused(getattr(final.stop_details, "category", None) or "refusal")

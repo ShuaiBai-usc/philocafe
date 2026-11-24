@@ -64,7 +64,8 @@ from app.state import TurnState  # noqa: E402
 
 RESULT_COLUMNS = ["run_id", "item_id", "persona", "predicted_tier", "probability", "threshold", "escalated",
                   "expected_tier", "latency_ms", "source", "model_version", "commit",
-                  "mood_label", "mood_intensity", "mood_locked"]      # FR-66: the persona's mood this turn (7.5)
+                  "mood_label", "mood_intensity", "mood_locked",      # FR-66: the persona's mood this turn (7.5)
+                  "thinking"]                                          # 7.8, NFR-14: the thinking shown this turn
 REQUIRED_COLUMNS = {"item_id", "text"}
 CONTEXT_SEPARATOR = "||"
 RESULTS_DIR = ROOT / "eval" / "results"
@@ -147,6 +148,7 @@ def run_item(graphs: Graphs, item: dict, persona: str, thread_id: str, safety_on
     return {
         "safety": first("safety"), "error": first("error"), "mood": first("mood"),
         "suggestions": (first("suggestions") or {}).get("items", []),
+        "thinking": [e["data"]["text"] for e in events if e["type"] == "thinking"],
         # Tier probabilities let eval/sweep.py replay the decision rule at other thresholds (FR-61).
         "tier_probs": {str(k): v for k, v in (decision.get("tier_probs") or {}).items()},
         "mode_before": mode_before,
@@ -201,7 +203,8 @@ def run(items: list[dict], deps: Deps, run_id: str, commit: str, retries: int = 
         row = {"run_id": run_id, "item_id": item["item_id"], "persona": persona,
                "expected_tier": "" if item["expected_tier"] is None else item["expected_tier"], "commit": commit,
                "mood_label": mood.get("label", ""), "mood_intensity": mood.get("intensity", ""),
-               "mood_locked": "" if not mood else str(bool(mood.get("locked"))).lower()}
+               "mood_locked": "" if not mood else str(bool(mood.get("locked"))).lower(),
+               "thinking": " ".join(res.get("thinking") or [])}
         if provider_failed:
             row.update(predicted_tier="", probability="", threshold="", escalated="", latency_ms="",
                        source="failed", model_version="fail-closed" if safety else "no decision")
@@ -216,7 +219,7 @@ def run(items: list[dict], deps: Deps, run_id: str, commit: str, retries: int = 
                         "context": item.get("context", []), "expected_tier": item["expected_tier"],
                         "persona": persona, "attempts": attempt + 1,
                         "cached": calls > 0 and calls == hits,
-                        **{k: res[k] for k in ("voice", "error", "reply", "citations", "quotes", "retrieval_query", "suggestions",
+                        **{k: res[k] for k in ("voice", "error", "reply", "citations", "quotes", "retrieval_query", "suggestions", "thinking",
                                                "retrieved", "skipped", "nodes", "ttft_ms", "total_ms",
                                                "tier_probs", "mode_before")}})
     return rows, replies

@@ -76,9 +76,11 @@ def sse(event: dict) -> str:
 
 def deps_from_env() -> Deps:
     if os.environ.get("PHILOCAFE_FAKE") == "1":
-        from app.fakes import FAKE_QUOTING_REPLY, FakeVoice, fake_deps, fake_distill_note
+        from app.fakes import FAKE_QUOTING_REPLY, FAKE_THINKING, FakeVoice, fake_deps, fake_distill_note
+        from app.thinking import Thought
         from app.speech import FakeVoiceIO
-        return fake_deps(generate=FakeVoice([w + " " for w in FAKE_QUOTING_REPLY.split(" ")], delay=0.03),
+        return fake_deps(generate=FakeVoice([Thought(w + " ") for w in FAKE_THINKING.split(" ")]
+                                               + [w + " " for w in FAKE_QUOTING_REPLY.split(" ")], delay=0.03),
                          distill_note=fake_distill_note, voice_io=FakeVoiceIO(levels=True))
     from app import retrieval
     from app.deps import default_deps

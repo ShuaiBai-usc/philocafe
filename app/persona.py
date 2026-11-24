@@ -21,6 +21,7 @@ from app.prefs import prefs_note
 from app.quotes import LeadingNotesFilter, QuoteFilter
 from app.retrieval import Chunk
 from app.suggest import NEXT_RULE, NextFilter, parse
+from app.thinking import THINK_RULE, ThinkingFilter, Thought
 from app.state import TurnState
 from app.translate import needs_translation, script_language
 
@@ -64,7 +65,7 @@ def language_note(text: str) -> str:
 def system_prompt(persona: PersonaConfig) -> str:
     style = "\n".join(f"- {rule}" for rule in persona.style)
     return (f"{persona.prompt}\n\nHow you talk:\n{style}\n- {REPLY_RULE}\n\n{mood_rule(persona.moods)}"
-            f"\n\n{quoting_rules(persona)}\n\n{NEXT_RULE}")
+            f"\n\n{quoting_rules(persona)}\n\n{NEXT_RULE}\n\n{THINK_RULE}")
 
 
 def passages_note(chunks: Sequence[Chunk], retrieved: bool, texts: str = "your writings") -> str:
@@ -163,6 +164,14 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
                 cited.append(citation)
 
     returning = state.get("mode") == "support"      # FR-32: safety let the persona back in
+    # 7.8 / FR-36: the thinking summary is shown only at tiers 0-1, never on the way back from support mode.
+    thinking = ThinkingFilter()
+    show_thinking = not locked and not returning
+
+    def think(sentences):
+        if show_thinking:
+            for s in sentences:
+                emit("thinking", text=s)
     notes_for_turn = ([SystemMessage(REENTRY_NOTE)] if returning else []) + [SystemMessage(passages_note(chunks, wants_passages, persona.texts))]
     if (style := prefs_note(state.get("prefs"))) is not None:     # 7.9: after the passages, so the system prompt stays cached
         notes_for_turn.append(SystemMessage(style))
@@ -170,9 +179,14 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
     notes_for_turn.append(SystemMessage(language_note(said[-1] if said else "")))
     messages = [*history, *notes_for_turn]
     for delta in deps.generate(system_prompt(persona), messages):
+        if isinstance(delta, Thought):               # 7.8: never part of the reply, never quote-checked
+            think(thinking.feed(delta))
+            continue
+        think(thinking.close())                      # the reply has begun: the rest of the thinking goes out first
         text = moodf.feed(delta)
         settle()
         send(quotes.feed(nextf.feed(notes.feed(text))))
+    think(thinking.close())
     text = moodf.close()
     settle()
     send(quotes.feed(nextf.feed(notes.feed(text))))
@@ -185,9 +199,12 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
         emit("suggestions", items=suggestions)
     if notes.dropped:
         log.warning("dropped notes the voice model wrote before its reply")
+    if thinking.dropped:
+        log.info("held back %d thinking sentences that named the machinery", thinking.dropped)
 
     reply = "".join(parts).rstrip()
     return {"retrieved": chunks, "reply": reply, "citations": quotes.cited, "quotes": quotes.checks,
+            "thinking": thinking.shown if show_thinking else [],
             "retrieval_query": query, "mode": "persona", "mood": mood, "mood_candidate": candidate,
             "suggestions": suggestions,
             "messages": [AIMessage(reply, name=persona.id,
