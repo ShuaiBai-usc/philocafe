@@ -4,10 +4,10 @@
     232
   ],
   "patch": {
-    "x": 54,
-    "y": 47,
-    "w": 22,
-    "h": 20
+    "x": 55,
+    "y": 50,
+    "w": 21,
+    "h": 19
   },
   "moods": [
     "attentive",
@@ -27,16 +27,17 @@
   "anchor": {
     "face": [
       65,
-      55
+      57
     ],
     "head": [
-      49,
-      37,
-      82,
-      76
+      51,
+      40,
+      79,
+      75
     ]
   },
   "source": "socrates_seated_gen.jpg",
+  "palette": 29,
   "timing_ms": {
     "half": 55,
     "closed": 85,
