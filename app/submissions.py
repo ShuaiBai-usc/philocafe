@@ -1,7 +1,6 @@
 """User-test submissions: conversations testers paste into ui/web/test.html.
 
-Unlike the café itself (D8: nothing about a conversation is written on the server), these
-are kept on purpose: the tester copies the chat, can edit it, and submits it for the class
+These are kept on purpose, apart from the testers' accounts (design doc 7.10): the tester copies the chat, can edit it, and submits it for the class
 research with the consent line shown under the Submit button. They are never purged by the
 daily checkpoint purge. Nothing identifying is stored with them (no IP, no user agent, no
 thread ID): only the philosopher (or philosophers, comma-separated, such as "socrates,seneca"),

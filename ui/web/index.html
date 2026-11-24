@@ -216,6 +216,26 @@ p { margin: 0; }
 .notepop textarea::placeholder { color: var(--muted); }
 .empty { padding: 18px; text-align: center; }
 
+/* ---------- Conversations (7.10): one section per philosopher, a card per conversation ---------- */
+.csec { display: flex; flex-direction: column; gap: 10px; }
+.csec-head { display: flex; align-items: center; gap: 10px; }
+.csec-head img { width: 34px; height: 34px; border: 2px solid var(--ink); }
+.csec-head h2 { margin: 0; font: 400 20px/1.2 var(--f-display); flex: 1; }
+.csec-head .newc { font-size: 13px; line-height: 16px; padding: 6px 8px; border: 2px solid var(--ink); background: var(--paper); box-shadow: 2px 3px 0 var(--shadow); }
+.ccard { text-align: left; width: 100%; }
+.ccard .titlebar { display: flex; align-items: center; }
+.ccard .titlebar .when { flex: 1; min-width: 0; }
+.ccard .x { width: 20px; height: 20px; margin-top: -3px; border: 2px solid var(--ink); background: var(--paper); font: 12px/14px var(--f-label); flex: none; display: grid; place-items: center; }
+.ccard .ctitle { font-size: 17px; line-height: 22px; }
+.ccard .inner { padding: 10px 16px 12px; gap: 4px; }
+.ccard .last { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cempty { border: 2px dashed var(--clay); padding: 12px 14px; text-align: left; width: 100%; color: var(--muted); }
+.btn.danger { background: var(--rust); color: var(--paper); }
+.menu .danger-text { color: var(--rust); }
+.account .switch { text-decoration: underline; color: var(--ink); }
+.account .err { color: var(--rust); }
+.account .codein + .codein { margin-top: -4px; }
+
 /* ---------- 06 Pause ---------- */
 #pause .rest { width: 100%; height: 160px; object-fit: cover; flex: none; }
 #pause .body { padding-top: 24px; gap: 12px; }
@@ -266,11 +286,12 @@ p { margin: 0; }
       <section class="screen" id="meet" hidden></section>
       <section class="screen" id="chat" hidden></section>
       <section class="screen" id="notes" hidden></section>
+      <section class="screen" id="convos" hidden></section>
       <section class="screen" id="pause" hidden></section>
     </div>
     <nav class="tabs" id="tabs" aria-label="Main">
         <button class="tab" data-tab="home"><span data-icon="cup" data-color="paper"></span>Café</button>
-        <button class="tab" data-tab="chat"><span data-icon="chat" data-color="paper"></span>Conversation</button>
+        <button class="tab" data-tab="chat"><span data-icon="chat" data-color="paper"></span>Conversations</button>
         <button class="tab" data-tab="notes"><span data-icon="mark" data-color="paper"></span>My notes</button>
     </nav>
     <div class="homebar" id="homebar" aria-hidden="true"></div>
@@ -438,8 +459,8 @@ function actor(key, W, H) {
 }
 
 /* ---------- Navigation ---------- */
-const SCREENS = ["home", "meet", "chat", "notes", "pause"];
-const TABBED = { home: "home", notes: "notes" };
+const SCREENS = ["home", "meet", "chat", "notes", "convos", "pause"];
+const TABBED = { home: "home", notes: "notes", convos: "chat" };
 let screen = "home";
 function show(id) {
   screen = id;
@@ -447,13 +468,13 @@ function show(id) {
   $("#tabs").hidden = !(id in TABBED);
   document.querySelectorAll(".tab").forEach(t => t.toggleAttribute("aria-current", false));
   if (TABBED[id]) $(`.tab[data-tab="${TABBED[id]}"]`).setAttribute("aria-current", "page");
-  $("#homebar").hidden = id === "home" || id === "notes";
+  $("#homebar").hidden = id in TABBED;
   document.querySelector(".veil")?.remove();
 }
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
   const to = t.dataset.tab;
-  if (to === "chat") return resumeChat();
-  if (to === "notes") renderNotes();
+  if (to === "chat") { renderConvos(); return show("convos"); }
+  if (to === "notes") { renderNotes(); loadNotes().then(() => screen === "notes" && renderNotes()).catch(() => {}); }
   show(to);
 });
 
@@ -499,10 +520,19 @@ const DEBUG = /debug/.test(location.hash + location.search);
 const backend = {
   live: false,
   ids: new Set(),
+  me: null,                 // {nickname, prefs, paused} of the signed-in account (7.10)
   // The deployed café asks for an access code (ADR-11); it is kept on this device only.
   code() { try { return localStorage.getItem("philocafe.code") || ""; } catch { return ""; } },
   setCode(c) { try { c ? localStorage.setItem("philocafe.code", c) : localStorage.removeItem("philocafe.code"); } catch {} },
-  headers(extra = {}) { const c = this.code(); return c ? { ...extra, "X-Philocafe-Code": c } : extra; },
+  // The account token (7.10): the café's server keeps everything else.
+  token() { try { return localStorage.getItem("philocafe.token") || ""; } catch { return ""; } },
+  setToken(t) { try { t ? localStorage.setItem("philocafe.token", t) : localStorage.removeItem("philocafe.token"); } catch {} },
+  headers(extra = {}) {
+    const h = { ...extra }, c = this.code(), t = this.token();
+    if (c) h["X-Philocafe-Code"] = c;
+    if (t) h.Authorization = `Bearer ${t}`;
+    return h;
+  },
   async init() {
     try {
       const r = await fetch("personas", { cache: "no-store", headers: this.headers() });
@@ -511,30 +541,40 @@ const backend = {
       this.ids.clear();
       (await r.json()).filter(p => p.available).forEach(p => this.ids.add(p.id));
       this.live = true;
-    } catch { this.live = false; }
+    } catch { this.live = false; return; }
+    if (!this.token()) return askAccount();
+    try { await this.loadMe(); await loadNotes(); } catch {}
   },
   available(id) { return !this.live || this.ids.has(id); },
-  // One thread for the whole visit, shared by every philosopher (7.2 sends persona_id with each message),
-  // so a pause holds whoever the visitor talks to next (FR-32, UC-03).
-  visit() { try { return JSON.parse(localStorage.getItem("philocafe.visit")) || {}; } catch { return {}; } },
-  save(v) { try { localStorage.setItem("philocafe.visit", JSON.stringify({ ...this.visit(), ...v })); } catch {} },
-  paused() { return !!this.visit().paused; },
-  async thread() {
-    const v = this.visit();
-    if (v.thread_id) return v.thread_id;
-    const r = await fetch("threads", { method: "POST", headers: this.headers() });
-    const { thread_id } = await r.json();
-    this.save({ thread_id, paused: false });
-    return thread_id;
+  // JSON calls to the café's API; a lost sign-in or access code asks again.
+  async api(path, { method = "GET", body } = {}) {
+    const r = await fetch(path, { method, cache: "no-store", headers: this.headers(body ? { "Content-Type": "application/json" } : {}),
+                                  ...(body ? { body: JSON.stringify(body) } : {}) });
+    if (r.status === 401) {
+      let code = ""; try { code = (await r.clone().json()).error.code; } catch {}
+      if (code === "access_code") { this.setCode(""); askCode("That code no longer opens the café."); }
+      else { this.setToken(""); this.me = null; askAccount("Please sign in again."); }
+    }
+    if (!r.ok) { let e = { code: String(r.status) }; try { e = (await r.json()).error; } catch {} throw Object.assign(new Error(e.code), e); }
+    return r.status === 204 ? null : r.json();
   },
-  // `regenerate` answers the latest message again (FR-41); prefs travel with every message (7.9).
-  async *turn(text, personaId, intent, regenerate = false) {
-    const id = await this.thread();
-    const body = regenerate ? { regenerate: true, persona_id: personaId, prefs: prefs.get() }
-                            : { text, persona_id: personaId, prefs: prefs.get(), ...(intent ? { intent } : {}) };
-    const r = await fetch(`threads/${id}/messages`, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
-                                                    body: JSON.stringify(body) });
-    if (r.status === 401) { this.setCode(""); askCode("That code no longer opens the café."); }
+  async loadMe() { this.me = await this.api("me"); return this.me; },
+  paused() { return !!this.me?.paused; },
+  setPaused(v) { if (this.me) this.me.paused = v; },
+  async newThread(personaId) { return (await this.api("threads", { method: "POST", body: { persona_id: personaId } })).thread_id; },
+  threads() { return this.api("threads"); },
+  history(id) { return this.api(`threads/${id}`); },
+  deleteThread(id) { return this.api(`threads/${id}`, { method: "DELETE" }); },
+  // `regenerate` answers the latest message again (FR-41). The server reads the account's
+  // reply preferences itself (7.9); one conversation is one philosopher (7.10).
+  async *turn(thread, text, intent, regenerate = false) {
+    const body = regenerate ? { regenerate: true } : { text, ...(intent ? { intent } : {}) };
+    const r = await fetch(`threads/${thread}/messages`, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
+                                                        body: JSON.stringify(body) });
+    if (r.status === 401) {
+      let code = ""; try { code = (await r.clone().json()).error.code; } catch {}
+      if (code === "access_code") { this.setCode(""); askCode("That code no longer opens the café."); } else { this.setToken(""); askAccount("Please sign in again."); }
+    }
     if (!r.ok) {
       let e = { code: String(r.status), message: "request failed" };
       try { e = (await r.json()).error; } catch {}
@@ -559,29 +599,99 @@ const backend = {
       }
     }
   },
-  async note(ex) {           // 7.7: distil the exchange a bookmark saved
-    const r = await fetch(`threads/${this.visit().thread_id}/note`, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
-                                                                     body: JSON.stringify({ you: ex.you, them: ex.them, persona_id: ex.who }) });
-    if (!r.ok) throw new Error(r.status);
-    return r.json();
-  },
-  async rate(rating, ex, feedback = null) {   // 7.9: one thumb (or its feedback window) -> updated reply preferences
-    const r = await fetch("preferences", { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
-                                           body: JSON.stringify({ rating, persona_id: ex.who, user_text: ex.you, reply: ex.them, prefs: prefs.get(),
-                                                                  ...(feedback ? { feedback } : {}) }) });
-    if (!r.ok) throw new Error(r.status);
-    return (await r.json()).prefs;
+  note(ex) { return this.api(`threads/${ex.thread}/note`, { method: "POST", body: { message_id: ex.messageId } }); },   // 7.7: stored on the server
+  async rate(rating, ex, feedback = null) {   // 7.9: a thumb (or its feedback window) -> the account's reply preferences
+    const j = await this.api("preferences", { method: "POST", body: { thread_id: ex.thread, message_id: ex.messageId, rating, ...(feedback ? { feedback } : {}) } });
+    if (this.me) this.me.prefs = j.prefs;
+    return j.prefs;
   }
 };
 
-/* ---------- Reply preferences (7.9): four dials from -2 to +2, kept on this device (D8) ---------- */
+/* ---------- Account (7.10): a nickname and a passcode; everything else lives on the server ---------- */
+function askAccount(message = "") {
+  if (document.querySelector(".veil.account")) return;
+  let mode = "in";
+  const veil = el("div", "veil account");
+  veil.innerHTML = `<form class="pop card" role="dialog" aria-label="Your café card">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">Your café card</div>
+    <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
+      <div class="lead">${esc(message || "Sign in to keep your conversations and notes.")}</div>
+      <input class="codein" name="nickname" autocomplete="username" placeholder="Nickname" aria-label="Nickname" required minlength="3" maxlength="24">
+      <input class="codein" name="passcode" type="password" autocomplete="current-password" placeholder="Passcode" aria-label="Passcode" required minlength="6">
+      <p class="t14 err" role="alert" hidden></p>
+      <div class="btns"><button class="btn go" type="submit">SIGN IN</button></div>
+      <button class="switch t14" type="button">New here? Create a card</button></div></form>`;
+  const err = $(".err", veil), go = $(".go", veil), sw = $(".switch", veil), pass = $('[name="passcode"]', veil);
+  sw.onclick = () => {
+    mode = mode === "in" ? "up" : "in";
+    go.textContent = mode === "in" ? "SIGN IN" : "CREATE";
+    sw.textContent = mode === "in" ? "New here? Create a card" : "Have a card? Sign in";
+    pass.autocomplete = mode === "in" ? "current-password" : "new-password";
+    $(".lead", veil).textContent = mode === "in" ? "Sign in to keep your conversations and notes." : "Pick a nickname and a passcode of six or more characters. There is no way to recover a forgotten passcode.";
+    err.hidden = true;
+  };
+  $("form", veil).onsubmit = async e => {
+    e.preventDefault();
+    err.hidden = true; go.disabled = true;
+    try {
+      const j = await backend.api(mode === "in" ? "auth/login" : "auth/register",
+                                  { method: "POST", body: { nickname: $('[name="nickname"]', veil).value.trim(), passcode: pass.value } });
+      backend.setToken(j.token);
+      veil.remove();
+      await backend.loadMe(); await importLocalNotes(); await loadNotes();
+      toast(`Welcome, ${j.nickname}`);
+      if (screen === "convos") renderConvos(); else if (screen === "notes") renderNotes();
+    } catch (x) {
+      err.textContent = x.message || "That didn’t work. Please try again."; err.hidden = false;
+    }
+    go.disabled = false;
+  };
+  $(".screens").append(veil);
+  $('[name="nickname"]', veil).focus();
+}
+function signOut() {
+  backend.setToken(""); backend.me = null; notes = []; curThread = null;
+  stopChat(); chat.innerHTML = ""; show("home");
+  askAccount("You’re signed out.");
+}
+async function deleteAccount() {
+  const ok = await confirmBox("Delete your café card?", "This deletes your account with every conversation, note and preference. It can’t be undone.", "DELETE");
+  if (!ok) return;
+  try { await backend.api("me", { method: "DELETE" }); } catch { return toast("Couldn’t delete just now"); }
+  signOut();
+}
+// A yes/no window in the café's style; resolves true for the action.
+function confirmBox(title, text, action) {
+  return new Promise(resolve => {
+    const veil = el("div", "veil");
+    veil.innerHTML = `<div class="pop card" role="alertdialog" aria-label="${esc(title)}">
+      <div class="titlebar">${esc(title)}</div>
+      <div class="pop-body"><div>${esc(text)}</div>
+        <div class="btns"><button class="btn" data-a="no">CANCEL</button><button class="btn danger" data-a="yes">${esc(action)}</button></div></div></div>`;
+    const done = v => { veil.remove(); resolve(v); };
+    veil.querySelector('[data-a="no"]').onclick = () => done(false);
+    veil.querySelector('[data-a="yes"]').onclick = () => done(true);
+    veil.onclick = e => { if (e.target === veil) done(false); };
+    $(".screens").append(veil);
+    veil.querySelector('[data-a="no"]').focus();
+  });
+}
+
+/* ---------- Reply preferences (7.9): four dials from -2 to +2, kept with the account (7.10) ---------- */
 const DIALS = { length: ["shorter replies", "longer replies"], plain: ["plainer words", "richer vocabulary"],
                 questions: ["fewer questions back", "more questions back"], quotes: ["fewer quotes", "more quotes"] };
 const prefs = {
-  get() { let v = {}; try { v = JSON.parse(localStorage.getItem("philocafe.prefs")) || {}; } catch {}
+  // Signed in: the account's dials (the server stores every change). The scripted demo keeps them on the device.
+  get() { let v = {};
+          if (backend.live) v = backend.me?.prefs || {};
+          else { try { v = JSON.parse(localStorage.getItem("philocafe.prefs")) || {}; } catch {} }
           return Object.fromEntries(Object.keys(DIALS).map(k => [k, Math.max(-2, Math.min(2, Math.trunc(+v[k] || 0)))])); },
-  set(v) { try { localStorage.setItem("philocafe.prefs", JSON.stringify(v)); } catch {} },
-  reset() { try { localStorage.removeItem("philocafe.prefs"); } catch {} },
+  set(v) { if (backend.live) { if (backend.me) backend.me.prefs = v; return; }
+           try { localStorage.setItem("philocafe.prefs", JSON.stringify(v)); } catch {} },
+  async reset() {
+    if (backend.live) { const me = await backend.api("me", { method: "PATCH", body: { prefs: {} } }); backend.me = me; return; }
+    try { localStorage.removeItem("philocafe.prefs"); } catch {}
+  },
   // "shorter replies, plainer words" — what the dials currently ask for
   summary(v = this.get()) { return Object.keys(DIALS).filter(k => v[k]).map(k => (Math.abs(v[k]) === 2 ? "much " : "") + DIALS[k][v[k] > 0 ? 1 : 0]).join(", "); },
   // the offline rule (no server, or it failed): a thumbs-down on a long reply asks for shorter ones
@@ -640,6 +750,7 @@ function debugShow(ev) {
 /* ---------- 03 / 04 Conversation ---------- */
 const chat = $("#chat");
 let cur = null, curId = null, sceneActor = null, history = [], busy = false, fbIdx = 0, typer = null, citations = [];
+let curThread = null;        // the open conversation's thread on the server (7.10); made on the first message
 
 function sceneFor(p) {
   const wrap = el("div", "scene-wrap px");
@@ -675,23 +786,25 @@ function toggleMenu(btn) {
   menu.setAttribute("role", "menu");
   menu.innerHTML = `<div class="inner"><button role="menuitem" data-a="copy">Copy chat</button>
     <p class="t11 muted style">REPLY STYLE · ${style ? esc(style.toUpperCase()) : "AS THE PHILOSOPHER LIKES"}</p>
-    ${style ? `<button role="menuitem" data-a="reset">Reset reply style</button>` : `<p class="t14 muted" style="padding:2px 14px 6px">Thumbs up or down on a reply to tune it.</p>`}</div>`;
+    ${style ? `<button role="menuitem" data-a="reset">Reset reply style</button>` : `<p class="t14 muted" style="padding:2px 14px 6px">Thumbs up or down on a reply to tune it.</p>`}
+    ${backend.me ? `<p class="t11 muted style">SIGNED IN AS ${esc(backend.me.nickname.toUpperCase())}</p>
+      <button role="menuitem" data-a="out">Sign out</button><button role="menuitem" data-a="del" class="danger-text">Delete my café card</button>` : ""}</div>`;
   const close = () => { menu.remove(); btn.setAttribute("aria-expanded", "false"); document.removeEventListener("click", outside); };
   const outside = e => { if (!menu.contains(e.target)) close(); };
   menu.querySelector('[data-a="copy"]').onclick = () => { close(); copyChat(); };
   const reset = menu.querySelector('[data-a="reset"]');
-  if (reset) reset.onclick = () => { close(); prefs.reset(); toast("Reply style reset"); };
+  if (reset) reset.onclick = async () => { close(); try { await prefs.reset(); toast("Reply style reset"); } catch { toast("Couldn’t reset just now"); } };
+  const out = menu.querySelector('[data-a="out"]'), del = menu.querySelector('[data-a="del"]');
+  if (out) out.onclick = () => { close(); signOut(); };
+  if (del) del.onclick = () => { close(); deleteAccount(); };
   $(".screens").append(menu);
   btn.setAttribute("aria-expanded", "true");
   setTimeout(() => document.addEventListener("click", outside));
   menu.querySelector("button").focus();
 }
 
-function openChat(id) {
-  if (isPaused() && paused?.id === id) return restorePaused();     // back to the conversation the pause set aside
-  // Kept aside until the visitor sits down, so "Not yet" leaves the last conversation as it was.
-  const prev = cur ? { nodes: [...chat.childNodes], cls: chat.className, cur, curId, history, fbIdx, citations } : null;
-  const p = PH[id]; cur = p; curId = id; history = []; busy = false; fbIdx = 0; citations = [];
+function buildChat(id) {
+  const p = PH[id]; cur = p; curId = id; history = []; busy = false; fbIdx = 0; citations = []; curThread = null;
   pauseScene(); clearInterval(typer);
   chat.className = "screen";
   chat.innerHTML = "";
@@ -710,6 +823,16 @@ function openChat(id) {
   chat.append(header(id, "A table for your thoughts"), sceneFor(p), scroll, dock);
   setMode();
   show("chat");
+  return p;
+}
+
+// Taking a seat starts a new conversation (7.10); the Conversations tab reopens old ones.
+function openChat(id) {
+  if (isPaused() && paused?.id === id) return restorePaused();     // back to the conversation the pause set aside
+  // Kept aside until the visitor sits down, so "Not yet" leaves the last conversation as it was.
+  const prev = cur ? { nodes: [...chat.childNodes], cls: chat.className, cur, curId, history, fbIdx, citations, curThread } : null;
+  const p = buildChat(id);
+  backTo = "home";
   if (isPaused()) return enterSupport(p);
 
   // "A table for you" popup, as in the design
@@ -724,7 +847,7 @@ function openChat(id) {
     if (prev) {
       pauseScene();
       chat.replaceChildren(...prev.nodes); chat.className = prev.cls;
-      ({ cur, curId, history, fbIdx, citations } = prev);
+      ({ cur, curId, history, fbIdx, citations, curThread } = prev);
       busy = false; const s = $(".send", chat); if (s) s.disabled = false;
     } else stopChat();
     openMeet(id);
@@ -740,7 +863,8 @@ function stopChat() { pauseScene(); clearInterval(typer); cur = null; curId = nu
 function pauseScene() { sceneActor?.stop(); sceneActor = null; }
 
 // Leaving for the café keeps the conversation; the Conversation tab brings it back.
-function leaveChat() { pauseScene(); show("home"); }
+let backTo = "home";
+function leaveChat() { pauseScene(); if (backTo === "convos") { renderConvos(); show("convos"); } else show("home"); }
 function resumeChat() {
   syncBookmarks();
   if (paused && isPaused()) return restorePaused();
@@ -876,13 +1000,13 @@ async function checkIn(p, safe) {
 
 // Reads one turn's events into bubble `b` (7.2); shared by a new message and Regenerate.
 async function streamInto(b, events) {
-  const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null };
+  const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null, messageId: null };
   try {
     for await (const ev of events) {
       const d = ev.data;
       if (ev.type === "voice") {
         out.voice = d.speaker;
-        if (out.voice === "persona") { b.textContent = ""; backend.save({ paused: false }); leaveSupport(); }
+        if (out.voice === "persona") { b.textContent = ""; backend.setPaused(false); leaveSupport(); }
       } else if (ev.type === "token") {
         out.said += d.text;
         if (out.voice === "persona") { b.textContent += d.text; scrollDown(); }
@@ -891,6 +1015,7 @@ async function streamInto(b, events) {
         b.textContent += ` [${citations.length}]`;     // matches the numbered entry in "From the source"
       } else if (ev.type === "exit") { out.resources = d.resources; out.reason = d.reason; }
       else if (ev.type === "error") out.failed = d;
+      else if (ev.type === "done") out.messageId = d.message_id || null;
       if (DEBUG && (ev.type === "safety" || ev.type === "trace")) debugShow(ev);
     }
   } catch (e) { out.failed = { code: "network", message: String(e) }; }
@@ -905,11 +1030,15 @@ async function sendLive(text, intent = null) {
   history.push({ role: "user", content: text });
   const b = bubble("them");
   b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
-  const r = await streamInto(b, backend.turn(text, id, intent));
+  let r;
+  try {
+    if (!curThread) curThread = await backend.newThread(id);       // the first message makes the conversation
+    r = await streamInto(b, backend.turn(curThread, text, intent));
+  } catch (e) { r = { failed: { code: e.code || "network" } }; }
   busy = false; $(".send").disabled = false;
   if (r.voice === "system") {
     b.closest(".row").remove();
-    backend.save({ paused: true });
+    backend.setPaused(true);
     if (r.reason === "tier_3") return distress(id, text, { text: r.said, resources: r.resources });
     systemCard(r.said, r.resources);
     return comeBack(PH[id]);
@@ -920,7 +1049,7 @@ async function sendLive(text, intent = null) {
     return scrollDown();
   }
   history.push({ role: "assistant", content: r.said });
-  addActions(b, { who: id, you: text, them: b.textContent, cites: r.cites });
+  addActions(b, { who: id, you: text, them: b.textContent, cites: r.cites, thread: curThread, messageId: r.messageId });
   scrollDown();
 }
 
@@ -931,7 +1060,7 @@ function addActions(b, ex) {
   document.querySelectorAll(".acts.latest").forEach(a => a.classList.remove("latest"));
   const acts = el("div", "acts latest");
   acts.setAttribute("role", "toolbar"); acts.setAttribute("aria-label", "Reply actions");
-  acts._ex = { ...ex, rating: null, noteId: null };
+  acts._ex = { rating: null, noteId: null, ...ex };
   const btn = (a, label, ico) => `<button type="button" data-a="${a}" class="${a}" aria-label="${label}" title="${label}">${icon(ico, "muted", 18)}</button>`;
   acts.innerHTML = btn("save", "Save to My notes", "mark") + btn("copy", "Copy", "copy") +
     (ex.cites.length ? btn("source", "From the source", "book") : "") +
@@ -939,6 +1068,8 @@ function addActions(b, ex) {
   acts.querySelectorAll("button").forEach(x => x.onclick = () => { if (x._held) { x._held = false; return; } ACTIONS[x.dataset.a](acts, x); });
   acts.querySelectorAll(".up, .down").forEach(x => longPress(x, () => { if (acts._ex.rating === x.dataset.a) openFeedback(acts, x.dataset.a); }));
   row.after(acts);
+  if (acts._ex.rating) paintThumbs(acts);
+  if (acts._ex.noteId) markSaved($(".save", acts), true);
   return acts;
 }
 // Selected = the filled icon, unselected = the outline; no frame or background.
@@ -953,12 +1084,12 @@ const ACTIONS = {
   async save(acts, x) {             // tap again to take the note back out of My notes
     const ex = acts._ex;
     if (ex.noteId && notes.some(n => n.id === ex.noteId)) {
-      notes = notes.filter(n => n.id !== ex.noteId); store.set(notes); ex.noteId = null;
+      await removeNote(ex.noteId); ex.noteId = null;
       markSaved(x, false);
       return toast("Removed from My notes");
     }
     x.disabled = true;
-    ex.noteId = await saveExchange(ex);
+    try { ex.noteId = await saveExchange(ex); } catch { x.disabled = false; return toast("Couldn’t save just now"); }
     x.disabled = false; markSaved(x, true);
     toast("Saved to My notes");
   },
@@ -1004,7 +1135,7 @@ function openFeedback(acts, rating) {
     ex.feedback = feedback;
     $(".go", veil).disabled = true;
     let next = null;
-    if (backend.live) { try { next = await backend.rate(rating, ex, feedback); } catch {} }
+    if (backend.live && ex.messageId) { try { next = await backend.rate(rating, ex, feedback); } catch {} }
     prefs.set(next || prefs.tags(rating, feedback.tags));
     close();
     toast("Thanks, noted");
@@ -1013,15 +1144,19 @@ function openFeedback(acts, rating) {
   $(".tag", veil).focus();
 }
 
+const paintThumbs = acts => acts.querySelectorAll(".up, .down").forEach(b => {
+  const on = b.dataset.a === acts._ex.rating; b.setAttribute("aria-pressed", on); setIcon(b, b.dataset.a + (on ? "Full" : ""), on ? "ink" : "muted");
+});
+
 // A thumb (7.9): toggles the rating; a new rating asks the server how to move the reply style.
 async function rate(acts, x, rating) {
   const ex = acts._ex;
   const off = ex.rating === rating;
   ex.rating = off ? null : rating; ex.feedback = null;
-  acts.querySelectorAll(".up, .down").forEach(b => { const on = b.dataset.a === ex.rating; b.setAttribute("aria-pressed", on); setIcon(b, b.dataset.a + (on ? "Full" : ""), on ? "ink" : "muted"); });
-  if (off) return;
+  paintThumbs(acts);
+  if (off) { if (backend.live && ex.messageId) backend.rate("none", ex).catch(() => {}); return; }
   let next = null;
-  if (backend.live) { try { next = await backend.rate(rating, ex); } catch {} }
+  if (backend.live && ex.messageId) { try { next = await backend.rate(rating, ex); } catch {} }
   next = next || prefs.rule(rating, ex.them);
   prefs.set(next);                   // silent: the ⋯ menu shows the reply style
 }
@@ -1036,16 +1171,16 @@ async function regenerate(acts) {
   b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
   let said = null, cites = [];
   if (backend.live) {
-    const r = await streamInto(b, backend.turn(null, ex.who, null, true));
+    const r = await streamInto(b, backend.turn(ex.thread, null, null, true));
     if (r.voice === "system") {                      // the safety node decides again; it may pause
       busy = false; $(".send").disabled = false;
       row.remove(); acts.remove(); history.pop();
-      backend.save({ paused: true });
+      backend.setPaused(true);
       if (r.reason === "tier_3") return distress(ex.who, ex.you, { text: r.said, resources: r.resources });
       systemCard(r.said, r.resources);
       return comeBack(PH[ex.who]);
     }
-    if (!r.failed && r.voice === "persona") { said = b.textContent; cites = r.cites; }
+    if (!r.failed && r.voice === "persona") { said = b.textContent; cites = r.cites; ex.messageId = r.messageId; }
   } else {
     const p = PH[ex.who];
     const reply = p.fallback[fbIdx++ % p.fallback.length];
@@ -1111,12 +1246,12 @@ function openSource(list = citations.map((c, i) => ({ ...c, n: i + 1 }))) {
   $(".close", veil).focus();
 }
 
-/* ---------- Save thought → My notes ---------- */
+/* ---------- My notes (7.7): stored with the account (7.10); the scripted demo keeps them on the device ---------- */
 const store = {
   get() { try { return JSON.parse(localStorage.getItem("philocafe.notes")) || null; } catch { return null; } },
-  set(v) { try { localStorage.setItem("philocafe.notes", JSON.stringify(v)); } catch {} }
+  set(v) { if (!backend.live) { try { localStorage.setItem("philocafe.notes", JSON.stringify(v)); } catch {} } }
 };
-const SAMPLE = "sample";            // seeded example; leaves once a real note is saved
+const SAMPLE = "sample";            // seeded example (demo only); leaves once a real note is saved
 const sampleFrom = { you: "I feel like I’m falling behind.", them: PH.socrates.scripted["I feel like I’m falling behind."], cites: [] };
 let notes = store.get() || [{ id: SAMPLE, who: "socrates", ...PH.socrates.sample, from: sampleFrom, reflection: "" }];
 const sample = notes.find(n => n.id === SAMPLE);
@@ -1124,11 +1259,32 @@ if (sample && !sample.from) { sample.from = sampleFrom; store.set(notes); }
 const dropSample = () => { notes = notes.filter(n => n.id !== SAMPLE || (n.reflection || "").trim()); };
 if (notes.length > 1) { dropSample(); store.set(notes); }
 let filter = "all";
-// Note ids are Date.now() in base 36, so the save date comes from the id.
+const fromServer = n => ({ ...n, who: n.persona_id });
+async function loadNotes() {
+  if (!backend.live || !backend.me) return;
+  notes = (await backend.api("notes")).map(fromServer);
+}
+// Notes a device kept before accounts move to the account once, at the first sign-in.
+async function importLocalNotes() {
+  const local = (store.get() || []).filter(n => n.id !== SAMPLE);
+  for (const n of local.slice().reverse()) { try { await backend.api("notes", { method: "POST", body: { note: { ...n, persona_id: n.who } } }); } catch {} }
+  try { localStorage.removeItem("philocafe.notes"); localStorage.removeItem("philocafe.prefs"); localStorage.removeItem("philocafe.visit"); } catch {}
+}
+async function removeNote(id) {
+  if (backend.live) await backend.api(`notes/${id}`, { method: "DELETE" }).catch(() => {});
+  notes = notes.filter(n => n.id !== id); store.set(notes);
+}
+let reflectTimer = null;
+function saveReflection(n, text) {
+  n.reflection = text;
+  if (!backend.live) return store.set(notes);
+  clearTimeout(reflectTimer);
+  reflectTimer = setTimeout(() => backend.api(`notes/${n.id}`, { method: "PATCH", body: { reflection: text } }).catch(() => {}), 600);
+}
 function savedOn(n) {
-  const t = parseInt(n.id, 36);
-  if (n.id === SAMPLE || !Number.isFinite(t) || t < 1.6e12) return "";
-  const d = new Date(t), opts = { month: "short", day: "numeric" };
+  let d = n.created_at ? new Date(n.created_at) : null;
+  if (!d) { const t = parseInt(n.id, 36); if (n.id === SAMPLE || !Number.isFinite(t) || t < 1.6e12) return ""; d = new Date(t); }
+  const opts = { month: "short", day: "numeric" };
   if (d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
   return d.toLocaleDateString("en-US", opts);
 }
@@ -1143,15 +1299,17 @@ function toast(msg) {
 
 const lastQuestion = s => { const parts = s.match(/[^.!?。！？]+[.!?。！？]*/g) || [s]; return (parts.filter(x => /[?？]/.test(x)).pop() || parts[0]).trim(); };
 
-// Bookmark (7.7): the exchange becomes a note. The server distils a title; offline, or if it
-// fails, the reply's question stands in. Kept on this device only (D8).
+// Bookmark (7.7): the exchange becomes a note. Signed in, the server distils a title and stores the
+// note with the account; in the scripted demo the reply's question stands in and the note stays here.
 async function saveExchange(ex) {
+  if (backend.live) {
+    const n = fromServer(await backend.note(ex));
+    notes.unshift(n);
+    return n.id;
+  }
   const p = PH[ex.who];
   let note = null;
-  if (!backend.live && ex.who === "socrates" && ex.you === sampleFrom.you && ex.them === sampleFrom.them) note = { ...p.sample };
-  if (!note && backend.live) {
-    try { const j = await backend.note(ex); if (j.title) note = { title: j.title, why: j.why || "", topic: j.topic || "From your conversation" }; } catch {}
-  }
+  if (ex.who === "socrates" && ex.you === sampleFrom.you && ex.them === sampleFrom.them) note = { ...p.sample };
   if (!note) note = { title: lastQuestion(ex.them), why: ex.you ? `From your talk about “${ex.you}”.` : "A thought to revisit later.", topic: "From your conversation" };
   const cites = ex.cites.map(c => ({ n: c.n, where: c.section ? `${c.work}, ${c.section}` : c.work, quote: c.quote || "", passage: c.passage || "", url: c.source_url || "" }));
   const n = { id: Date.now().toString(36), who: ex.who, reflection: "", ...note, from: { you: ex.you, them: ex.them, cites } };
@@ -1241,13 +1399,89 @@ function openNote(id) {
       <div class="btns"><button class="btn del" type="button">DELETE</button><button class="btn go done" type="button">DONE</button></div>
     </div></div>`;
   const close = () => { veil.remove(); renderNotes(); };
-  $("textarea", veil).oninput = e => { n.reflection = e.target.value; store.set(notes); };
+  $("textarea", veil).oninput = e => saveReflection(n, e.target.value);
   $(".x", veil).onclick = close;
   $(".done", veil).onclick = close;
-  $(".del", veil).onclick = () => { notes = notes.filter(x => x.id !== id); store.set(notes); close(); };
+  $(".del", veil).onclick = async () => { await removeNote(id); close(); };
   veil.onclick = e => { if (e.target === veil) close(); };
   $(".screens").append(veil);
   $(".done", veil).focus();
+}
+
+/* ---------- Conversations tab (FR-44): sections by philosopher, cards to reopen ---------- */
+const ORDER = ["socrates", "montaigne", "schopenhauer", "seneca", "epictetus"];
+const ago = iso => {
+  const d = new Date(iso), mins = (Date.now() - d) / 60000;
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${Math.floor(mins)} min ago`;
+  if (mins < 1440) return `${Math.floor(mins / 60)} h ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) });
+};
+async function renderConvos() {
+  const v = $("#convos");
+  const head = `<p class="t28">Your conversations</p><p class="t16 muted">Pick up where you left off, or start fresh.</p>`;
+  if (!backend.live || !backend.me) {
+    v.innerHTML = `<div class="body">${head}
+      <div class="card empty t16 muted">${backend.live ? "Sign in to keep your conversations." : "Saved conversations need the PhiloCafé server; this demo keeps only the one open now."}</div>
+      ${cur ? `<button class="primary" id="resumeBtn">Back to ${esc(cur.name)}</button>` : ""}
+      ${backend.live ? `<button class="primary" id="signBtn">Sign in</button>` : ""}</div>`;
+    $("#resumeBtn", v) && ($("#resumeBtn", v).onclick = resumeChat);
+    $("#signBtn", v) && ($("#signBtn", v).onclick = () => askAccount());
+    return;
+  }
+  if (!v.firstChild) v.innerHTML = `<div class="body">${head}<p class="t14 muted">Loading…</p></div>`;
+  let rows = [];
+  try { rows = await backend.threads(); } catch { v.innerHTML = `<div class="body">${head}<div class="card empty t16 muted">The café could not load your conversations just now.</div></div>`; return; }
+  const by = Object.fromEntries(ORDER.map(id => [id, rows.filter(r => r.persona_id === id)]));
+  const order = [...ORDER].sort((a, b) => (by[b][0]?.updated_at || "").localeCompare(by[a][0]?.updated_at || ""));
+  v.innerHTML = `<div class="body">${head}
+    ${order.filter(id => backend.available(id)).map(id => `<section class="csec" aria-label="${PH[id].name}">
+      <div class="csec-head"><img class="px" src="${A}mono_${id}.png" alt=""><h2>${PH[id].name}</h2>
+        <button class="newc" data-new="${id}">+ New</button></div>
+      ${by[id].length ? by[id].map(r => `<button class="card ccard" data-t="${r.thread_id}">
+          <div class="titlebar"><span class="when">${ago(r.updated_at)}</span><span class="x" role="button" tabindex="0" data-del="${r.thread_id}" aria-label="Delete this conversation">×</span></div>
+          <div class="inner"><p class="ctitle">${esc(r.title)}</p><p class="t14 muted last">${esc(r.last_line)}</p></div></button>`).join("")
+        : `<button class="cempty t14" data-new="${id}">No conversations with ${PH[id].name} yet. Take a seat →</button>`}
+    </section>`).join("")}</div>`;
+  v.querySelectorAll("[data-new]").forEach(b => b.onclick = () => { pauseScene(); openChat(b.dataset.new); });
+  v.querySelectorAll(".ccard").forEach(b => b.onclick = e => {
+    const del = e.target.closest("[data-del]");
+    if (del) return deleteConvo(rows.find(r => r.thread_id === del.dataset.del));
+    openThread(rows.find(r => r.thread_id === b.dataset.t));
+  });
+}
+async function deleteConvo(r) {
+  const ok = await confirmBox("Delete this conversation?", `“${r.title}” with ${PH[r.persona_id].name} will be gone for good. Notes you saved from it stay.`, "DELETE");
+  if (!ok) return;
+  try { await backend.deleteThread(r.thread_id); } catch { return; }
+  if (curThread === r.thread_id) { stopChat(); chat.innerHTML = ""; curThread = null; }
+  renderConvos();
+}
+// Reopen a stored conversation with its history (7.10); replies keep their sources, ratings and bookmarks.
+async function openThread(r) {
+  let h;
+  try { h = await backend.history(r.thread_id); } catch { return; }
+  const p = buildChat(r.persona_id);
+  curThread = r.thread_id; backTo = "convos";
+  startConvo(p);
+  let you = "";
+  for (const m of h.messages) {
+    if (m.role === "user") { you = m.text; bubble("me", m.text); history.push({ role: "user", content: m.text }); }
+    else if (m.role === "system") systemCard(m.text);
+    else {
+      const cites = (m.citations || []).map(c => { citations.push(c); return { ...c, n: citations.length }; });
+      const b = bubble("them", m.text + cites.map(c => ` [${c.n}]`).join(""));
+      history.push({ role: "assistant", content: m.text });
+      addActions(b, { who: r.persona_id, you, them: m.text, cites, thread: r.thread_id, messageId: m.id,
+                      rating: m.rating || null, noteId: notes.find(n => n.message_id === m.id)?.id || null });
+    }
+  }
+  document.querySelectorAll(".acts").forEach(a => a.classList.remove("latest"));
+  const lastActs = [...document.querySelectorAll("#scroll > *")].pop();
+  if (lastActs?.classList.contains("acts")) lastActs.classList.add("latest");     // only a final persona reply can be regenerated
+  backend.setPaused(h.paused);
+  if (h.paused) enterSupport(p);
+  scrollDown();
 }
 
 /* ---------- 07 System detects distress → 06 Pause the café ---------- */

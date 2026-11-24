@@ -41,6 +41,7 @@ def clean_note(raw: dict) -> dict:
     src = raw.get("from") if isinstance(raw.get("from"), dict) else {}
     cites = [c for c in src.get("cites", []) if isinstance(c, dict)][:10]
     return {"persona_id": str(raw.get("persona_id") or raw.get("who") or "")[:40],
+            "thread_id": str(raw.get("thread_id") or "")[:64], "message_id": str(raw.get("message_id") or "")[:64],
             "title": str(raw.get("title") or "")[:200], "why": str(raw.get("why") or "")[:400],
             "topic": str(raw.get("topic") or "")[:120], "reflection": str(raw.get("reflection") or "")[:4000],
             "from": {"you": str(src.get("you") or "")[:2000], "them": str(src.get("them") or "")[:8000],

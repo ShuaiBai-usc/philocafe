@@ -363,7 +363,7 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
                   "quote": x.get("quote", ""), "passage": x.get("passage", ""), "url": x.get("source_url", "")}
                  for k, x in enumerate(reply.additional_kwargs.get("citations", []))]
         saved = await run_in_threadpool(store.add_note, user["id"], {
-            "persona_id": c["persona_id"], **distilled, "reflection": "",
+            "persona_id": c["persona_id"], "thread_id": thread_id, "message_id": reply.id, **distilled, "reflection": "",
             "from": {"you": you, "them": reply.content, "cites": cites}})
         return JSONResponse(saved, status_code=201)
 
