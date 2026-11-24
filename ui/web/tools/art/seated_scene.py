@@ -2,7 +2,8 @@
 own hand-tuned script, socrates_scene.py; these four follow its layout and timing).
 
 Each scene is an ElevenLabs generation (Nano Banana 2) made from the Socrates scene and the philosopher's
-bust: sources/<id>_seated_gen.jpg. pixelate.py puts it on its own 143 x 256 grid with 48 colours. The
+bust: sources/<id>_seated_gen.jpg (Schopenhauer: the second run, whose prompt puts
+the Socrates scene's simple face and proportions first; the first run drew him like his photograph). pixelate.py puts it on its own 143 x 256 grid with 48 colours. The
 expressions are edits of the generated face, placed from a few anchors read off each face (eye row and
 pupils, brow row and spans, mouth row and span):
     half / closed   lid over the eyes / one lash line
@@ -37,7 +38,7 @@ FRAMES = ("open", "half", "closed", "talk1", "talk2")
 # brow row and spans, mouth row and span (x0, x1); 'dark_beard' mouths are drawn in lip red to show
 FACES = {
     "montaigne":    dict(ey=60, lp=(65, 66), rp=(75, 76), lw=(64, 67), rw=(74, 77), by=57, lb=(63, 67), rb=(73, 77), my=69, mx=(67, 72), dark_beard=True),
-    "schopenhauer": dict(ey=59, lp=(66, 66), rp=(75, 75), lw=(65, 67), rw=(74, 76), by=56, lb=(63, 66), rb=(75, 78), my=67, mx=(67, 74), dark_beard=False),
+    "schopenhauer": dict(ey=58, lp=(65, 66), rp=(75, 76), lw=(64, 67), rw=(74, 77), by=56, lb=(63, 66), rb=(74, 77), my=66, mx=(67, 73), dark_beard=False, clean=True),
     "seneca":       dict(ey=57, lp=(65, 66), rp=(75, 76), lw=(64, 67), rw=(74, 77), by=55, lb=(63, 67), rb=(73, 77), my=68, mx=(67, 72), dark_beard=True),
     "epictetus":    dict(ey=57, lp=(65, 66), rp=(74, 75), lw=(64, 67), rw=(73, 76), by=54, lb=(63, 66), rb=(73, 76), my=67, mx=(67, 73), dark_beard=False),
 }
@@ -59,6 +60,25 @@ def colours(p, f):
     return dict(skin=skin, shade=mix(skin, (90, 55, 30), .22), deep=mix(skin, (60, 35, 20), .4), light=mix(skin, (255, 240, 220), .3),
                 pupil=pupil, dark=mix(pupil, skin, .35), brow=brow, forehead=forehead,
                 white=(242, 234, 216), lip=(150, 74, 54), inside=(86, 50, 34))
+
+
+def clean_skin(p, f, C):
+    """Flatten the speckle in the face's skin, as Socrates' face is hand-flattened: each skin-coloured pixel
+    takes the commonest skin colour of its 3 x 3 neighbourhood (eyes, brows, mouth and hair are not skin)."""
+    y0, y1 = f["by"] - 6, f["my"] + 3
+    x0, x1 = f["lw"][0] - 4, f["rw"][1] + 4
+    skin = np.array(C["skin"], float)
+    is_skin = lambda c: np.abs(np.asarray(c, float) - skin).sum() < 70
+    src = p.copy()
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            if not is_skin(src[y, x]):
+                continue
+            near = [tuple(src[j, i]) for j in range(y - 1, y + 2) for i in range(x - 1, x + 2) if is_skin(src[j, i])]
+            best = max(set(near), key=near.count)
+            if near.count(best) >= 5:
+                p[y, x] = best
+    return p
 
 
 def put(p, x, y, c):
@@ -166,6 +186,8 @@ def build(pid):
     nw, nh, ox, oy = find_grid(src, [GRID[0]], [GRID[1]])
     base = np.asarray(quantize(sample(src, nw, nh, ox, oy), 48)).copy()
     C = colours(base, f)
+    if f.get("clean"):
+        base = clean_skin(base, f, C)
     x0, x1 = min(f["lw"][0], f["lb"][0]) - 3, max(f["rw"][1], f["rb"][1]) + 3
     y0, y1 = f["by"] - 3, f["my"] + 3
     P = (x0, y0, x1 - x0 + 1, y1 - y0 + 1)
