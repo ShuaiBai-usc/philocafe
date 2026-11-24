@@ -178,6 +178,13 @@ p { margin: 0; }
 .notepop .inner { padding: 14px 20px 18px; gap: 10px; }
 .notepop .t11 + .t28 { margin-top: -2px; }
 .notepop hr { border: 0; border-top: 1px dashed var(--clay); margin: 4px 0; width: 100%; }
+.notepop .label { margin-top: 2px; }
+.excerpt { display: flex; flex-direction: column; gap: 8px; }
+.excerpt .line { border: 2px solid var(--ink); padding: 8px 10px; background: var(--paper); }
+.excerpt .line.me { background: var(--sage); margin-left: 28px; }
+.excerpt .line.them { margin-right: 28px; }
+.excerpt .who { font: 8px/10px var(--f-label); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.excerpt .cites a { display: block; }
 .notepop .btn.del { background: var(--rust); color: var(--paper); }
 .notepop .btn.done { background: var(--clay); color: var(--ink); }
 .notepop textarea { width: 100%; min-height: 84px; resize: vertical; cursor: text; border: 1px solid var(--clay); background: var(--paper); padding: 8px 10px; font-size: 16px; line-height: 21px; }
@@ -875,7 +882,10 @@ const store = {
   set(v) { try { localStorage.setItem("philocafe.notes", JSON.stringify(v)); } catch {} }
 };
 const SAMPLE = "sample";            // seeded example; leaves once a real note is saved
-let notes = store.get() || [{ id: SAMPLE, who: "socrates", ...PH.socrates.sample, reflection: "" }];
+const sampleFrom = { you: "I feel like I’m falling behind.", them: PH.socrates.scripted["I feel like I’m falling behind."], cites: [] };
+let notes = store.get() || [{ id: SAMPLE, who: "socrates", ...PH.socrates.sample, from: sampleFrom, reflection: "" }];
+const sample = notes.find(n => n.id === SAMPLE);
+if (sample && !sample.from) { sample.from = sampleFrom; store.set(notes); }
 const dropSample = () => { notes = notes.filter(n => n.id !== SAMPLE || (n.reflection || "").trim()); };
 if (notes.length > 1) { dropSample(); store.set(notes); }
 let filter = "all";
@@ -896,6 +906,18 @@ function toast(msg) {
 
 const lastQuestion = s => { const parts = s.match(/[^.!?。！？]+[.!?。！？]*/g) || [s]; return (parts.filter(x => /[?？]/.test(x)).pop() || parts[0]).trim(); };
 
+// The exchange a note was saved from: the philosopher's last reply, the user's line before it,
+// and any passages that reply cited ([n] markers point into `citations`). Kept on the device only.
+function lastExchange() {
+  const i = history.map(m => m.role).lastIndexOf("assistant");
+  const them = history[i]?.content || "";
+  const you = history.slice(0, i).reverse().find(m => m.role === "user")?.content || "";
+  const nums = [...new Set([...them.matchAll(/\[(\d+)\]/g)].map(m => +m[1]))];
+  const cites = nums.map(n => citations[n - 1]).filter(Boolean)
+    .map(c => ({ n: citations.indexOf(c) + 1, where: c.section ? `${c.work}, ${c.section}` : c.work, quote: c.quote || "", url: c.source_url || "" }));
+  return { you, them, cites };
+}
+
 async function saveThought() {
   const btn = $("#saveBtn");
   const said = history.filter(m => m.role === "assistant");
@@ -911,8 +933,8 @@ async function saveThought() {
     } catch {}
   }
     if (!note) note = { title: lastQuestion(said[said.length - 1].content), why: firstUser ? `From your talk about “${firstUser}”.` : "A thought to revisit later.", topic: "From your conversation" };
-  const dup = notes.find(x => x.who === id && x.title === note.title);
-  if (!dup) { dropSample(); notes.unshift({ id: Date.now().toString(36), who: id, reflection: "", ...note }); store.set(notes); }
+  const dup = notes.find(x => x.id !== SAMPLE && x.who === id && x.title === note.title);
+  if (!dup) { dropSample(); notes.unshift({ id: Date.now().toString(36), who: id, reflection: "", ...note, from: lastExchange() }); store.set(notes); }
   btn.disabled = false; btn.textContent = "Save thought";
   toast("Saved to My notes");
 }
@@ -981,6 +1003,13 @@ function openNote(id) {
       <p class="t11 muted">${[PH[n.who].name.toUpperCase(), esc(n.topic).toUpperCase(), when.toUpperCase()].filter(Boolean).join(" · ")}</p>
       <p class="t28">${esc(n.title)}</p>
       <p class="t16">${esc(n.why)}</p>
+      <hr>
+      <p class="label muted">From your conversation</p>
+      ${n.from ? `<div class="excerpt">
+        ${n.from.you ? `<div class="line me"><p class="who">You</p><p class="t14">${esc(n.from.you)}</p></div>` : ""}
+        <div class="line them"><p class="who">${PH[n.who].name}</p><p class="t14">${esc(n.from.them)}</p></div>
+        ${n.from.cites?.length ? `<div class="cites">${n.from.cites.map(c => `<p class="t11 muted">[${c.n}] ${esc(c.where)}</p>${c.quote ? `<p class="t14">“${esc(c.quote)}”</p>` : ""}${c.url ? `<a class="t14" href="${esc(c.url)}" target="_blank" rel="noopener">Read it in the source ↗</a>` : ""}`).join("")}</div>` : ""}
+      </div>` : `<p class="t14 muted">This note was saved before the café kept the conversation with it.</p>`}
       <hr>
       <p class="t20">Your reflection</p>
       <textarea placeholder="What does this question bring up for you?" aria-label="Your reflection">${esc(n.reflection || "")}</textarea>
