@@ -1,0 +1,51 @@
+{
+  "grid": [
+    96,
+    208
+  ],
+  "patch": {
+    "x": 37,
+    "y": 50,
+    "w": 22,
+    "h": 20
+  },
+  "moods": [
+    "attentive",
+    "curious",
+    "amused",
+    "skeptical",
+    "pondering",
+    "pleased"
+  ],
+  "frames": [
+    "open",
+    "half",
+    "closed",
+    "talk1",
+    "talk2"
+  ],
+  "anchor": {
+    "face": [
+      48,
+      58
+    ],
+    "head": [
+      32,
+      40,
+      65,
+      79
+    ]
+  },
+  "timing_ms": {
+    "half": 55,
+    "closed": 85,
+    "blink_every": [
+      2800,
+      6500
+    ],
+    "talk": [
+      90,
+      150
+    ]
+  }
+}

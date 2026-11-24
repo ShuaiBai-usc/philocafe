@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Preview of the full-screen chat scene art (ui/web/tools/art/socrates_scene.py). Not linked from the app. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Philocafé scene preview</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #6b4e2e; font: 14px "Courier New", monospace; color: #6b4e2e; }
+  #app { position: relative; width: 100%; height: 100dvh; overflow: hidden; }
+  canvas { position: absolute; image-rendering: pixelated; image-rendering: crisp-edges; }
+  #bar { position: absolute; left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom) + 8px); display: flex; flex-wrap: wrap; gap: 6px; }
+  #bar button { font: inherit; padding: 6px 8px; border: 2px solid #6b4e2e; background: #fffae0; color: #6b4e2e; box-shadow: 2px 2px 0 rgba(0,0,0,.25); }
+  #bar button[aria-pressed="true"] { background: #e6efd7; }
+</style>
+</head>
+<body>
+<div id="app"><canvas id="c"></canvas><div id="bar"></div></div>
+<script>
+const A = "assets/personas/socrates/full/";
+const c = document.getElementById("c"), x = c.getContext("2d");
+const load = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = A + src; });
+
+(async () => {
+  const meta = await (await fetch(A + "faces.json")).json();
+  const [scene, faces] = await Promise.all([load("scene.png"), load("faces.png")]);
+  const [GW, GH] = meta.grid, P = meta.patch, T = meta.timing_ms;
+  c.width = GW; c.height = GH;
+  let mood = "attentive", eyes = "open", talking = false, mouth = "open";
+
+  function layout() {                        // cover the screen, Socrates kept near the middle
+    const k = Math.max(innerWidth / GW, innerHeight / GH);
+    const w = GW * k, h = GH * k;
+    const left = Math.min(0, Math.max(innerWidth - w, innerWidth / 2 - meta.anchor.face[0] * k));
+    Object.assign(c.style, { width: w + "px", height: h + "px", left: left + "px", top: "0px" });
+  }
+  function draw() {
+    x.drawImage(scene, 0, 0);
+    const col = meta.frames.indexOf(eyes !== "open" ? eyes : talking ? mouth : "open");
+    const row = meta.moods.indexOf(mood);
+    x.drawImage(faces, col * P.w, row * P.h, P.w, P.h, P.x, P.y, P.w, P.h);
+  }
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  let busy = false;
+  // A blink and a change of mood share one path: open, half, closed (the new mood lands here), half, open.
+  async function blink(next) {
+    if (busy) return; busy = true;
+    eyes = "half"; draw(); await wait(T.half);
+    eyes = "closed"; if (next) mood = next; draw(); await wait(T.closed);
+    eyes = "half"; draw(); await wait(T.half);
+    eyes = "open"; draw(); busy = false;
+  }
+  (async function idle() {
+    for (;;) {
+      await wait(T.blink_every[0] + Math.random() * (T.blink_every[1] - T.blink_every[0]));
+      await blink();
+    }
+  })();
+  (async function talk() {
+    for (;;) {
+      await wait(T.talk[0] + Math.random() * (T.talk[1] - T.talk[0]));
+      if (!talking) { if (mouth !== "open") { mouth = "open"; draw(); } continue; }
+      const r = Math.random(); mouth = r < .4 ? "talk1" : r < .7 ? "talk2" : "open";
+      if (!busy) draw();
+    }
+  })();
+
+  const bar = document.getElementById("bar");
+  const btns = meta.moods.map(m => {
+    const b = document.createElement("button"); b.textContent = m; b.setAttribute("aria-pressed", m === mood);
+    b.onclick = () => { btns.forEach(z => z.setAttribute("aria-pressed", z === b)); blink(m); };
+    bar.append(b); return b;
+  });
+  const t = document.createElement("button"); t.textContent = "talk"; t.setAttribute("aria-pressed", "false");
+  t.onclick = () => { talking = !talking; t.setAttribute("aria-pressed", talking); };
+  bar.append(t);
+  window.preview = { setMood: m => blink(m), setTalking: v => { talking = v; }, draw, state: () => ({ mood, eyes, talking, mouth }) };
+  addEventListener("resize", layout); layout(); draw();
+})();
+</script>
+</body>
+</html>
