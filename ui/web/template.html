@@ -12,6 +12,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500&family=Silkscreen&display=swap">
 <style>
+/* Zpix (SolidZORO): pixel CJK glyphs. Free for education and personal projects; a commercial product needs
+   a paid license, and the font may not be modified, subset or converted (assets/fonts/README.md). The
+   unicode-range means the browser fetches it only when Chinese or Japanese text is on screen. */
+@font-face { font-family: "Zpix"; src: url("assets/fonts/zpix.ttf") format("truetype"); font-display: swap;
+  unicode-range: U+2E80-2FFF, U+3000-303F, U+3040-30FF, U+3100-312F, U+31A0-31FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F, U+FF00-FFEF; }
 /* Tokens and sizes follow the Figma file "Philocafe · Mobile App UI". */
 :root {
   --paper: #fffae0;      /* page */
@@ -23,10 +28,10 @@
   --shadow: #cca370;     /* 3px 4px drop shadows */
   --rust: #8c524a;       /* destructive action: low-saturation dark red */
   --table: #2f261c;      /* desktop surround */
-  --f-display: "Pixelify Sans", "Courier New", monospace;   /* headings: pixel face like the rest of the app */
-  --f-pixel: "Pixelify Sans", "Courier New", monospace;
-  --f-label: "Silkscreen", "Courier New", monospace;
-  --f-mono: "Pixelify Sans", "Courier New", monospace;
+  --f-display: "Pixelify Sans", "Zpix", "Courier New", monospace;   /* headings: pixel face like the rest of the app */
+  --f-pixel: "Pixelify Sans", "Zpix", "Courier New", monospace;
+  --f-label: "Silkscreen", "Zpix", "Courier New", monospace;
+  --f-mono: "Pixelify Sans", "Zpix", "Courier New", monospace;
   --pad-l: max(18px, env(safe-area-inset-left, 0px));
   --pad-r: max(18px, env(safe-area-inset-right, 0px));
   color-scheme: light;
@@ -68,8 +73,8 @@ p { margin: 0; }
 .t28 { font-size: 28px; line-height: 36px; }
 
 /* ---------- Bottom navigation ---------- */
-.tabs { flex: none; background: var(--ink); display: flex; justify-content: center; gap: 18px; padding: 8px 24px calc(6px + env(safe-area-inset-bottom, 0px)); }
-.tab { width: 102px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 2px 0; color: var(--paper); font-size: 11px; line-height: 14px; opacity: .72; }
+.tabs { flex: none; background: var(--ink); display: flex; justify-content: center; gap: 4px; padding: 8px 8px calc(6px + env(safe-area-inset-bottom, 0px)); }
+.tab { flex: 1; max-width: 102px; min-width: 0; white-space: nowrap; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 2px 0; color: var(--paper); font-size: 11px; line-height: 14px; opacity: .72; }
 .tab[aria-current="page"] { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
 
 /* ---------- 01 The Café ---------- */
@@ -312,9 +317,18 @@ body.fixed { position: fixed; inset: 0; overscroll-behavior: none; }
 .cempty { border: 2px dashed var(--clay); padding: 12px 14px; text-align: left; width: 100%; color: var(--muted); }
 .btn.danger { background: var(--rust); color: var(--paper); }
 .danger-text { color: var(--rust); }
-.acct .inner { padding: 12px 16px 14px; gap: 10px; }
-.acct .btns { margin-top: 2px; }
-.acct .danger-text { align-self: flex-start; text-decoration: underline; text-underline-offset: 3px; }
+/* Chinese (Settings → 中文): Zpix is drawn on a 12 px grid, so nothing goes below 12 px and the tiny
+   uppercase labels lose their letter spacing. */
+html[lang="zh-CN"] .label, html[lang="zh-CN"] .t11, html[lang="zh-CN"] .tab, html[lang="zh-CN"] .titlebar,
+html[lang="zh-CN"] .composer .rec .hint { font-size: 12px; line-height: 16px; letter-spacing: 0; }
+/* ---------- Settings ---------- */
+#settings .inner { gap: 12px; }
+.seg { display: flex; border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); }
+.seg button { flex: 1; height: 44px; font-size: 16px; background: var(--paper); }
+.seg button + button { border-left: 2px solid var(--ink); }
+.seg button[aria-checked="true"] { background: var(--ink); color: var(--paper); }
+.setrow { display: flex; flex-direction: column; gap: 6px; }
+.setrow .btn { flex: none; width: 100%; }
 .account .switch { text-decoration: underline; color: var(--ink); }
 .account .err { color: var(--rust); }
 .account .pw { position: relative; display: block; width: 100%; margin-top: -4px; }
@@ -366,7 +380,7 @@ body.fixed { position: fixed; inset: 0; overscroll-behavior: none; }
       <section class="screen" id="home" aria-label="The café">
         <div class="body">
           <div class="brand"><span data-icon="cup"></span>Philocafé</div>
-          <p class="hint t11 muted" id="hint">Tap a philosopher in the café to meet them.</p>
+          <p class="hint t11 muted" id="hint" data-i18n="Tap a philosopher in the café to meet them.">Tap a philosopher in the café to meet them.</p>
           <div class="cafe" id="cafe"><img class="bg px" src="assets/home_bg.png" alt=""></div>
         </div>
       </section>
@@ -375,11 +389,13 @@ body.fixed { position: fixed; inset: 0; overscroll-behavior: none; }
       <section class="screen" id="notes" hidden></section>
       <section class="screen" id="convos" hidden></section>
       <section class="screen" id="pause" hidden></section>
+      <section class="screen" id="settings" hidden></section>
     </div>
     <nav class="tabs" id="tabs" aria-label="Main">
-        <button class="tab" data-tab="home"><span data-icon="cup" data-color="paper"></span>Café</button>
-        <button class="tab" data-tab="chat"><span data-icon="chat" data-color="paper"></span>Conversations</button>
-        <button class="tab" data-tab="notes"><span data-icon="mark" data-color="paper"></span>My notes</button>
+        <button class="tab" data-tab="home"><span data-icon="cup" data-color="paper"></span><span data-i18n="Café">Café</span></button>
+        <button class="tab" data-tab="chat"><span data-icon="chat" data-color="paper"></span><span data-i18n="Conversations">Conversations</span></button>
+        <button class="tab" data-tab="notes"><span data-icon="mark" data-color="paper"></span><span data-i18n="My notes">My notes</span></button>
+        <button class="tab" data-tab="settings"><span data-icon="gear" data-color="paper"></span><span data-i18n="Settings">Settings</span></button>
     </nav>
     <div class="homebar" id="homebar" aria-hidden="true"></div>
   </div>
@@ -488,6 +504,177 @@ const PH = {
   }
 };
 
+/* ---------- Language (Settings): English or 中文 ---------- */
+// The café's own words follow this setting; the philosophers answer in whatever language the user writes.
+// Changing it reloads the page. Chinese text uses the Zpix pixel font (assets/fonts, free for education use).
+const LANG = (() => { try { return localStorage.getItem("philocafe.lang") === "zh" ? "zh" : "en"; } catch { return "en"; } })();
+const ZH = {
+  // café, meet, take a seat
+  "Café": "咖啡馆", "Conversations": "对话", "My notes": "我的笔记", "Settings": "设置",
+  "Tap a philosopher in the café to meet them.": "点一位咖啡馆里的哲学家，认识一下。",
+  "Meet {name}": "认识{name}", "The café": "咖啡馆", "Pixel portrait of {name}": "{name}的像素肖像",
+  "A conversation with me": "和我聊聊", "Inspired by": "灵感来源", "An AI interpretation, not the historical person.": "AI 演绎，并非历史人物本人。",
+  "Take a seat with {name}": "和{name}坐下聊聊", "Coming at the final": "期末开放", "{name} joins the café at the final showcase.": "{name}将在期末展示时加入咖啡馆。",
+  "Your table with {name}": "你和{name}的桌子", "Pick up where you left off, or start a new conversation.": "接着上次聊，或者开始新的对话。",
+  "NEW CONVERSATION": "新对话", "Close": "关闭",
+  // entrance and account
+  "Café entrance": "咖啡馆入口", "This café is open to our class. Please enter the access code.": "这家咖啡馆只对我们班开放，请输入访问码。",
+  "Access code": "访问码", "ENTER": "进入", "That code didn’t open the café. Please try again.": "这个访问码打不开咖啡馆，请再试一次。",
+  "That code no longer opens the café.": "这个访问码已经失效了。", "Please sign in again.": "请重新登录。",
+  "Your café card": "你的咖啡馆卡片", "Sign in to keep your conversations and notes.": "登录后可以保存你的对话和笔记。",
+  "Nickname": "昵称", "Passcode": "密码", "SIGN IN": "登录", "CREATE": "创建", "New here? Create a card": "第一次来？创建一张卡片",
+  "Have a card? Sign in": "已有卡片？登录",
+  "Pick a nickname and a passcode of six or more characters. There is no way to recover a forgotten passcode.": "起一个昵称，设一个至少六位的密码。忘记密码后无法找回。",
+  "Welcome, {name}": "欢迎，{name}", "That didn’t work. Please try again.": "没有成功，请再试一次。", "You’re signed out.": "你已退出登录。",
+  "Delete your café card?": "删除你的咖啡馆卡片？",
+  "This deletes your account with every conversation, note and preference. It can’t be undone.": "这会删除你的账号，以及所有对话、笔记和偏好，无法恢复。",
+  "DELETE": "删除", "CANCEL": "取消", "Couldn’t delete just now": "暂时删不掉，请稍后再试",
+  // settings
+  "Language": "语言", "Changes the café’s words. Philosophers answer in whatever language you write in.": "切换咖啡馆界面的文字。哲学家会用你写的语言回答。",
+  "Signed in as {name}": "已登录：{name}", "SIGN OUT": "退出登录",
+  "Leaves this device. Your conversations and notes stay, and come back when you sign in again.": "只是在这台设备上退出。你的对话和笔记都还在，重新登录就能看到。",
+  "DELETE MY CAFÉ CARD": "删除我的咖啡馆卡片",
+  "Deletes your account and every conversation, note and preference, for good.": "永久删除你的账号，以及所有对话、笔记和偏好。",
+  "Not signed in.": "还没有登录。", "Accounts need the PhiloCafé server; this demo keeps everything on this device.": "账号需要连接 PhiloCafé 服务器；这个演示版只把内容存在这台设备上。",
+  // chat
+  "Back to the café": "回到咖啡馆", "Copy chat": "复制对话", "A table for your thoughts": "一张安放思绪的桌子",
+  "Reading replies aloud: on": "朗读回复：开", "Reading replies aloud: off": "朗读回复：关",
+  "Replies will be read aloud": "回复会被朗读出来", "Reading aloud is off": "朗读已关闭",
+  "Try a conversation starter": "试试这些开场白", "Share a thought...": "说说你的想法……", "Your message": "你的消息",
+  "Listening 0:00": "正在听 0:00", "Listening {time}": "正在听 {time}", "release": "松开发送", "tap to send": "点按发送", "Talk": "说话", "Send": "发送",
+  "Writing it down…": "正在转写……", "The microphone is off. You can still type.": "麦克风没有打开，你仍然可以打字。",
+  "That was too short. Tap the mic and speak.": "太短了，点一下麦克风再说。", "I didn’t catch that. Try again?": "没听清，再试一次？",
+  "Couldn’t turn that into text just now": "暂时没法转成文字",
+  "No conversation yet": "还没有对话", "Tap a philosopher in the café<br>and take a seat to start talking.": "在咖啡馆里点一位哲学家，<br>坐下来就可以开始聊天。",
+  "Things you might say next": "你接下来可能想说", "The café could not answer just now. Please try again.": "咖啡馆暂时没能回答，请再试一次。",
+  // reply actions
+  "Reply actions": "回复操作", "Save to My notes": "存入我的笔记", "Remove from My notes": "从我的笔记中移除", "Copy": "复制",
+  "From the source": "原文出处", "Good reply": "好回复", "Bad reply": "不好的回复", "Regenerate": "重新生成", "Read aloud": "朗读", "Stop reading": "停止朗读",
+  "Removed from My notes": "已从我的笔记中移除", "Couldn’t save just now": "暂时保存不了", "Saved to My notes": "已存入我的笔记",
+  "Copied": "已复制", "Couldn’t copy. Press and hold the reply to copy it.": "复制失败，长按回复可以复制。",
+  "What worked?": "哪里好？", "What missed?": "哪里不好？", "{name} will keep this in mind for the next replies.": "{name}会在之后的回复里记住这一点。",
+  "Anything else? (optional)": "还有别的吗？（选填）", "Your feedback": "你的反馈", "SEND": "发送", "Thanks, noted": "谢谢，记下了",
+  "Couldn’t regenerate just now": "暂时没法重新生成", "Feedback": "反馈",
+  "Too long": "太长", "Too short": "太短", "Too technical": "太专业", "Too many questions": "问题太多", "Too many quotes": "引用太多",
+  "Nice and short": "简短刚好", "Nicely detailed": "细致", "Clear, everyday words": "用词清楚日常", "Good questions": "问得好", "Liked the quotes": "喜欢这些引用",
+  "Full passage": "完整段落", "Read it in the source ↗": "去原文阅读 ↗", "Say something first": "先说点什么吧", "Chat copied": "对话已复制",
+  "Couldn’t copy. Press and hold each message to copy it.": "复制失败，长按每条消息可以复制。",
+  // support mode (FR-32) and the pause
+  "A moment of care": "关心一下你",
+  "This conversation is paused, and {name} is waiting nearby. You can tell me how you are. When you feel ready, tap the button below.": "这段对话暂停了，{name}就在旁边等你。你可以告诉我你现在怎么样。准备好了，就点下面的按钮。",
+  "Say how you are…": "说说你现在怎么样……", "I’m ready to talk with {name} again": "我准备好再和{name}聊了",
+  "Before {name} comes back, how are you feeling right now?": "在{name}回来之前，你现在感觉怎么样？",
+  "I’m safe right now, and I’d like to keep talking with {name}.": "我现在是安全的，想继续和{name}聊。", "I’m still having a hard time.": "我还是很难受。",
+  "Thank you for telling me. {name} will wait a little longer. If you might be in danger, please reach out to someone who can help right away. Whenever you’re ready, you can try again.": "谢谢你告诉我。{name}会再等一会儿。如果你可能有危险，请马上联系能帮助你的人。等你准备好了，随时可以再试。",
+  "I’m glad you’re here. Let’s go on gently, at your own pace. Where would you like to begin?": "很高兴你在这里。我们慢慢来，按你的节奏。你想从哪里开始？",
+  "I’m still here with you, and {name} is staying aside for now. When you feel ready, tap the button below. If you might be in danger, please reach out to someone who can help right away.": "我还在这里陪着你，{name}暂时在一旁。准备好了就点下面的按钮。如果你可能有危险，请马上联系能帮助你的人。",
+  "SAFETY CHECK": "安全检查", "PROTOTYPE · SIMULATED SYSTEM CHECK": "原型 · 模拟系统检查", "YOU · AT THIS TABLE": "你 · 在这张桌子",
+  "Let’s take a moment.": "我们先停一下。", "You deserve support with what you’re carrying. We’re pausing this conversation to make room for that.": "你正承受的事情值得被支持。我们先暂停这段对话，为此留出空间。",
+  "What’s on your mind?": "你在想什么？", "AI interpretation": "AI 演绎", "AI interpretation · Demo conversation": "AI 演绎 · 演示对话", "On finding your own pace": "关于找到自己的节奏",
+  "The café, quiet and at rest": "安静休息中的咖啡馆", "Let’s pause the café<br>for a moment.": "让咖啡馆<br>先暂停一下。",
+  "Some thoughts need a real person alongside you. Take your time, and reach out to someone you trust.": "有些心事需要真实的人陪在身边。慢慢来，去联系你信任的人。",
+  "Local support": "本地支持", "Find a crisis or support service in your area.": "找一找你所在地区的危机或支持服务。",
+  "Campus or community counseling": "校园或社区心理咨询", "Arrange time to talk with a counselor.": "约个时间和咨询师聊聊。",
+  "Someone you trust": "你信任的人", "A friend, family member, or mentor.": "朋友、家人或导师。", "Return to the café": "回到咖啡馆",
+  "Support options shown for prototype review.": "以上支持选项仅供原型评审展示。",
+  // notes
+  "Your pocket<br>of perspectives.": "你的<br>口袋视角。", "Small thoughts worth keeping.": "值得留下的小想法。", "Filter notes": "筛选笔记",
+  "All notes · {n}": "全部笔记 · {n}", "No saved thoughts yet. Tap “Save thought” during a conversation.": "还没有保存的想法。对话时点书签图标就能保存。",
+  "Example": "示例", "Saved thought": "保存的想法", "LEAVES ONCE YOU SAVE YOUR OWN": "保存你自己的笔记后会消失", "SAVED FROM YOUR CONVERSATION": "来自你的对话",
+  "Return to the conversation": "回到对话", "From your conversation": "来自你的对话", "You": "你",
+  "This note was saved before the café kept the conversation with it.": "这条笔记保存于咖啡馆开始一并保存对话之前。",
+  "Your reflection": "你的反思", "What does this question bring up for you?": "这个问题让你想到了什么？", "DONE": "完成",
+  "From your talk about “{text}”.": "来自你关于“{text}”的谈话。", "A thought to revisit later.": "一个值得以后再想想的念头。",
+  "Delete this note?": "删除这条笔记？",
+  // conversations
+  "Your conversations": "你的对话", "Pick up where you left off, or start fresh.": "接着上次聊，或者重新开始。",
+  "Sign in to keep your conversations.": "登录后可以保存你的对话。",
+  "Saved conversations need the PhiloCafé server; this demo keeps only the one open now.": "保存对话需要连接 PhiloCafé 服务器；这个演示版只保留当前这一段。",
+  "Back to {name}": "回到{name}", "Sign in": "登录", "Loading…": "加载中……", "The café could not load your conversations just now.": "咖啡馆暂时没能加载你的对话。",
+  "+ New": "+ 新对话", "Delete this conversation": "删除这段对话", "No conversations with {name} yet. Take a seat →": "还没有和{name}的对话。坐下聊聊 →",
+  "Delete this conversation?": "删除这段对话？", "“{title}” with {name} will be gone for good. Notes you saved from it stay.": "和{name}的“{title}”将被永久删除。从中保存的笔记会保留。",
+  "just now": "刚刚", "{n} min ago": "{n} 分钟前", "{n} h ago": "{n} 小时前"
+};
+const t = (s, v) => {
+  let r = LANG === "zh" && ZH[s] != null ? ZH[s] : s;
+  if (v) r = r.replace(/\{(\w+)\}/g, (m, k) => v[k] ?? m);
+  return r;
+};
+const LOCALE = LANG === "zh" ? "zh-CN" : "en-US";
+// The philosophers' café words in Chinese: names, introductions, greetings, starters and the demo's scripted lines.
+const PH_ZH = {
+  socrates: {
+    name: "苏格拉底", tagline: "让我们追问那些看似理所当然的事。",
+    about: "我们会放慢脚步，检验你的假设，一个问题接一个问题地探索什么对你真正重要。",
+    inspired: "柏拉图的对话录与苏格拉底式提问。", headline: "没有哪个问题太平常。",
+    greet: "你好，朋友。今天心里在想些什么？",
+    starters: ["美好的生活是什么样子？", "我觉得自己落后了。", "我把什么当成了理所当然？"],
+    scripted: {
+      "我觉得自己落后了。": "落后于谁呢？也许我们先该问问，你想抵达的是谁的终点。",
+      "美好的生活是什么样子？": "好问题。不过先告诉我：你上一次觉得一天过得很值，是什么时候？是什么让它这样？",
+      "我把什么当成了理所当然？": "我们来检验一下。说一件你今天没问为什么就做了的事。那真的是你的选择吗？"
+    },
+    sample: { title: "我在跟着谁的时间表走？", why: "当生活像一场比赛时，值得回头想想的问题。", topic: "关于找到自己的节奏" },
+    fallback: ["你说的到底是什么意思？举一个例子，我们一起来检验。", "有意思。可如果一位聪明的朋友不同意你，他会先说什么？",
+      "这么看来，我们发现自己并不知道原以为知道的东西。这是一上午不错的功课。接下来呢？"]
+  },
+  montaigne: {
+    name: "蒙田", tagline: "让我们对“身而为人”保持好奇。",
+    about: "我们会带着好奇、坦诚和容纳矛盾的空间，探索你的日常经验，不急着找到完美答案。",
+    inspired: "《随笔集》：自我认识、不确定与日常生活。", headline: "没有哪个问题太平常。",
+    greet: "你好，同路的漫游者。今天有什么平常的小事一直留在你心里？",
+    starters: ["我为什么总是改变主意？", "一个我解释不了的小习惯", "糟糕的一天教会了我什么？"],
+    scripted: {},
+    sample: { title: "我自己的生活方式是什么？", why: "当生活像一场比赛时，值得回头想想的问题。", topic: "关于找到自己的节奏" },
+    fallback: ["啊，我也一样。我每天都在自相矛盾，也早就不再为此道歉了。多跟我说说那个小细节。",
+      "我的猫教给我的，比三本书还多。你遇到过最平凡的老师是谁？", "我知道什么呢？很少，但我喜欢去发现。如果没人看着，你会尝试什么？"]
+  },
+  schopenhauer: {
+    name: "叔本华", tagline: "让我们看看是什么让我们一直想要。",
+    about: "我们会坦诚地审视欲望、失望和比较，并想想艺术、同情和更安静的快乐如何带来些许解脱。",
+    inspired: "《作为意志和表象的世界》：欲望、艺术与同情。", headline: "没有哪个问题太平常。",
+    greet: "坐吧，如果你非坐不可。今天是什么在困扰你？",
+    starters: ["为什么我总想要更多？", "什么能给我片刻的平静？", "为什么满足感会消退？"],
+    scripted: {},
+    sample: { title: "什么能给我片刻的平静？", why: "当生活像一场比赛时，值得回头想想的问题。", topic: "关于找到自己的节奏" },
+    fallback: ["啊。欲望是一种越喝越渴的渴。告诉我，这周你想要的是什么？", "音乐是唯一直接诉说意志的艺术。放一首曲子，少受三分钟的苦。",
+      "人就像冬天的豪猪：靠得太近会扎到彼此，离得太远又会冻僵。找到那个礼貌的距离吧。"]
+  },
+  seneca: {
+    name: "塞涅卡", tagline: "让我们好好利用拥有的时间。",
+    about: "我们会看看你如何度过每一天、你害怕什么、你能放下什么，像朋友间的书信，一次一句真话。",
+    inspired: "《致鲁基里乌斯书信集》与《论生命之短暂》。", headline: "没有哪个问题太平常。",
+    greet: "你好，朋友。坐下来告诉我：你这些天是怎么度过的？",
+    starters: ["我的时间都去哪儿了？", "我总在担心还没发生的事。", "生气的时候怎么保持冷静？"],
+    scripted: {
+      "我的时间都去哪儿了？": "大部分时间是在我们忙着别的事时溜走的。告诉我：昨天哪一个小时是真正属于你自己的？",
+      "我总在担心还没发生的事。": "我们在想象中受的苦，比在现实中多。这些担心里，到目前为止有哪一个真的发生了？",
+      "生气的时候怎么保持冷静？": "治愤怒最好的药是拖延。下次被惹恼时，在回应之前，那第一分钟你可以做什么？"
+    },
+    sample: { title: "今天哪一个小时真正属于我？", why: "当日子过得匆忙时，值得回头想想的问题。", topic: "关于生命之短暂" },
+    fallback: ["只要懂得如何使用，生命就足够长。如果你开始数自己的时间，你会停止做什么？", "抓住每一个小时，你就会少依赖明天一点。有什么事你今天就能做，而不是以后？",
+      "在我们等待生活的时候，生活已经过去了。你还在等什么才开始？"]
+  },
+  epictetus: {
+    name: "爱比克泰德", tagline: "让我们分清什么取决于我们，什么不取决于我们。",
+    about: "我们会把你能控制的和不能控制的分开，把力气用在真正有用的地方，冷静地，一件事一件事来。",
+    inspired: "《论说集》与《手册》。", headline: "没有哪个问题太平常。",
+    greet: "欢迎。告诉我是什么在困扰你，我们来看看其中哪一部分真正属于你。",
+    starters: ["什么才真正取决于我？", "有人说了伤害我的话。", "怎么才能不再在意别人的看法？"],
+    scripted: {
+      "什么才真正取决于我？": "你的判断、你的选择、你的欲求与厌恶，这些属于你。说说今天的烦恼里，哪一部分在这张清单上。",
+      "有人说了伤害我的话。": "困扰我们的不是话语本身，而是我们对它的判断。你告诉自己那些话意味着什么？",
+      "怎么才能不再在意别人的看法？": "他们的看法是他们的事，你的品格是你的事。如果永远没人知道，你会怎么做？"
+    },
+    sample: { title: "这取决于我吗？", why: "当事情好像不在你掌控之中时，值得回头想想的问题。", topic: "关于我们能控制的事" },
+    fallback: ["有些事取决于我们，有些不。这件属于哪一种？", "不要求事情如你所愿地发生，而要愿它们如其所是地发生。在这里会是什么样子？",
+      "先告诉自己你想成为什么样的人，然后去做该做的事。在这件事里，你想成为谁？"]
+  }
+};
+if (LANG === "zh") for (const id in PH_ZH) Object.assign(PH[id], PH_ZH[id]);
+document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
+
+
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -514,6 +701,7 @@ const ICONS = {
   send: "M10 4h2v15h-2zM8 6h2v2H8zM12 6h2v2h-2zM6 8h2v2H6zM14 8h2v2h-2zM4 10h2v2H4zM16 10h2v2h-2z",
   regen: "M2 6h2v4H2zM4 4h2v2H4zM6 2h9v2H6zM15 0h2v6h-2zM17 1h2v4h-2zM19 2h2v2h-2zM18 12h2v4h-2zM16 16h2v2h-2zM7 18h9v2H7zM5 16h2v6H5zM3 17h2v4H3zM1 18h2v2H1z",
   more: "M3 9h4v4H3zM9 9h4v4H9zM15 9h4v4h-4z",
+  gear: "M9 2h4v3H9zM9 17h4v3H9zM2 9h3v4H2zM17 9h3v4h-3zM4 4h3v3H4zM15 4h3v3h-3zM4 15h3v3H4zM15 15h3v3h-3zM7 5h8v2H7zM7 15h8v2H7zM5 7h2v8H5zM15 7h2v8h-2z",
   close: "M6 6h2v2h-2zM8 8h2v2h-2zM10 10h2v2h-2zM12 12h2v2h-2zM14 14h2v2h-2zM14 6h2v2h-2zM12 8h2v2h-2zM8 12h2v2h-2zM6 14h2v2h-2z"   // window close: an X in the back arrow's 2-pixel steps
 };
 const COLORS = { ink: "#6b4e2e", paper: "#fffae0", clay: "#d4aa73", muted: "#79694f" };
@@ -593,8 +781,8 @@ function thinkingPose() {                      // while the reply is on its way 
 }
 
 /* ---------- Navigation ---------- */
-const SCREENS = ["home", "meet", "chat", "notes", "convos", "pause"];
-const TABBED = { home: "home", notes: "notes", convos: "chat" };
+const SCREENS = ["home", "meet", "chat", "notes", "convos", "pause", "settings"];
+const TABBED = { home: "home", notes: "notes", convos: "chat", settings: "settings" };
 let screen = "home";
 function show(id) {
   screen = id;
@@ -610,6 +798,7 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
   const to = t.dataset.tab;
   if (to === "chat") { renderConvos(); return show("convos"); }
   if (to === "notes") { renderNotes(); loadNotes().then(() => screen === "notes" && renderNotes()).catch(() => {}); }
+  if (to === "settings") renderSettings();
   show(to);
 });
 
@@ -619,7 +808,7 @@ const HOME_W = 1179, HOME_H = 2556;
 ["socrates", "schopenhauer", "montaigne", "seneca", "epictetus"].forEach(id => {
   const a = actor(PH[id].home, HOME_W, HOME_H);
   const seat = el("button", "seat");
-  seat.setAttribute("aria-label", "Meet " + PH[id].name);
+  seat.setAttribute("aria-label", t("Meet {name}", { name: PH[id].name }));
   seat.style.cssText = a.style.cssText;
   seat.onclick = () => openMeet(id);
   cafe.append(seat, a);
@@ -631,16 +820,16 @@ function openMeet(id) {
   const open = backend.available(id);
   const m = $("#meet");
   m.innerHTML = `<div class="body">
-      <button class="backlink"><span data-icon="back"></span>The café</button>
-      <img class="portrait px" src="${A}portrait_${id}.png" alt="Pixel portrait of ${p.name}">
+      <button class="backlink"><span data-icon="back"></span>${t("The café")}</button>
+      <img class="portrait px" src="${A}portrait_${id}.png" alt="${t("Pixel portrait of {name}", { name: p.name })}">
       <div class="intro"><p class="t28">${p.name}</p><p class="t16 muted">${p.tagline}</p></div>
-      <p class="t20">A conversation with me</p>
+      <p class="t20">${t("A conversation with me")}</p>
       <p class="t16">${p.about}</p>
-      <div class="card"><div class="titlebar">Inspired by</div>
-        <div class="inner" style="padding:12px 14px 14px"><p class="t14">${p.inspired}</p><p class="t14 muted">An AI interpretation, not the historical person.</p></div></div>
+      <div class="card"><div class="titlebar">${t("Inspired by")}</div>
+        <div class="inner" style="padding:12px 14px 14px"><p class="t14">${p.inspired}</p><p class="t14 muted">${t("An AI interpretation, not the historical person.")}</p></div></div>
     </div>
-    <div class="foot"><button class="primary"${open ? "" : " disabled"}>${open ? `Take a seat with ${p.name}` : "Coming at the final"}</button>
-      ${open ? "" : `<p class="t11 muted coming">${p.name} joins the café at the final showcase.</p>`}</div>`;
+    <div class="foot"><button class="primary"${open ? "" : " disabled"}>${open ? t("Take a seat with {name}", { name: p.name }) : t("Coming at the final")}</button>
+      ${open ? "" : `<p class="t11 muted coming">${t("{name} joins the café at the final showcase.", { name: p.name })}</p>`}</div>`;
   paintIcons(m);
   $(".backlink", m).onclick = () => show("home");
   $(".primary", m).onclick = () => takeSeat(id);
@@ -656,13 +845,13 @@ async function takeSeat(id) {
   if (!rows.length) return openChat(id);
   const p = PH[id];
   const veil = el("div", "veil");
-  veil.innerHTML = `<div class="pop card seat" role="dialog" aria-label="Your table with ${p.name}">
-    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">Your table with ${p.name}<button class="x" aria-label="Close">${icon("close", "ink", 22)}</button></div>
-    <div class="seat-body"><p class="t14 muted">Pick up where you left off, or start a new conversation.</p>
+  veil.innerHTML = `<div class="pop card seat" role="dialog" aria-label="${t("Your table with {name}", { name: p.name })}">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">${t("Your table with {name}", { name: p.name })}<button class="x" aria-label="${t("Close")}">${icon("close", "ink", 22)}</button></div>
+    <div class="seat-body"><p class="t14 muted">${t("Pick up where you left off, or start a new conversation.")}</p>
       <div class="past">${rows.map(r => `<button class="card ccard" data-t="${r.thread_id}">
           <div class="titlebar"><span class="when">${ago(r.updated_at)}</span></div>
           <div class="inner"><p class="ctitle">${esc(r.title)}</p><p class="t14 muted last">${esc(r.last_line)}</p></div></button>`).join("")}</div>
-      <button class="btn go" data-a="new">NEW CONVERSATION</button></div></div>`;
+      <button class="btn go" data-a="new">${t("NEW CONVERSATION")}</button></div></div>`;
   const close = () => veil.remove();
   veil.querySelector(".x").onclick = close;
   veil.onclick = e => { if (e.target === veil) close(); };
@@ -696,7 +885,7 @@ const backend = {
   async init() {
     try {
       const r = await fetch("personas", { cache: "no-store", headers: this.headers() });
-      if (r.status === 401) { this.live = false; askCode(this.code() ? "That code didn’t open the café. Please try again." : ""); return; }
+      if (r.status === 401) { this.live = false; askCode(this.code() ? t("That code didn’t open the café. Please try again.") : ""); return; }
       if (!r.ok) throw new Error(r.status);
       this.ids.clear();
       (await r.json()).filter(p => p.available).forEach(p => this.ids.add(p.id));
@@ -712,8 +901,8 @@ const backend = {
                                   ...(body ? { body: JSON.stringify(body) } : {}) });
     if (r.status === 401) {
       let code = ""; try { code = (await r.clone().json()).error.code; } catch {}
-      if (code === "access_code") { this.setCode(""); askCode("That code no longer opens the café."); }
-      else { this.setToken(""); this.me = null; askAccount("Please sign in again."); }
+      if (code === "access_code") { this.setCode(""); askCode(t("That code no longer opens the café.")); }
+      else { this.setToken(""); this.me = null; askAccount(t("Please sign in again.")); }
     }
     if (!r.ok) { let e = { code: String(r.status) }; try { e = (await r.json()).error; } catch {} throw Object.assign(new Error(e.code), e); }
     return r.status === 204 ? null : r.json();
@@ -733,7 +922,7 @@ const backend = {
                                                         body: JSON.stringify(body) });
     if (r.status === 401) {
       let code = ""; try { code = (await r.clone().json()).error.code; } catch {}
-      if (code === "access_code") { this.setCode(""); askCode("That code no longer opens the café."); } else { this.setToken(""); askAccount("Please sign in again."); }
+      if (code === "access_code") { this.setCode(""); askCode(t("That code no longer opens the café.")); } else { this.setToken(""); askAccount(t("Please sign in again.")); }
     }
     if (!r.ok) {
       let e = { code: String(r.status), message: "request failed" };
@@ -772,24 +961,24 @@ function askAccount(message = "") {
   if (document.querySelector(".veil.account")) return;
   let mode = "in";
   const veil = el("div", "veil account");
-  veil.innerHTML = `<form class="pop card" role="dialog" aria-label="Your café card">
-    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">Your café card</div>
+  veil.innerHTML = `<form class="pop card" role="dialog" aria-label="${t("Your café card")}">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">${t("Your café card")}</div>
     <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
-      <div class="lead">${esc(message || "Sign in to keep your conversations and notes.")}</div>
-      <input class="codein" name="nickname" autocomplete="username" placeholder="Nickname" aria-label="Nickname" required minlength="3" maxlength="24">
-      <label class="pw"><input class="codein" name="passcode" type="password" autocomplete="current-password" placeholder="Passcode" aria-label="Passcode" required minlength="6"><span class="mask" aria-hidden="true"></span></label>
+      <div class="lead">${esc(message || t("Sign in to keep your conversations and notes."))}</div>
+      <input class="codein" name="nickname" autocomplete="username" placeholder="${t("Nickname")}" aria-label="${t("Nickname")}" required minlength="3" maxlength="24">
+      <label class="pw"><input class="codein" name="passcode" type="password" autocomplete="current-password" placeholder="${t("Passcode")}" aria-label="${t("Passcode")}" required minlength="6"><span class="mask" aria-hidden="true"></span></label>
       <p class="t14 err" role="alert" hidden></p>
-      <div class="btns"><button class="btn go" type="submit">SIGN IN</button></div>
-      <button class="switch t14" type="button">New here? Create a card</button></div></form>`;
+      <div class="btns"><button class="btn go" type="submit">${t("SIGN IN")}</button></div>
+      <button class="switch t14" type="button">${t("New here? Create a card")}</button></div></form>`;
   const err = $(".err", veil), go = $(".go", veil), sw = $(".switch", veil), pass = $('[name="passcode"]', veil);
   // The passcode stays a password field (managers and autofill still work); a layer over it shows * per character.
   pass.addEventListener("input", () => { $(".mask", veil).textContent = "*".repeat(pass.value.length); });
   sw.onclick = () => {
     mode = mode === "in" ? "up" : "in";
-    go.textContent = mode === "in" ? "SIGN IN" : "CREATE";
-    sw.textContent = mode === "in" ? "New here? Create a card" : "Have a card? Sign in";
+    go.textContent = mode === "in" ? t("SIGN IN") : t("CREATE");
+    sw.textContent = mode === "in" ? t("New here? Create a card") : t("Have a card? Sign in");
     pass.autocomplete = mode === "in" ? "current-password" : "new-password";
-    $(".lead", veil).textContent = mode === "in" ? "Sign in to keep your conversations and notes." : "Pick a nickname and a passcode of six or more characters. There is no way to recover a forgotten passcode.";
+    $(".lead", veil).textContent = mode === "in" ? t("Sign in to keep your conversations and notes.") : t("Pick a nickname and a passcode of six or more characters. There is no way to recover a forgotten passcode.");
     err.hidden = true;
   };
   $("form", veil).onsubmit = async e => {
@@ -801,10 +990,10 @@ function askAccount(message = "") {
       backend.setToken(j.token);
       veil.remove();
       await backend.loadMe(); refreshComposer(); await importLocalNotes(); await loadNotes();
-      toast(`Welcome, ${j.nickname}`);
-      if (screen === "convos") renderConvos(); else if (screen === "notes") renderNotes();
+      toast(t("Welcome, {name}", { name: j.nickname }));
+      if (screen === "convos") renderConvos(); else if (screen === "notes") renderNotes(); else if (screen === "settings") renderSettings();
     } catch (x) {
-      err.textContent = x.message || "That didn’t work. Please try again."; err.hidden = false;
+      err.textContent = x.message || t("That didn’t work. Please try again."); err.hidden = false;
     }
     go.disabled = false;
   };
@@ -814,10 +1003,10 @@ function askAccount(message = "") {
 function signOut() {
   backend.setToken(""); backend.me = null; notes = []; curThread = null;
   stopChat(); chat.innerHTML = ""; show("home");
-  askAccount("You’re signed out.");
+  askAccount(t("You’re signed out."));
 }
 async function deleteAccount() {
-  const ok = await confirmBox("Delete your café card?", "This deletes your account with every conversation, note and preference. It can’t be undone.", "DELETE");
+  const ok = await confirmBox(t("Delete your café card?"), t("This deletes your account with every conversation, note and preference. It can’t be undone."), t("DELETE"));
   if (!ok) return;
   try { await backend.api("me", { method: "DELETE" }); } catch { return toast("Couldn’t delete just now"); }
   signOut();
@@ -829,7 +1018,7 @@ function confirmBox(title, text, action) {
     veil.innerHTML = `<div class="pop card" role="alertdialog" aria-label="${esc(title)}">
       <div class="titlebar">${esc(title)}</div>
       <div class="pop-body"><div>${esc(text)}</div>
-        <div class="btns"><button class="btn" data-a="no">CANCEL</button><button class="btn danger" data-a="yes">${esc(action)}</button></div></div></div>`;
+        <div class="btns"><button class="btn" data-a="no">${t("CANCEL")}</button><button class="btn danger" data-a="yes">${esc(action)}</button></div></div></div>`;
     const done = v => { veil.remove(); resolve(v); };
     veil.querySelector('[data-a="no"]').onclick = () => done(false);
     veil.querySelector('[data-a="yes"]').onclick = () => done(true);
@@ -865,15 +1054,16 @@ const prefs = {
 };
 // Long-press on a filled thumb opens these (the server keeps the same list, app/prefs.py).
 const FEEDBACK_TAGS = {
-  down: { too_long: { label: "Too long", dial: ["length", -1] }, too_short: { label: "Too short", dial: ["length", 1] },
-          too_technical: { label: "Too technical", dial: ["plain", -1] }, too_many_questions: { label: "Too many questions", dial: ["questions", -1] },
-          too_many_quotes: { label: "Too many quotes", dial: ["quotes", -1] } },
-  up: { nice_and_short: { label: "Nice and short", dial: ["length", -1] }, nicely_detailed: { label: "Nicely detailed", dial: ["length", 1] },
-        clear_words: { label: "Clear, everyday words", dial: ["plain", -1] }, good_questions: { label: "Good questions", dial: ["questions", 1] },
-        liked_the_quotes: { label: "Liked the quotes", dial: ["quotes", 1] } }
+  down: { too_long: { label: t("Too long"), dial: ["length", -1] }, too_short: { label: t("Too short"), dial: ["length", 1] },
+          too_technical: { label: t("Too technical"), dial: ["plain", -1] }, too_many_questions: { label: t("Too many questions"), dial: ["questions", -1] },
+          too_many_quotes: { label: t("Too many quotes"), dial: ["quotes", -1] } },
+  up: { nice_and_short: { label: t("Nice and short"), dial: ["length", -1] }, nicely_detailed: { label: t("Nicely detailed"), dial: ["length", 1] },
+        clear_words: { label: t("Clear, everyday words"), dial: ["plain", -1] }, good_questions: { label: t("Good questions"), dial: ["questions", 1] },
+        liked_the_quotes: { label: t("Liked the quotes"), dial: ["quotes", 1] } }
 };
 const setMode = () => {
   const live = backend.live;
+  if (typeof screen !== "undefined" && screen === "settings") renderSettings();     // the account box needs the server's answer
   $("#modeNote").textContent = live ? "Replies: live from the PhiloCafe server, with a safety check on every turn." : "Replies: scripted demo lines (open the page from the PhiloCafe server for live replies).";
 };
 backend.init().then(setMode);
@@ -882,12 +1072,12 @@ backend.init().then(setMode);
 function askCode(message) {
   if (document.querySelector(".veil.entrance")) return;
   const veil = el("div", "veil entrance");
-  veil.innerHTML = `<form class="pop card" role="dialog" aria-label="Café entrance">
-    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">Café entrance</div>
+  veil.innerHTML = `<form class="pop card" role="dialog" aria-label="${t("Café entrance")}">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">${t("Café entrance")}</div>
     <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
-      <div>${esc(message || "This café is open to our class. Please enter the access code.")}</div>
-      <input class="codein" type="password" autocomplete="off" aria-label="Access code" required>
-      <div class="btns"><button class="btn go" type="submit">ENTER</button></div></div></form>`;
+      <div>${esc(message || t("This café is open to our class. Please enter the access code."))}</div>
+      <input class="codein" type="password" autocomplete="off" aria-label="${t("Access code")}" required>
+      <div class="btns"><button class="btn go" type="submit">${t("ENTER")}</button></div></div></form>`;
   $("form", veil).onsubmit = async e => {
     e.preventDefault();
     backend.setCode($(".codein", veil).value.trim());
@@ -1181,10 +1371,10 @@ function sceneFor(p) {
 function header(id, sub) {
   const p = PH[id];
   const head = el("header", "convhead");
-  head.innerHTML = `<button class="back" aria-label="Back to the café">${icon("backBold", "ink", 30)}</button>
+  head.innerHTML = `<button class="back" aria-label="${t("Back to the café")}">${icon("backBold", "ink", 30)}</button>
     <img class="mono px" src="${A}mono_${id}.png" alt="">
     <div><h1>${p.name}</h1><p class="sub">${sub}</p></div>
-    <span class="tools"><button class="tool copychat" aria-label="Copy chat" title="Copy chat">${icon("copy", "ink", 24)}</button>
+    <span class="tools"><button class="tool copychat" aria-label="${t("Copy chat")}" title="${t("Copy chat")}">${icon("copy", "ink", 24)}</button>
       <button class="tool aloud" hidden></button></span>`;
   $(".back", head).onclick = leaveChat;
   $(".copychat", head).onclick = () => copyChat();
@@ -1192,7 +1382,7 @@ function header(id, sub) {
     unlockAudio(); readAloud.set(!readAloud.get());
     if (!readAloud.get()) stopSpeaking();
     paintAloud();
-    toast(readAloud.get() ? "Replies will be read aloud" : "Reading aloud is off");
+    toast(readAloud.get() ? t("Replies will be read aloud") : t("Reading aloud is off"));
   };
   return head;
 }
@@ -1202,7 +1392,7 @@ function paintAloud() {
     const on = readAloud.get();
     b.hidden = !voiceOn();
     b.setAttribute("aria-pressed", on);
-    b.setAttribute("aria-label", on ? "Reading replies aloud: on" : "Reading replies aloud: off");
+    b.setAttribute("aria-label", on ? t("Reading replies aloud: on") : t("Reading replies aloud: off"));
     b.title = b.getAttribute("aria-label");
     b.innerHTML = icon(on ? "speaker" : "speakerOff", "ink", 24);
   });
@@ -1217,27 +1407,27 @@ function buildChat(id) {
   scroll.innerHTML = `<h2 class="headline">${p.headline.replace("question ", "question<br>")}</h2>
     <div class="card greet"><div class="titlebar">${p.name}</div>
       <div class="body2"><img class="pic px" src="${A}mono_${id}.png" alt=""><div class="say" id="say"></div></div></div>
-    <div class="label">Try a conversation starter</div>
+    <div class="label">${t("Try a conversation starter")}</div>
     <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">→  ${esc(s)}</button>`).join("")}</div>`;
   scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => { unlockAudio(); send(c.dataset.s); });
   const dock = el("div", "dock");
   dock.innerHTML = `<form class="composer">
-    <textarea id="msg" rows="1" placeholder="Share a thought..." autocomplete="off" enterkeyhint="send" aria-label="Your message"></textarea>
-    <div class="rec" aria-live="polite"><span class="dot"></span><span class="what">Listening 0:00</span><span class="hint">release</span></div>
+    <textarea id="msg" rows="1" placeholder="${t("Share a thought...")}" autocomplete="off" enterkeyhint="send" aria-label="${t("Your message")}"></textarea>
+    <div class="rec" aria-live="polite"><span class="dot"></span><span class="what">${t("Listening 0:00")}</span><span class="hint">${t("release")}</span></div>
     <button class="send" type="submit" aria-label="Send">${icon("send", "ink", 22)}</button></form>`;
   wireComposer(dock);
   if (FULL[id]) {                               // full-screen scene (kbtest layout)
     chat.classList.add("full");
     scroll.innerHTML = `<div class="row them"><div class="bubble" id="say"></div></div>
-      <div class="label">Try a conversation starter</div>
+      <div class="label">${t("Try a conversation starter")}</div>
       <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">→  ${esc(s)}</button>`).join("")}</div>`;
     scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => { unlockAudio(); send(c.dataset.s); });
     stage = fullScene(id);
-    chat.append(stage.el, header(id, "A table for your thoughts"), scroll, dock);
+    chat.append(stage.el, header(id, t("A table for your thoughts")), scroll, dock);
     wireFullKeyboard(dock);
     chatBand = band(scroll);
     new ResizeObserver(() => chat.style.setProperty("--dock-h", dock.offsetHeight + "px")).observe(dock);
-  } else chat.append(header(id, "A table for your thoughts"), sceneFor(p), scroll, dock);
+  } else chat.append(header(id, t("A table for your thoughts")), sceneFor(p), scroll, dock);
   setMode(); paintAloud();
   show("chat");
   if (FULL[id]) { setKb(0); stage.layout(); chatBand.setup(); fullApply(); }
@@ -1274,10 +1464,10 @@ function resumeChat() {
 function noChatYet() {
   show("home");
   const veil = el("div", "veil");
-  veil.innerHTML = `<div class="pop card" role="dialog" aria-label="No conversation yet">
-    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">No conversation yet<button class="x" aria-label="Close">${icon("close", "ink", 22)}</button></div>
+  veil.innerHTML = `<div class="pop card" role="dialog" aria-label="${t("No conversation yet")}">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">${t("No conversation yet")}<button class="x" aria-label="${t("Close")}">${icon("close", "ink", 22)}</button></div>
     <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
-      <div>Tap a philosopher in the café<br>and take a seat to start talking.</div>
+      <div>${t("Tap a philosopher in the café<br>and take a seat to start talking.")}</div>
       <div class="btns"><button class="btn go">OK</button></div></div></div>`;
   veil.onclick = e => { if (e.target === veil || e.target.closest(".x, .btn")) veil.remove(); };
   $(".screens").append(veil);
@@ -1302,7 +1492,7 @@ function showNexts(acts, items) {
   clearNexts();
   if (!acts || !items?.length || isPaused()) return;
   const box = el("div", "nexts");
-  box.setAttribute("role", "group"); box.setAttribute("aria-label", "Things you might say next");
+  box.setAttribute("role", "group"); box.setAttribute("aria-label", t("Things you might say next"));
   for (const t of items) {
     const b = el("button"); b.type = "button"; b.textContent = t;          // model text: never as HTML
     b.onclick = () => { if (busy) return; unlockAudio(); clearNexts(); send(t); };
@@ -1348,7 +1538,7 @@ function startConvo(p) {
 // A system-voice card in the thread: support-mode replies, never the persona's voice (NFR-12).
 function systemCard(text, resources) {
   const card = el("div", "card sysnote");
-  card.innerHTML = `<div class="titlebar">A moment of care</div><div class="inner"><p class="t16"></p></div>`;
+  card.innerHTML = `<div class="titlebar">${t("A moment of care")}</div><div class="inner"><p class="t16"></p></div>`;
   $(".t16", card).textContent = text;
   (resources || []).forEach(r => { const row = el("p", "t14"); row.innerHTML = `<b>${esc(r.name)}</b>: ${esc(r.contact)}`; $(".inner", card).append(row); });
   $("#scroll").append(card); scrollDown();
@@ -1361,9 +1551,9 @@ function systemCard(text, resources) {
 let paused = null;          // { id, nodes, cls, history, fbIdx, citations } of the conversation set aside
 let demoPaused = false;
 const isPaused = () => backend.live ? backend.paused() : demoPaused;
-const READY = p => `I’m ready to talk with ${p.name} again`;
-const SAFE = p => `I’m safe right now, and I’d like to keep talking with ${p.name}.`;
-const HARD = "I’m still having a hard time.";
+const READY = p => t("I’m ready to talk with {name} again", { name: p.name });
+const SAFE = p => t("I’m safe right now, and I’d like to keep talking with {name}.", { name: p.name });
+const HARD = t("I’m still having a hard time.");
 
 function setAside(id) {
   if (cur && curId === id && $(".dock", chat)) paused = { id, nodes: [...chat.childNodes], cls: chat.className, history, fbIdx, citations };
@@ -1385,8 +1575,8 @@ function enterSupport(p) {
   clearNexts();
   clearInterval(typer);
   if (!chat.classList.contains("convo")) { chat.classList.add("convo"); $("#scroll").innerHTML = ""; }
-  systemCard(`This conversation is paused, and ${p.name} is waiting nearby. You can tell me how you are. When you feel ready, tap the button below.`);
-  $("#msg").placeholder = "Say how you are…";
+  systemCard(t("This conversation is paused, and {name} is waiting nearby. You can tell me how you are. When you feel ready, tap the button below.", { name: p.name }));
+  $("#msg").placeholder = t("Say how you are…");
   comeBack(p);
 }
 function comeBack(p, step = "ask") {
@@ -1396,7 +1586,7 @@ function comeBack(p, step = "ask") {
     box.innerHTML = `<button class="chip ready" type="button">→  ${esc(READY(p))}</button>`;
     $(".ready", box).onclick = () => comeBack(p, "check");
   } else {
-    box.innerHTML = `<p class="t14">Before ${esc(p.name)} comes back, how are you feeling right now?</p>
+    box.innerHTML = `<p class="t14">${t("Before {name} comes back, how are you feeling right now?", { name: esc(p.name) })}</p>
       <div class="chips"><button class="chip" type="button" data-a="safe">→  ${esc(SAFE(p))}</button>
       <button class="chip" type="button" data-a="hard">→  ${esc(HARD)}</button></div>`;
     box.querySelector('[data-a="safe"]').onclick = () => checkIn(p, true);
@@ -1406,7 +1596,7 @@ function comeBack(p, step = "ask") {
 }
 function leaveSupport() {
   $(".comeback", chat)?.remove();
-  $("#msg").placeholder = "Share a thought...";
+  $("#msg").placeholder = t("Share a thought...");
 }
 async function checkIn(p, safe) {
   if (busy) return;
@@ -1415,13 +1605,13 @@ async function checkIn(p, safe) {
   bubble("me", text);
   history.push({ role: "user", content: text });
   if (!safe) {
-    systemCard(`Thank you for telling me. ${p.name} will wait a little longer. If you might be in danger, please reach out to someone who can help right away. Whenever you’re ready, you can try again.`);
+    systemCard(t("Thank you for telling me. {name} will wait a little longer. If you might be in danger, please reach out to someone who can help right away. Whenever you’re ready, you can try again.", { name: p.name }));
     return comeBack(p);
   }
   demoPaused = false; leaveSupport();
   busy = true;
   const b = bubble("them");
-  await new Promise(r => typeInto(b, "I’m glad you’re here. Let’s go on gently, at your own pace. Where would you like to begin?", r));
+  await new Promise(r => typeInto(b, t("I’m glad you’re here. Let’s go on gently, at your own pace. Where would you like to begin?"), r));
   history.push({ role: "assistant", content: b.textContent });
   addActions(b, { who: curId, you: text, them: b.textContent, cites: [] });
   busy = false;
@@ -1488,7 +1678,7 @@ async function sendLive(text, intent = null) {
   }
   if (r.failed || r.voice !== "persona") {          // never stand in for the persona with a made-up reply
     b.closest(".row").remove();
-    $("#scroll").append(el("p", "t11 muted netnote", "The café could not answer just now. Please try again."));
+    $("#scroll").append(el("p", "t11 muted netnote", t("The café could not answer just now. Please try again.")));
     return scrollDown();
   }
   history.push({ role: "assistant", content: r.said });
@@ -1510,7 +1700,7 @@ function wireComposer(dock) {
     const mic = !msg.value.trim() && voiceOn() && canRecord() && !micDenied;
     btn.dataset.mode = mic ? "mic" : "send";
     btn.type = mic ? "button" : "submit";
-    btn.setAttribute("aria-label", mic ? "Talk" : "Send");
+    btn.setAttribute("aria-label", mic ? t("Talk") : t("Send"));
     btn.innerHTML = icon(mic ? "mic" : "send", "ink", 22);
   };
   form.onsubmit = e => {
@@ -1535,7 +1725,7 @@ function wireComposer(dock) {
   btn.addEventListener("pointerup", () => {
     if (!rec || !press) return;
     if (Date.now() - press > 450) stopRecording(dock);                           // held: letting go sends
-    else { rec.tap = true; $(".hint", dock).textContent = "tap to send"; btn.innerHTML = icon("send", "ink", 22); }
+    else { rec.tap = true; $(".hint", dock).textContent = t("tap to send"); btn.innerHTML = icon("send", "ink", 22); }
     press = 0;
   });
   ["pointercancel", "pointerleave"].forEach(ev => btn.addEventListener(ev, () => { if (rec && press) { press = 0; stopRecording(dock); } }));
@@ -1551,8 +1741,8 @@ async function startRecording(dock) {
   const form = $("form", dock);
   rec = { chunks: [], started: Date.now(), pending: true };
   form.classList.add("recording");
-  $(".what", dock).textContent = "Listening 0:00";
-  $(".hint", dock).textContent = "release";
+  $(".what", dock).textContent = t("Listening 0:00");
+  $(".hint", dock).textContent = t("release");
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     if (!rec) { stream.getTracks().forEach(t => t.stop()); return; }     // let go before the mic opened
@@ -1563,7 +1753,7 @@ async function startRecording(dock) {
     recorder.start(250);
     rec.timer = setInterval(() => {
       const s = Math.floor((Date.now() - rec.started) / 1000);
-      $(".what", dock).textContent = `Listening 0:${String(s).padStart(2, "0")}`;
+      $(".what", dock).textContent = t("Listening {time}", { time: `0:${String(s).padStart(2, "0")}` });
       if (s >= 60) stopRecording(dock);                               // about a minute at most
     }, 250);
   } catch {
@@ -1586,7 +1776,7 @@ async function stopRecording(dock) {
   if (Date.now() - r.started < 600) return toast("That was too short. Tap the mic and speak.");
   const blob = new Blob(r.chunks, { type: r.recorder.mimeType || "audio/webm" });
   form.classList.add("transcribing");
-  $(".what", dock).textContent = "Writing it down…"; $(".hint", dock).textContent = "";
+  $(".what", dock).textContent = t("Writing it down…"); $(".hint", dock).textContent = "";
   try {
     if (!curThread) curThread = await backend.newThread(curId);
     const resp = await fetch(`threads/${curThread}/transcribe`, { method: "POST", headers: backend.headers({ "Content-Type": blob.type.split(";")[0] }), body: blob });
@@ -1689,7 +1879,7 @@ async function speak(acts) {
   const ex = acts._ex, list = sentences(ex.them);
   let stopped = false;
   const btn = $(".speak", acts);
-  const paint = on => { if (btn) { btn.setAttribute("aria-pressed", on); btn.setAttribute("aria-label", on ? "Stop reading" : "Read aloud"); setIcon(btn, on ? "stop" : "speaker", on ? "ink" : "muted"); } };
+  const paint = on => { if (btn) { btn.setAttribute("aria-pressed", on); btn.setAttribute("aria-label", on ? t("Stop reading") : t("Read aloud")); setIcon(btn, on ? "stop" : "speaker", on ? "ink" : "muted"); } };
   speaking = { acts, stop: () => { stopped = true; stage?.talk(false); try { clipSource?.stop(); } catch {} player.pause(); player.removeAttribute("src"); paint(false); } };
   paint(true);
   const fetchClip = t => fetch(`threads/${ex.thread}/speech`, { method: "POST", headers: backend.headers({ "Content-Type": "application/json" }), body: JSON.stringify({ text: t }) })
@@ -1712,9 +1902,9 @@ function addActions(b, ex) {
   row.nextElementSibling?.classList.contains("acts") && row.nextElementSibling.remove();
   document.querySelectorAll(".acts.latest").forEach(a => a.classList.remove("latest"));
   const acts = el("div", "acts latest");
-  acts.setAttribute("role", "toolbar"); acts.setAttribute("aria-label", "Reply actions");
+  acts.setAttribute("role", "toolbar"); acts.setAttribute("aria-label", t("Reply actions"));
   acts._ex = { rating: null, noteId: null, ...ex };
-  const btn = (a, label, ico) => `<button type="button" data-a="${a}" class="${a}" aria-label="${label}" title="${label}">${icon(ico, "muted", 18)}</button>`;
+  const btn = (a, label, ico) => `<button type="button" data-a="${a}" class="${a}" aria-label="${t(label)}" title="${t(label)}">${icon(ico, "muted", 18)}</button>`;
   acts.innerHTML = btn("save", "Save to My notes", "mark") + btn("copy", "Copy", "copy") +
     (ex.cites.length ? btn("source", "From the source", "book") : "") +
     btn("up", "Good reply", "up") + btn("down", "Bad reply", "down") + btn("regen", "Regenerate", "regen") +
@@ -1728,7 +1918,7 @@ function addActions(b, ex) {
 }
 // Selected = the filled icon, unselected = the outline; no frame or background.
 const setIcon = (x, name, color = "muted") => { x.innerHTML = icon(name, color, 18); };
-const markSaved = (x, on) => { x.setAttribute("aria-pressed", on); x.setAttribute("aria-label", on ? "Remove from My notes" : "Save to My notes"); setIcon(x, on ? "markFull" : "mark", on ? "ink" : "muted"); };
+const markSaved = (x, on) => { x.setAttribute("aria-pressed", on); x.setAttribute("aria-label", on ? t("Remove from My notes") : t("Save to My notes")); setIcon(x, on ? "markFull" : "mark", on ? "ink" : "muted"); };
 // A note deleted in My notes empties its bookmark when the chat comes back.
 const syncBookmarks = () => document.querySelectorAll(".acts").forEach(a => {
   if (a._ex.noteId && !notes.some(n => n.id === a._ex.noteId)) { a._ex.noteId = null; markSaved($(".save", a), false); }
@@ -1771,13 +1961,13 @@ function longPress(x, fn) {
 function openFeedback(acts, rating) {
   const ex = acts._ex, picked = new Set(ex.feedback?.tags || []);
   const veil = el("div", "veil");
-  veil.innerHTML = `<form class="pop card feedback" role="dialog" aria-label="Feedback">
-    <div class="titlebar"><span>${rating === "up" ? "What worked?" : "What missed?"}</span><button class="x" type="button" aria-label="Close">${icon("close", "ink", 22)}</button></div>
+  veil.innerHTML = `<form class="pop card feedback" role="dialog" aria-label="${t("Feedback")}">
+    <div class="titlebar"><span>${rating === "up" ? t("What worked?") : t("What missed?")}</span><button class="x" type="button" aria-label="${t("Close")}">${icon("close", "ink", 22)}</button></div>
     <div class="inner">
-      <p class="t14 muted">${esc(PH[ex.who].name)} will keep this in mind for the next replies.</p>
+      <p class="t14 muted">${t("{name} will keep this in mind for the next replies.", { name: esc(PH[ex.who].name) })}</p>
       <div class="tags">${Object.entries(FEEDBACK_TAGS[rating]).map(([k, t]) => `<button type="button" class="tag" data-t="${k}" aria-pressed="${picked.has(k)}">${esc(t.label)}</button>`).join("")}</div>
-      <textarea maxlength="500" placeholder="Anything else? (optional)" aria-label="Your feedback">${esc(ex.feedback?.text || "")}</textarea>
-      <div class="btns"><button class="btn" type="button" data-a="cancel">CANCEL</button><button class="btn go" type="submit">SEND</button></div>
+      <textarea maxlength="500" placeholder="${t("Anything else? (optional)")}" aria-label="${t("Your feedback")}">${esc(ex.feedback?.text || "")}</textarea>
+      <div class="btns"><button class="btn" type="button" data-a="cancel">${t("CANCEL")}</button><button class="btn go" type="submit">${t("SEND")}</button></div>
     </div></form>`;
   veil.querySelectorAll(".tag").forEach(b => b.onclick = () => { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", on); on ? picked.add(b.dataset.t) : picked.delete(b.dataset.t); });
   const close = () => veil.remove();
@@ -1861,7 +2051,7 @@ async function send(text) {
     startConvo(p);
     bubble("me", text);
     history.push({ role: "user", content: text });
-    systemCard(`I’m still here with you, and ${p.name} is staying aside for now. When you feel ready, tap the button below. If you might be in danger, please reach out to someone who can help right away.`);
+    systemCard(t("I’m still here with you, and {name} is staying aside for now. When you feel ready, tap the button below. If you might be in danger, please reach out to someone who can help right away.", { name: p.name }));
     return comeBack(p);
   }
   busy = true; $(".send").disabled = true;
@@ -1886,16 +2076,16 @@ async function send(text) {
 function openSource(list = citations.map((c, i) => ({ ...c, n: i + 1 }))) {
   if (!list.length) return;     // nothing quoted, nothing to show
   const veil = el("div", "veil");
-  veil.innerHTML = `<div class="pop card source" role="dialog" aria-label="From the source">
-    <div class="titlebar"><span>From the source</span><button class="x" type="button" aria-label="Close">${icon("close", "ink", 22)}</button></div><div class="inner"></div></div>`;
+  veil.innerHTML = `<div class="pop card source" role="dialog" aria-label="${t("From the source")}">
+    <div class="titlebar"><span>${t("From the source")}</span><button class="x" type="button" aria-label="${t("Close")}">${icon("close", "ink", 22)}</button></div><div class="inner"></div></div>`;
   const inner = $(".inner", veil);
   list.forEach(c => {
     const where = c.section ? `${c.work}, ${c.section}` : c.work;
     const block = el("div", "cite");
     block.innerHTML = `<p class="t11 muted">[${c.n}] ${esc(where)}</p>
       ${c.quote ? `<blockquote class="t16">${esc(c.quote)}</blockquote>` : ""}
-      ${c.passage ? `<details><summary class="t14">Full passage</summary><p class="t14 passage">${esc(c.passage)}</p></details>` : ""}
-      <a class="t14" href="${esc(c.source_url)}" target="_blank" rel="noopener">Read it in the source ↗</a>`;
+      ${c.passage ? `<details><summary class="t14">${t("Full passage")}</summary><p class="t14 passage">${esc(c.passage)}</p></details>` : ""}
+      <a class="t14" href="${esc(c.source_url)}" target="_blank" rel="noopener">${t("Read it in the source ↗")}</a>`;
     inner.append(block);
   });
   veil.onclick = e => { if (e.target === veil || e.target.closest(".x")) veil.remove(); };
@@ -1943,15 +2133,16 @@ function savedOn(n) {
   if (!d) { const t = parseInt(n.id, 36); if (n.id === SAMPLE || !Number.isFinite(t) || t < 1.6e12) return ""; d = new Date(t); }
   const opts = { month: "short", day: "numeric" };
   if (d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
-  return d.toLocaleDateString("en-US", opts);
+  return d.toLocaleDateString(LOCALE, opts);
 }
 
 function toast(msg) {
+  msg = t(msg);
   document.querySelector(".toast")?.remove();
   const dock = $("#chat .dock");
   if (!dock) return;
-  const t = el("div", "toast", esc(msg)); dock.append(t);
-  setTimeout(() => t.remove(), 1800);
+  const pop = el("div", "toast", esc(msg)); dock.append(pop);
+  setTimeout(() => pop.remove(), 1800);
 }
 
 const lastQuestion = s => { const parts = s.match(/[^.!?。！？]+[.!?。！？]*/g) || [s]; return (parts.filter(x => /[?？]/.test(x)).pop() || parts[0]).trim(); };
@@ -1967,7 +2158,7 @@ async function saveExchange(ex) {
   const p = PH[ex.who];
   let note = null;
   if (ex.who === "socrates" && ex.you === sampleFrom.you && ex.them === sampleFrom.them) note = { ...p.sample };
-  if (!note) note = { title: lastQuestion(ex.them), why: ex.you ? `From your talk about “${ex.you}”.` : "A thought to revisit later.", topic: "From your conversation" };
+  if (!note) note = { title: lastQuestion(ex.them), why: ex.you ? t("From your talk about “{text}”.", { text: ex.you }) : t("A thought to revisit later."), topic: t("From your conversation") };
   const cites = ex.cites.map(c => ({ n: c.n, where: c.section ? `${c.work}, ${c.section}` : c.work, quote: c.quote || "", passage: c.passage || "", url: c.source_url || "" }));
   const n = { id: Date.now().toString(36), who: ex.who, reflection: "", ...note, from: { you: ex.you, them: ex.them, cites } };
   dropSample(); notes.unshift(n); store.set(notes);
@@ -2006,22 +2197,22 @@ function renderNotes() {
   if (filter !== "all" && !people.includes(filter)) filter = "all";
   const list = notes.filter(n => filter === "all" || n.who === filter);
   v.innerHTML = `<div class="body">
-    <p class="t28">Your pocket<br>of perspectives.</p>
-    <p class="t16 muted">Small thoughts worth keeping.</p>
-    <div class="filters" role="group" aria-label="Filter notes">
-      <button class="pill" data-f="all" aria-pressed="${filter === "all"}">All notes · ${notes.length}</button>
+    <p class="t28">${t("Your pocket<br>of perspectives.")}</p>
+    <p class="t16 muted">${t("Small thoughts worth keeping.")}</p>
+    <div class="filters" role="group" aria-label="${t("Filter notes")}">
+      <button class="pill" data-f="all" aria-pressed="${filter === "all"}">${t("All notes · {n}", { n: notes.length })}</button>
       ${people.map(w => `<button class="pill" data-f="${w}" aria-pressed="${filter === w}">${PH[w].name}</button>`).join("")}
     </div>
-    ${list.length ? "" : `<div class="card empty t16 muted">No saved thoughts yet. Tap “Save thought” during a conversation.</div>`}
+    ${list.length ? "" : `<div class="card empty t16 muted">${t("No saved thoughts yet. Tap “Save thought” during a conversation.")}</div>`}
     ${list.map(n => {
       const ex = n.id === SAMPLE, when = savedOn(n);
       return `<button class="card note-card${ex ? " example" : ""}" data-id="${n.id}" aria-haspopup="dialog">
-        <div class="titlebar">${ex ? "Example" : "Saved thought"}</div>
-        <div class="inner"><div class="notehead">${icon("mark")}<p class="t11 muted">${ex ? "LEAVES ONCE YOU SAVE YOUR OWN" : "SAVED FROM YOUR CONVERSATION"}</p></div>
+        <div class="titlebar">${ex ? t("Example") : t("Saved thought")}</div>
+        <div class="inner"><div class="notehead">${icon("mark")}<p class="t11 muted">${ex ? t("LEAVES ONCE YOU SAVE YOUR OWN") : t("SAVED FROM YOUR CONVERSATION")}</p></div>
           <p class="t28">${esc(n.title)}</p><p class="t16">${esc(n.why)}</p>
           <p class="t11 muted meta">${[PH[n.who].name, esc(n.topic), when].filter(Boolean).join(" · ")}</p></div></button>`;
     }).join("")}
-    <button class="primary" id="returnBtn">${cur ? "Return to the conversation" : "Return to the café"}</button>
+    <button class="primary" id="returnBtn">${cur ? t("Return to the conversation") : t("Return to the café")}</button>
   </div>`;
   v.querySelectorAll(".pill").forEach(b => b.onclick = () => { filter = b.dataset.f; renderNotes(); });
   v.querySelectorAll(".note-card").forEach(b => b.onclick = () => openNote(b.dataset.id));
@@ -2034,26 +2225,26 @@ function openNote(id) {
   if (!n) return;
   const when = savedOn(n);
   const veil = el("div", "veil notesveil");
-  veil.innerHTML = `<div class="pop card notepop" role="dialog" aria-label="Saved thought">
-    <div class="titlebar"><span>${n.id === SAMPLE ? "Example" : "Saved thought"}</span><button class="x" type="button" aria-label="Close">${icon("close", "ink", 22)}</button></div>
+  veil.innerHTML = `<div class="pop card notepop" role="dialog" aria-label="${t("Saved thought")}">
+    <div class="titlebar"><span>${n.id === SAMPLE ? t("Example") : t("Saved thought")}</span><button class="x" type="button" aria-label="${t("Close")}">${icon("close", "ink", 22)}</button></div>
     <div class="inner">
       <p class="t11 muted">${[PH[n.who].name.toUpperCase(), esc(n.topic).toUpperCase(), when.toUpperCase()].filter(Boolean).join(" · ")}</p>
       <p class="t28">${esc(n.title)}</p>
       <p class="t16">${esc(n.why)}</p>
       <hr>
-      <p class="label muted">From your conversation</p>
+      <p class="label muted">${t("From your conversation")}</p>
       ${n.from ? `<div class="excerpt">
-        ${n.from.you ? `<div class="line me"><p class="who">You</p><p class="t14">${esc(n.from.you)}</p></div>` : ""}
+        ${n.from.you ? `<div class="line me"><p class="who">${t("You")}</p><p class="t14">${esc(n.from.you)}</p></div>` : ""}
         <div class="line them"><p class="who">${PH[n.who].name}</p><p class="t14">${esc(n.from.them)}</p>
           ${n.from.cites?.length ? `<div class="cites">${n.from.cites.map(c => `<div class="cite"><p class="t11 muted">[${c.n}] ${esc(c.where)}</p>
             ${c.quote ? `<blockquote class="t14">${esc(c.quote)}</blockquote>` : ""}
-            ${c.passage ? `<details><summary class="t14">Full passage</summary><p class="t14 passage">${esc(c.passage)}</p></details>` : ""}
-            ${c.url ? `<a class="t14" href="${esc(c.url)}" target="_blank" rel="noopener">Read it in the source ↗</a>` : ""}</div>`).join("")}</div>` : ""}</div>
-      </div>` : `<p class="t14 muted">This note was saved before the café kept the conversation with it.</p>`}
+            ${c.passage ? `<details><summary class="t14">${t("Full passage")}</summary><p class="t14 passage">${esc(c.passage)}</p></details>` : ""}
+            ${c.url ? `<a class="t14" href="${esc(c.url)}" target="_blank" rel="noopener">${t("Read it in the source ↗")}</a>` : ""}</div>`).join("")}</div>` : ""}</div>
+      </div>` : `<p class="t14 muted">${t("This note was saved before the café kept the conversation with it.")}</p>`}
       <hr>
-      <p class="t20">Your reflection</p>
-      <textarea placeholder="What does this question bring up for you?" aria-label="Your reflection">${esc(n.reflection || "")}</textarea>
-      <div class="btns"><button class="btn del" type="button">DELETE</button><button class="btn go done" type="button">DONE</button></div>
+      <p class="t20">${t("Your reflection")}</p>
+      <textarea placeholder="${t("What does this question bring up for you?")}" aria-label="${t("Your reflection")}">${esc(n.reflection || "")}</textarea>
+      <div class="btns"><button class="btn del" type="button">${t("DELETE")}</button><button class="btn go done" type="button">${t("DONE")}</button></div>
     </div></div>`;
   const close = () => { veil.remove(); renderNotes(); };
   $("textarea", veil).oninput = e => saveReflection(n, e.target.value);
@@ -2069,39 +2260,37 @@ function openNote(id) {
 const ORDER = ["socrates", "montaigne", "schopenhauer", "seneca", "epictetus"];
 const ago = iso => {
   const d = new Date(iso), mins = (Date.now() - d) / 60000;
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${Math.floor(mins)} min ago`;
-  if (mins < 1440) return `${Math.floor(mins / 60)} h ago`;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) });
+  if (mins < 1) return t("just now");
+  if (mins < 60) return t("{n} min ago", { n: Math.floor(mins) });
+  if (mins < 1440) return t("{n} h ago", { n: Math.floor(mins / 60) });
+  return d.toLocaleDateString(LOCALE, { month: "short", day: "numeric", ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) });
 };
 async function renderConvos() {
   const v = $("#convos");
-  const head = `<p class="t28">Your conversations</p><p class="t16 muted">Pick up where you left off, or start fresh.</p>`;
+  const head = `<p class="t28">${t("Your conversations")}</p><p class="t16 muted">${t("Pick up where you left off, or start fresh.")}</p>`;
   if (!backend.live || !backend.me) {
     v.innerHTML = `<div class="body">${head}
-      <div class="card empty t16 muted">${backend.live ? "Sign in to keep your conversations." : "Saved conversations need the PhiloCafé server; this demo keeps only the one open now."}</div>
-      ${cur ? `<button class="primary" id="resumeBtn">Back to ${esc(cur.name)}</button>` : ""}
-      ${backend.live ? `<button class="primary" id="signBtn">Sign in</button>` : ""}</div>`;
+      <div class="card empty t16 muted">${backend.live ? t("Sign in to keep your conversations.") : t("Saved conversations need the PhiloCafé server; this demo keeps only the one open now.")}</div>
+      ${cur ? `<button class="primary" id="resumeBtn">${t("Back to {name}", { name: esc(cur.name) })}</button>` : ""}
+      ${backend.live ? `<button class="primary" id="signBtn">${t("Sign in")}</button>` : ""}</div>`;
     $("#resumeBtn", v) && ($("#resumeBtn", v).onclick = resumeChat);
     $("#signBtn", v) && ($("#signBtn", v).onclick = () => askAccount());
     return;
   }
-  if (!v.firstChild) v.innerHTML = `<div class="body">${head}<p class="t14 muted">Loading…</p></div>`;
+  if (!v.firstChild) v.innerHTML = `<div class="body">${head}<p class="t14 muted">${t("Loading…")}</p></div>`;
   let rows = [];
-  try { rows = await backend.threads(); } catch { v.innerHTML = `<div class="body">${head}<div class="card empty t16 muted">The café could not load your conversations just now.</div></div>`; return; }
+  try { rows = await backend.threads(); } catch { v.innerHTML = `<div class="body">${head}<div class="card empty t16 muted">${t("The café could not load your conversations just now.")}</div></div>`; return; }
   const by = Object.fromEntries(ORDER.map(id => [id, rows.filter(r => r.persona_id === id)]));
   const order = [...ORDER].sort((a, b) => (by[b][0]?.updated_at || "").localeCompare(by[a][0]?.updated_at || ""));
   v.innerHTML = `<div class="body">${head}
     ${order.filter(id => backend.available(id)).map(id => `<section class="csec" aria-label="${PH[id].name}">
       <div class="csec-head"><img class="px" src="${A}mono_${id}.png" alt=""><h2>${PH[id].name}</h2>
-        <button class="newc" data-new="${id}">+ New</button></div>
+        <button class="newc" data-new="${id}">${t("+ New")}</button></div>
       ${by[id].length ? by[id].map(r => `<button class="card ccard" data-t="${r.thread_id}">
-          <div class="titlebar"><span class="when">${ago(r.updated_at)}</span><span class="x" role="button" tabindex="0" data-del="${r.thread_id}" aria-label="Delete this conversation">${icon("close", "ink", 22)}</span></div>
+          <div class="titlebar"><span class="when">${ago(r.updated_at)}</span><span class="x" role="button" tabindex="0" data-del="${r.thread_id}" aria-label="${t("Delete this conversation")}">${icon("close", "ink", 22)}</span></div>
           <div class="inner"><p class="ctitle">${esc(r.title)}</p><p class="t14 muted last">${esc(r.last_line)}</p></div></button>`).join("")
-        : `<button class="cempty t14" data-new="${id}">No conversations with ${PH[id].name} yet. Take a seat →</button>`}
-    </section>`).join("")}
-    ${accountCard()}</div>`;
-  wireAccountCard(v);
+        : `<button class="cempty t14" data-new="${id}">${t("No conversations with {name} yet. Take a seat →", { name: PH[id].name })}</button>`}
+    </section>`).join("")}</div>`;
   v.querySelectorAll("[data-new]").forEach(b => b.onclick = () => { pauseScene(); openChat(b.dataset.new); });
   v.querySelectorAll(".ccard").forEach(b => b.onclick = e => {
     const del = e.target.closest("[data-del]");
@@ -2109,23 +2298,38 @@ async function renderConvos() {
     openThread(rows.find(r => r.thread_id === b.dataset.t));
   });
 }
-// Your café card: reply style, sign out, delete (moved here from the chat's old ⋯ menu).
-function accountCard() {
-  const style = prefs.summary();
-  return `<section class="card acct" aria-label="Your café card"><div class="titlebar">Your café card</div>
-    <div class="inner"><p class="t14">Signed in as <b>${esc(backend.me.nickname)}</b></p>
-      <p class="t14 muted">Reply style: ${style ? esc(style) : "as the philosopher likes. Thumbs up or down on a reply to tune it."}</p>
-      <div class="btns">${style ? `<button class="btn" data-a="reset">RESET STYLE</button>` : ""}<button class="btn" data-a="out">SIGN OUT</button></div>
-      <button class="t14 danger-text" data-a="del">Delete my café card</button></div></section>`;
-}
-function wireAccountCard(v) {
-  const on = (a, fn) => { const b = v.querySelector(`.acct [data-a="${a}"]`); if (b) b.onclick = fn; };
-  on("reset", async () => { try { await prefs.reset(); toast("Reply style reset"); renderConvos(); } catch { toast("Couldn’t reset just now"); } });
-  on("out", signOut);
-  on("del", deleteAccount);
+/* ---------- Settings (bottom tab): language and your café card ---------- */
+function renderSettings() {
+  const v = $("#settings");
+  const acct = backend.live && backend.me
+    ? `<p class="t16">${t("Signed in as {name}", { name: `<b>${esc(backend.me.nickname)}</b>` })}</p>
+       <div class="setrow"><button class="btn" data-a="out">${t("SIGN OUT")}</button>
+         <p class="t14 muted">${t("Leaves this device. Your conversations and notes stay, and come back when you sign in again.")}</p></div>
+       <div class="setrow"><button class="btn danger" data-a="del">${t("DELETE MY CAFÉ CARD")}</button>
+         <p class="t14 muted">${t("Deletes your account and every conversation, note and preference, for good.")}</p></div>`
+    : backend.live
+      ? `<p class="t16">${t("Not signed in.")}</p><div class="setrow"><button class="btn go" data-a="in">${t("SIGN IN")}</button></div>`
+      : `<p class="t14 muted">${t("Accounts need the PhiloCafé server; this demo keeps everything on this device.")}</p>`;
+  v.innerHTML = `<div class="body">
+    <p class="t28">${t("Settings")}</p>
+    <section class="card" aria-label="${t("Language")}"><div class="titlebar">${t("Language")}</div>
+      <div class="inner"><div class="seg" role="radiogroup" aria-label="${t("Language")}">
+        <button role="radio" data-lang="en" aria-checked="${LANG === "en"}" lang="en">English</button>
+        <button role="radio" data-lang="zh" aria-checked="${LANG === "zh"}" lang="zh-CN">中文</button></div>
+        <p class="t14 muted">${t("Changes the café’s words. Philosophers answer in whatever language you write in.")}</p></div></section>
+    <section class="card" aria-label="${t("Your café card")}"><div class="titlebar">${t("Your café card")}</div>
+      <div class="inner">${acct}</div></section>
+  </div>`;
+  v.querySelectorAll("[data-lang]").forEach(b => b.onclick = () => {
+    if (b.dataset.lang === LANG) return;
+    try { localStorage.setItem("philocafe.lang", b.dataset.lang); } catch {}
+    location.hash = "settings"; location.reload();          // every screen is drawn again in the new language
+  });
+  const on = (a, fn) => { const b = v.querySelector(`[data-a="${a}"]`); if (b) b.onclick = fn; };
+  on("out", signOut); on("del", deleteAccount); on("in", () => askAccount());
 }
 async function deleteConvo(r) {
-  const ok = await confirmBox("Delete this conversation?", `“${r.title}” with ${PH[r.persona_id].name} will be gone for good. Notes you saved from it stay.`, "DELETE");
+  const ok = await confirmBox(t("Delete this conversation?"), t("“{title}” with {name} will be gone for good. Notes you saved from it stay.", { title: r.title, name: PH[r.persona_id].name }), t("DELETE"));
   if (!ok) return;
   try { await backend.deleteThread(r.thread_id); } catch { return; }
   if (curThread === r.thread_id) { stopChat(); chat.innerHTML = ""; curThread = null; }
@@ -2176,14 +2380,14 @@ function distress(id, text, care) {
   c.className = "screen"; c.innerHTML = "";
   const body = el("div", "body");
   body.style.gap = "18px";
-  const [head, ...rest] = care?.text ? care.text.split(/(?<=[.!?])\s+/) : ["Let’s take a moment.", "You deserve support with what you’re carrying. We’re pausing this conversation to make room for that."];
-  body.innerHTML = `<p class="t11 muted syscheck">${care ? "SAFETY CHECK" : "PROTOTYPE · SIMULATED SYSTEM CHECK"}</p>
-    <div class="youcard"><p class="t11">YOU · AT THIS TABLE</p><p class="t16">${esc(text)}</p></div>
-    <div class="card"><div class="titlebar">A moment of care</div>
+  const [head, ...rest] = care?.text ? care.text.split(/(?<=[.!?。！？])\s*/) : [t("Let’s take a moment."), t("You deserve support with what you’re carrying. We’re pausing this conversation to make room for that.")];
+  body.innerHTML = `<p class="t11 muted syscheck">${care ? t("SAFETY CHECK") : t("PROTOTYPE · SIMULATED SYSTEM CHECK")}</p>
+    <div class="youcard"><p class="t11">${t("YOU · AT THIS TABLE")}</p><p class="t16">${esc(text)}</p></div>
+    <div class="card"><div class="titlebar">${t("A moment of care")}</div>
       <div class="inner"><p class="t20">${esc(head)}</p><p class="t16">${esc(rest.join(" "))}</p></div></div>`;
   const dock = el("div", "dock");
-  dock.innerHTML = `<div class="composer quiet" aria-disabled="true"><span>What’s on your mind?</span><span>↑</span></div><p class="note t11 muted">${care ? "AI interpretation" : "AI interpretation · Demo conversation"}</p>`;
-  c.append(header(id, "On finding your own pace"), body, dock);
+  dock.innerHTML = `<div class="composer quiet" aria-disabled="true"><span>${t("What’s on your mind?")}</span><span>↑</span></div><p class="note t11 muted">${care ? t("AI interpretation") : t("AI interpretation · Demo conversation")}</p>`;
+  c.append(header(id, t("On finding your own pace")), body, dock);
   $(".back", c).onclick = () => { clearTimeout(pauseTimer); show("home"); };
   setMode(); show("chat");
   clearTimeout(pauseTimer);
@@ -2192,29 +2396,31 @@ function distress(id, text, care) {
 
 function openPause(resources) {
   const v = $("#pause");
-  v.innerHTML = `<img class="rest px" src="${A}cafe_rest.png" alt="The café, quiet and at rest">
+  v.innerHTML = `<img class="rest px" src="${A}cafe_rest.png" alt="${t("The café, quiet and at rest")}">
     <div class="body">
-      <div class="titlebar">A moment of care</div>
-      <p class="t20">Let’s pause the café<br>for a moment.</p>
-      <p class="t16">Some thoughts need a real person alongside you. Take your time, and reach out to someone you trust.</p>
+      <div class="titlebar">${t("A moment of care")}</div>
+      <p class="t20">${t("Let’s pause the café<br>for a moment.")}</p>
+      <p class="t16">${t("Some thoughts need a real person alongside you. Take your time, and reach out to someone you trust.")}</p>
       ${resources?.length
         ? resources.map(r => `<div class="card support"><p class="t16">${esc(r.name)}</p><p class="t14">${esc(r.contact)}</p></div>`).join("")
-        : `<div class="card support"><p class="t16">Local support</p><p class="t14">Find a crisis or support service in your area.</p></div>
-      <div class="card support"><p class="t16">Campus or community counseling</p><p class="t14">Arrange time to talk with a counselor.</p></div>`}
-      <div class="card support"><p class="t16">Someone you trust</p><p class="t14">A friend, family member, or mentor.</p></div>
-      <button class="primary">Return to the café</button>
-      ${resources?.length ? "" : `<p class="t11">Support options shown for prototype review.</p>`}
+        : `<div class="card support"><p class="t16">${t("Local support")}</p><p class="t14">${t("Find a crisis or support service in your area.")}</p></div>
+      <div class="card support"><p class="t16">${t("Campus or community counseling")}</p><p class="t14">${t("Arrange time to talk with a counselor.")}</p></div>`}
+      <div class="card support"><p class="t16">${t("Someone you trust")}</p><p class="t14">${t("A friend, family member, or mentor.")}</p></div>
+      <button class="primary">${t("Return to the café")}</button>
+      ${resources?.length ? "" : `<p class="t11">${t("Support options shown for prototype review.")}</p>`}
     </div>`;
   $(".primary", v).onclick = () => show("home");
   show("pause");
 }
 
 paintIcons();
+document.querySelectorAll("[data-i18n]").forEach(e => { e.innerHTML = t(e.dataset.i18n); });
 document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { pauseScene(); openMeet(b.dataset.go); });
 $("#demoDistress").onclick = () => distress("socrates", "I feel completely hopeless, and I don’t feel safe with myself.");
 show("home");
 const start = location.hash.slice(1);
 if (PH[start]) openMeet(start);
 else if (start === "notes") { renderNotes(); show("notes"); }
+else if (start === "settings") { renderSettings(); show("settings"); }
 else if (start === "distress") $("#demoDistress").click();
 </script>
