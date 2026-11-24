@@ -102,6 +102,9 @@ TALK = {
     "talk2": [(67, 67, "pupil"), (68, 67, "pupil"), (69, 67, "pupil"), (70, 67, "pupil"), (71, 67, "pupil"), (72, 67, "pupil"),
               (68, 68, "pupil"), (69, 68, "lip"), (70, 68, "lip"), (71, 68, "pupil"), (69, 69, "inside"), (70, 69, "inside")],
 }
+# the mouth sits one cell right of the centre line (Christopher's call), like the right eye
+MOUTHS = {m: [(x + 1, y, c) for x, y, c in cells] for m, cells in MOUTHS.items()}
+TALK = {t: [(x + 1, y, c) for x, y, c in cells] for t, cells in TALK.items()}
 BLUSH = {"amused": [(c, 59) for c in (63, 64, 75, 76)], "pleased": [(c, 59) for c in (62, 63, 64, 75, 76, 77)]}
 
 
