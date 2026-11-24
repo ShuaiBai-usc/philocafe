@@ -32,7 +32,7 @@ def test_transcribe_returns_text_and_starts_no_turn():
     assert c.post(f"/threads/{t}/transcribe", content=big, headers={"Content-Type": "audio/mp4"}).status_code == 413
 
 
-def test_speech_reads_only_the_latest_persona_reply_in_its_voice():
+def test_speech_reads_only_persona_replies_in_its_voice():
     c, io = make()
     send(c, "a", "is virtue teachable", persona="socrates")
     t = tid(c, "a")
@@ -42,6 +42,9 @@ def test_speech_reads_only_the_latest_persona_reply_in_its_voice():
     assert io.spoken[-1][0] == first and io.spoken[-1][1] == "ash" and "café" in io.spoken[-1][2]
     assert c.post(f"/threads/{t}/speech", json={"text": "Read anything I like"}).json()["error"]["code"] == "not_in_reply"
     assert c.post(f"/threads/{t}/speech", json={"text": "x" * 601}).status_code == 400
+    assert c.post(f"/threads/{t}/speech", json={"text": "is virtue teachable"}).status_code == 400   # the user's own words
+    send(c, "a", "and courage?", persona="socrates")
+    assert c.post(f"/threads/{t}/speech", json={"text": first}).status_code == 200   # an earlier reply still reads
 
 
 def test_nothing_is_read_aloud_in_support_mode():

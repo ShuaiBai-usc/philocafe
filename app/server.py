@@ -358,8 +358,8 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         return JSONResponse({"text": out["text"][:MAX_TEXT], "language": out.get("language")})
 
     async def speech(request: Request):
-        """FR-09: one sentence of the conversation's latest persona reply, in that persona's voice.
-        Only text from that reply is spoken, so this is no general text-to-speech service, and
+        """FR-09: one sentence of a persona reply in this conversation, in that persona's voice.
+        Only text from those replies is spoken, so this is no general text-to-speech service, and
         handover or support-mode text is never spoken in a persona voice (FR-35)."""
         user, denied = signed_in(request)
         if denied:
@@ -377,11 +377,12 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         if not text or len(text) > MAX_SPEECH_CHARS:
             return error(400, "bad_text", f"Send one sentence of up to {MAX_SPEECH_CHARS} characters.")
         msgs = (await run_in_threadpool(thread_state, thread_id)).get("messages") or []
-        last = msgs[-1] if msgs else None
-        if not isinstance(last, AIMessage) or last.name in (None, "system"):
+        replies = [" ".join(m.content.split()) for m in msgs
+                   if isinstance(m, AIMessage) and m.name not in (None, "system")]
+        if not replies:
             return error(409, "no_reply", "There is no persona reply to read.")
-        if text not in " ".join(last.content.split()):
-            return error(400, "not_in_reply", "Only the latest reply can be read aloud.")
+        if not any(text in r for r in replies):
+            return error(400, "not_in_reply", "Only the philosopher's replies in this conversation can be read aloud.")
         persona = deps.personas.get(c["persona_id"])
         if persona is None:
             return error(404, "unknown_persona", "No such persona.")

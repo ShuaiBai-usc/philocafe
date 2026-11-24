@@ -138,7 +138,7 @@ p { margin: 0; }
 .acts button { width: 30px; height: 30px; display: grid; place-items: center; }
 .acts button:focus-visible { outline: 2px dashed var(--clay); outline-offset: -2px; }
 .acts button:disabled { opacity: .4; cursor: default; }
-.acts:not(.latest) .regen, .acts:not(.latest) .speak { display: none; }
+.acts:not(.latest) .regen { display: none; }     /* only the last turn can be asked again */
 .acts button { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .feedback { text-align: left; }
 .feedback .inner { padding: 14px 18px 16px; gap: 10px; }
@@ -161,7 +161,7 @@ p { margin: 0; }
 /* Composer (7.6): one field and one action button: the mic while the field is empty (tap to talk,
    tap again to send; or hold and let go), the send arrow once there is text. */
 .composer { background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 8px; display: flex; gap: 8px; align-items: flex-end; position: relative; }
-.composer textarea { flex: 1; min-width: 0; box-sizing: border-box; height: 42px; max-height: 108px; resize: none; overflow-y: auto; border: 1px solid var(--ink); background: var(--paper);
+.composer textarea { flex: 1; min-width: 0; box-sizing: border-box; height: 42px; max-height: 64px; resize: none; overflow-y: auto; border: 1px solid var(--ink); background: var(--paper);
   padding: 9px 10px; font: 16px/22px var(--f-pixel); color: var(--ink); border-radius: 0; display: block; }
 .composer textarea::placeholder { color: var(--ink); opacity: .55; }
 .composer .send { width: 42px; height: 42px; border: 2px solid var(--ink); background: var(--clay); flex: none; display: grid; place-items: center;
@@ -1090,7 +1090,7 @@ const voiceOn = () => backend.live && !!backend.me?.voice;
 let micDenied = false;
 function wireComposer(dock) {
   const form = $("form", dock), msg = $("#msg", dock), btn = $(".send", dock);
-  const grow = () => { msg.style.height = "auto"; msg.style.height = Math.max(42, Math.min(msg.scrollHeight + 2, 108)) + "px"; };
+  const grow = () => { msg.style.height = "auto"; msg.style.height = Math.max(42, Math.min(msg.scrollHeight + 2, 64)) + "px"; };
   const mode = () => {
     const mic = !msg.value.trim() && voiceOn() && canRecord() && !micDenied;
     btn.dataset.mode = mic ? "mic" : "send";
