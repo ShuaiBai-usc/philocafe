@@ -1134,18 +1134,22 @@ function fullScene(id) {
   think.innerHTML = '<div class="cloud"></div><i class="d1"></i><i class="d2"></i>';
   wrap.append(cv, think);
   const g = cv.getContext("2d");
-  const s = { meta: null, scene: null, faces: null, mood: "attentive", eyes: "open", talking: false, mouth: "open",
+  const s = { meta: null, scene: null, faces: null, poses: {}, breathIn: false, nodding: false,
+              mood: "attentive", eyes: "open", talking: false, mouth: "open",
               busy: false, queued: null, alive: true, thinking: false, reserve: 60 };
   let holdT = null;
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const load = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = base + src; });
+  // Body poses (faces.json "poses"): breathing in lifts head and shoulders a row; a nod while talking
+  // drops the head a row. Each pose is its own picture; the face patch moves with it.
   function draw() {
     if (!s.faces) return;
     const m = s.meta, P = m.patch;
-    g.drawImage(s.scene, 0, 0);
+    const pose = s.nodding ? "nod" : s.breathIn ? "in" : null, pz = pose && s.poses[pose] ? m.poses[pose] : null;
+    g.drawImage(pz ? s.poses[pose] : s.scene, 0, 0);
     const col = m.frames.indexOf(s.eyes !== "open" ? s.eyes : s.talking ? s.mouth : "open");
     const row = Math.max(0, m.moods.indexOf(s.mood));
-    g.drawImage(s.faces, col * P.w, row * P.h, P.w, P.h, P.x, P.y, P.w, P.h);
+    g.drawImage(s.faces, col * P.w, row * P.h, P.w, P.h, P.x, P.y + (pz ? pz.dy : 0), P.w, P.h);
   }
   // A blink and a change of mood share one path: open, half, closed (the new face lands here), half, open.
   async function blink(next) {
@@ -1163,6 +1167,17 @@ function fullScene(id) {
     if (reduce) return;
     const T = s.meta.timing_ms, between = ([a, b]) => a + Math.random() * (b - a);
     (async () => { while (s.alive) { await wait(between(T.blink_every)); if (s.alive) await blink(); } })();
+    if (T.breath) (async () => {                                   // slow, even breathing
+      while (s.alive) { await wait(between(T.breath)); s.breathIn = !s.breathIn; if (!s.busy) draw(); }
+    })();
+    if (T.nod) (async () => {                                      // now and then a small nod while he talks
+      while (s.alive) {
+        await wait(between(T.nod_every));
+        if (!s.talking || !s.alive) continue;
+        s.nodding = true; if (!s.busy) draw();
+        await wait(T.nod); s.nodding = false; if (!s.busy) draw();
+      }
+    })();
     (async () => {
       while (s.alive) {
         await wait(between(T.talk));
@@ -1176,6 +1191,7 @@ function fullScene(id) {
     ready: (async () => {
       s.meta = await (await fetch(base + "faces.json")).json();
       [s.scene, s.faces] = await Promise.all([load("scene.png"), load("faces.png")]);
+      for (const [k, v] of Object.entries(s.meta.poses || {})) load(v.src).then(i => { s.poses[k] = i; }).catch(() => {});
       cv.width = s.meta.grid[0]; cv.height = s.meta.grid[1];
       api.layout(); draw(); loops();
       if (stage === api) { chat.classList.add("snap"); fullApply(); requestAnimationFrame(() => requestAnimationFrame(() => { chat.classList.remove("snap"); scrollDown(); })); }

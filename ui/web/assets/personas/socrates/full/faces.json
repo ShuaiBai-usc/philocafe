@@ -48,6 +48,25 @@
     "talk": [
       90,
       150
-    ]
+    ],
+    "breath": [
+      1500,
+      1700
+    ],
+    "nod_every": [
+      1800,
+      4200
+    ],
+    "nod": 260
+  },
+  "poses": {
+    "in": {
+      "src": "scene_in.png",
+      "dy": -1
+    },
+    "nod": {
+      "src": "scene_nod.png",
+      "dy": 1
+    }
   }
 }

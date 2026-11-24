@@ -12,7 +12,18 @@ Moods: attentive (the face as drawn), curious (brows up, eyes a row taller when 
 corners up, blush), skeptical (one brow up, the other's inner end down, that eye half shut), pondering
 (inner brow ends down, eyes to the side), pleased (closed smiling eyes, corners up, blush).
 
-    .venv/bin/python ui/web/tools/art/face_sheet.py [id ...]
+Before the face: the pendant lamp moves off the middle where `lamp` names a new centre column (it is the
+cells in the top 34 rows that differ from their column's wallpaper; the stripes are vertical, so each
+column's own colour fills the hole).
+
+After the face, two poses for the body (design: still art that breathes and nods):
+    scene_in.png    breathing in: the person's head and shoulders, down to `breath` row, one row up
+    scene_nod.png   a nod: the head, down to `chin` row, one row down (the wallpaper above fills the gap)
+The person is found with GrabCut (OpenCV) seeded with the face and chest as person and the sage armchair
+and rug as not, plus any black clothes joined to the chest. faces.json gives each pose's row shift so the
+page moves the face patch with it.
+
+    python3 ui/web/tools/art/face_sheet.py [id ...]       # needs opencv-python (cv2), numpy, Pillow
 """
 import json
 import sys
@@ -29,26 +40,27 @@ ROOT = HERE.parents[3]
 GRID = (143, 256)
 MOODS = ("attentive", "curious", "amused", "skeptical", "pondering", "pleased")
 FRAMES = ("open", "half", "closed", "talk1", "talk2")
-TIMING = {"half": 55, "closed": 85, "blink_every": [2800, 6500], "talk": [90, 150]}
+TIMING = {"half": 55, "closed": 85, "blink_every": [2800, 6500], "talk": [90, 150],
+          "breath": [1500, 1700], "nod_every": [1800, 4200], "nod": 260}
 
 # eyes: (x0, x1, lid row, eye row) and pupil (p0, p1), image-left eye first; brows: (x0, x1, y0, y1);
 # mouth: (row, x0, x1), the line between the lips just under the moustache, not the beard below it; lips=True draws the open mouth's lip in red (for mouths inside a dark beard)
 FACES = {
     "socrates": dict(src="socrates_restyled_gen.jpg",
                      eyes=[((64, 66, 57, 58), (65, 65)), ((74, 76, 57, 58), (75, 75))],
-                     brows=[(62, 67, 54, 56), (73, 78, 54, 56)], mouth=(67, 67, 73), lips=False),
+                     brows=[(62, 67, 54, 56), (73, 78, 54, 56)], mouth=(67, 67, 73), lips=False, breath=100, chin=84),
     "montaigne": dict(src="montaigne_restyled_gen.jpg",
                       eyes=[((63, 68, 60, 61), (66, 67)), ((73, 79, 60, 61), (76, 77))],
-                      brows=[(63, 69, 57, 58), (73, 79, 57, 58)], mouth=(68, 69, 74), lips=True),
+                      brows=[(63, 69, 57, 58), (73, 79, 57, 58)], mouth=(68, 69, 74), lips=True, breath=98, chin=76, lamp=100),
     "seneca": dict(src="seneca_restyled_gen.jpg",
                    eyes=[((64, 67, 57, 58), (65, 66)), ((74, 77, 57, 58), (75, 76))],
-                   brows=[(62, 69, 54, 56), (72, 79, 54, 56)], mouth=(67, 68, 74), lips=True),
+                   brows=[(62, 69, 54, 56), (72, 79, 54, 56)], mouth=(67, 68, 74), lips=True, breath=100, chin=82, lamp=101),
     "epictetus": dict(src="epictetus_restyled_gen.jpg",
                       eyes=[((64, 67, 57, 58), (66, 66)), ((73, 76, 57, 58), (75, 75))],
-                      brows=[(63, 68, 54, 56), (72, 78, 54, 56)], mouth=(67, 67, 74), lips=False),
+                      brows=[(63, 68, 54, 56), (72, 78, 54, 56)], mouth=(67, 67, 74), lips=False, breath=100, chin=86),
     "schopenhauer": dict(src="schopenhauer_seated_gen.jpg",
                          eyes=[((64, 67, 58, 59), (66, 66)), ((74, 77, 58, 59), (75, 75))],
-                         brows=[(62, 69, 55, 57), (72, 79, 55, 57)], mouth=(67, 68, 73), lips=False),
+                         brows=[(62, 69, 55, 57), (72, 79, 55, 57)], mouth=(67, 68, 73), lips=False, breath=98, chin=76, lamp=38),
 }
 BLUSH = (214, 140, 112)
 INSIDE = (92, 46, 38)
@@ -209,11 +221,75 @@ class Face:
         return p
 
 
+def move_lamp(base, to):
+    """the lamp: cells in rows 0-33, columns 52-91, unlike their column's wallpaper (rows 34-38)"""
+    a = base.astype(int)
+    out = base.copy()
+    cells = []
+    for x in range(52, 92):
+        col = [tuple(c) for c in base[34:39, x]]
+        bg = max(set(col), key=col.count)
+        for y in range(0, 34):
+            if np.abs(a[y, x] - bg).sum() > 30:
+                cells.append((x, y, tuple(base[y, x])))
+            out[y, x] = bg
+    xs = [x for x, _, _ in cells]
+    dx = to - round((min(xs) + max(xs)) / 2)
+    for x, y, c in cells:
+        out[y, x + dx] = c
+    return out
+
+
+def person_mask(base, P):
+    import cv2
+    S = 6
+    big = cv2.resize(base, (base.shape[1] * S, base.shape[0] * S), interpolation=cv2.INTER_NEAREST)
+    mask = np.full(big.shape[:2], cv2.GC_BGD, np.uint8)
+    mask[36 * S:200 * S, 18 * S:125 * S] = cv2.GC_PR_FGD
+    hsv = cv2.cvtColor(base, cv2.COLOR_RGB2HSV).astype(int)
+    green = (hsv[..., 0] > 30) & (hsv[..., 0] < 75) & (hsv[..., 1] > 35)
+    mask[cv2.resize(green.astype(np.uint8), big.shape[1::-1], interpolation=cv2.INTER_NEAREST).astype(bool)] = cv2.GC_BGD
+    hx0, hx1, sh = P["x"] - 5, P["x"] + P["w"] + 5, P["y"] + P["h"] + 5
+    mask[:sh * S, :hx0 * S] = cv2.GC_BGD
+    mask[:sh * S, hx1 * S:] = cv2.GC_BGD
+    mask[P["y"] * S:(P["y"] + P["h"]) * S, (P["x"] + 2) * S:(P["x"] + P["w"] - 2) * S] = cv2.GC_FGD
+    cx, yb = P["x"] + P["w"] // 2, P["y"] + P["h"]
+    mask[(yb + 4) * S:(yb + 34) * S, (cx - 8) * S:(cx + 8) * S] = cv2.GC_FGD
+    cv2.grabCut(cv2.cvtColor(big, cv2.COLOR_RGB2BGR), mask, None, np.zeros((1, 65)), np.zeros((1, 65)), 6, cv2.GC_INIT_WITH_MASK)
+    fg = ((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD)).astype(np.uint8)
+    m = cv2.resize(fg, base.shape[1::-1], interpolation=cv2.INTER_AREA) > 0
+    _, lab = cv2.connectedComponents(m.astype(np.uint8), connectivity=4)
+    k = lab[P["y"] + P["h"] // 2, cx]
+    if k:
+        m = lab == k
+    dark = base.astype(int).sum(2) / 3 < 55
+    dark[:yb - 2] = False
+    _, ld = cv2.connectedComponents(dark.astype(np.uint8), connectivity=4)
+    for kd in set(np.unique(ld[yb + 4:yb + 34, cx - 20:cx + 20])) - {0}:
+        if (ld == kd).sum() > 20:
+            m |= ld == kd
+    return cv2.morphologyEx(m.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
+
+
+def pose(base, m, top, bottom, dy):
+    """the masked cells of rows top..bottom moved dy rows (dy = -1 up, +1 down)"""
+    out = base.copy()
+    rows = range(top, bottom + 1) if dy < 0 else range(bottom, top - 1, -1)
+    for y in rows:
+        for x in np.nonzero(m[y])[0]:
+            out[y + dy, x] = base[y, x]
+            if dy > 0 and not m[y - 1, x]:          # the head's old top edge: the wallpaper above
+                out[y, x] = base[y - 1, x]
+    return out
+
+
 def build(pid):
     f = FACES[pid]
     src = np.asarray(Image.open(HERE / "sources" / f["src"]).convert("RGB")).astype(float)
     nw, nh, ox, oy = find_grid(src, [GRID[0]], [GRID[1]])
     base = np.asarray(quantize(sample(src, nw, nh, ox, oy), 48)).copy()
+    if f.get("lamp"):
+        base = move_lamp(base, f["lamp"])
     face = Face(base, f)
     xs = [e[0] for e, _ in f["eyes"]] + [e[1] for e, _ in f["eyes"]] + [b[0] for b in f["brows"]] + [b[1] for b in f["brows"]]
     x0, x1 = min(xs) - 2, max(xs) + 2
@@ -226,11 +302,16 @@ def build(pid):
     out = ROOT / f"ui/web/assets/personas/{pid}/full"
     out.mkdir(parents=True, exist_ok=True)
     Image.fromarray(base).save(out / "scene.png", optimize=True)
+    m = person_mask(base, {"x": x0, "y": y0, "w": w, "h": h})
+    top = min(y for y in range(base.shape[0]) if m[y].any())
+    Image.fromarray(pose(base, m, top, f["breath"], -1)).save(out / "scene_in.png", optimize=True)
+    Image.fromarray(pose(base, m, top, f["chin"], 1)).save(out / "scene_nod.png", optimize=True)
     Image.fromarray(sheet).save(out / "faces.png", optimize=True)
     (e0, _), (e1, _) = f["eyes"]
     meta = {"grid": list(GRID), "patch": {"x": x0, "y": y0, "w": w, "h": h}, "moods": list(MOODS), "frames": list(FRAMES),
             "anchor": {"face": [round((e0[0] + e1[1]) / 2), e0[3] + 2], "head": [x0 - 4, y0 - 14, x1 + 4, y1 + 8]},
-            "source": f["src"], "palette": 48, "timing_ms": TIMING}
+            "source": f["src"], "palette": 48, "timing_ms": TIMING,
+            "poses": {"in": {"src": "scene_in.png", "dy": -1}, "nod": {"src": "scene_nod.png", "dy": 1}}}
     (out / "faces.json").write_text(json.dumps(meta, indent=2) + "\n")
     print(pid, f"grid {nw}x{nh} offset ({ox}, {oy}) patch {(x0, y0, w, h)}")
 
