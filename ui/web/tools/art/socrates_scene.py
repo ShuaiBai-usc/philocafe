@@ -70,7 +70,7 @@ BROWS = {
     "pleased":   both([(63, 55), (64, 54), (65, 54), (66, 54), (67, 54)]),
 }
 
-# eyes when open: (x, row, colour); row 57 is the eye line, the eyes are x 64-67 and 72-75
+# eyes when open: (x, row, colour); row 57 is the eye line, the eyes are x 64-67 and 73-76
 EYES = {
     "attentive": both([(64, 57, "white"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "white2")]),
     "curious":   both([(64, 57, "white"), (65, 56, "pupil"), (66, 56, "pupil"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "white2")]),
@@ -83,8 +83,9 @@ EYES = {
 }
 
 # the right eye sits on the shaded half of the face, where white2 reads as skin: its inner corner is plain white
+# and the whole right eye sits one cell further out (Christopher's call: it reads as centred there)
 for _m, (_l, _r) in EYES.items():
-    EYES[_m] = (_l, [(x, y, "white") if (x, y, c) == (72, 57, "white2") else (x, y, c) for x, y, c in _r])
+    EYES[_m] = (_l, [(x + 1, y, "white" if (x, y, c) == (72, 57, "white2") else c) for x, y, c in _r])
 
 # mouth when closed, centred on the same line; talk frames open it in the same place
 MOUTHS = {
