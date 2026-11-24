@@ -880,7 +880,7 @@ function buildChat(id) {
       <div class="body2"><img class="pic px" src="${A}mono_${id}.png" alt=""><div class="say" id="say"></div></div></div>
     <div class="label">Try a conversation starter</div>
     <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">→  ${esc(s)}</button>`).join("")}</div>`;
-  scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => send(c.dataset.s));
+  scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => { unlockAudio(); send(c.dataset.s); });
   const dock = el("div", "dock");
   dock.innerHTML = `<form class="composer">
     <textarea id="msg" rows="1" placeholder="Share a thought..." autocomplete="off" enterkeyhint="send" aria-label="Your message"></textarea>
@@ -1094,7 +1094,8 @@ async function streamInto(b, events) {
 }
 
 async function sendLive(text, intent = null) {
-  const id = curId;
+  const id = curId, spoken = saidByVoice;
+  saidByVoice = false;
   busy = true; $(".send").disabled = true;
   startConvo(cur);
   bubble("me", text);
@@ -1123,7 +1124,7 @@ async function sendLive(text, intent = null) {
   history.push({ role: "assistant", content: r.said });
   const acts = addActions(b, { who: id, you: text, them: b.textContent, cites: r.cites, thread: curThread, messageId: r.messageId });
   scrollDown();
-  if (readAloud.get() && voiceOn() && r.messageId) speak(acts);
+  if ((readAloud.get() || spoken) && voiceOn() && r.messageId) speak(acts);    // a spoken message always gets a spoken reply
 }
 
 /* ---------- Composer and voice (7.6, FR-08, FR-09) ---------- */
@@ -1221,7 +1222,7 @@ async function stopRecording(dock) {
     if (!resp.ok) throw new Error(resp.status);
     const { text } = await resp.json();
     form.classList.remove("transcribing");
-    if (text) send(text);
+    if (text) { saidByVoice = true; send(text); }
     else toast("I didn’t catch that. Try again?");
   } catch { toast("Couldn’t turn that into text just now"); }
   form.classList.remove("transcribing");
@@ -1237,7 +1238,9 @@ function unlockAudio() {
   player.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
   player.play().catch(() => {});
 }
-const readAloud = { get() { try { return localStorage.getItem("philocafe.readAloud") === "1"; } catch { return false; } },
+let saidByVoice = false;      // the message on its way came from the mic
+// Replies are read aloud by default (when voice is set up); the ⋯ menu turns it off for this device.
+const readAloud = { get() { try { return localStorage.getItem("philocafe.readAloud") !== "0"; } catch { return true; } },
                     set(v) { try { localStorage.setItem("philocafe.readAloud", v ? "1" : "0"); } catch {} } };
 function sentences(text) {
   const clean = text.replace(/\s*\[\d+\]/g, "").replace(/\s+/g, " ").trim();
