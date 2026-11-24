@@ -193,21 +193,59 @@ def body_skin(img):
     return p
 
 
+# Christopher's pick: every feature one cell left of where the cells above put it
+FEATURE_SHIFT = -1
+
+
+def shift_features(dx):
+    """Move every feature (brows, eyes, nose, mouth, blush) dx cells sideways, to try placements."""
+    global NOSE
+    for table in (BROWS,):
+        for m, (l, r) in table.items():
+            table[m] = ([(x + dx, y) for x, y in l], [(x + dx, y) for x, y in r])
+    for m, (l, r) in EYES.items():
+        EYES[m] = ([(x + dx, y, c) for x, y, c in l], [(x + dx, y, c) for x, y, c in r])
+    for table in (MOUTHS, TALK):
+        for k, cells in table.items():
+            table[k] = [(x + dx, y, c) for x, y, c in cells]
+    for m, cells in BLUSH.items():
+        BLUSH[m] = [(x + dx, y) for x, y in cells]
+    NOSE = [(x + dx, y) for x, y in NOSE]
+
+
+def shift_nose(cleaned, dx):
+    """The nose is part of the picture: move its block (rows 56-62 around the ridge at x 70)."""
+    p = cleaned.copy()
+    src = cleaned[56:63, 67:75]
+    p[56:63, 67 + dx:75 + dx] = src
+    return p
+
+
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--shift", type=int, default=FEATURE_SHIFT, help="move the features this many cells (negative: left)")
+    ap.add_argument("--out", type=Path, default=OUT)
+    a = ap.parse_args()
+    out = a.out
+    if a.shift:
+        shift_features(a.shift)
     src = np.asarray(Image.open(SOURCE).convert("RGB")).astype(float)
     nw, nh, ox, oy = find_grid(src, [GRID[0]], [GRID[1]])
     scene = quantize(sample(src, nw, nh, ox, oy), COLOURS)
     base = np.asarray(scene).copy()
     cleaned = clean(base)
+    if a.shift:
+        cleaned = shift_nose(cleaned, a.shift)
     x0, y0, w, h = PATCH
     sheet = np.zeros((h * len(MOODS), w * len(FRAMES), 3), np.uint8)
     for i, mood in enumerate(MOODS):
         for j, name in enumerate(FRAMES):
             sheet[i * h:(i + 1) * h, j * w:(j + 1) * w] = body_skin(frame(base, cleaned, mood, name))[y0:y0 + h, x0:x0 + w]
     attentive = body_skin(frame(base, cleaned, "attentive", "open"))
-    OUT.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(attentive).save(OUT / "scene.png", optimize=True)
-    Image.fromarray(sheet).save(OUT / "faces.png", optimize=True)
+    out.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(attentive).save(out / "scene.png", optimize=True)
+    Image.fromarray(sheet).save(out / "faces.png", optimize=True)
     meta = {
         "grid": list(GRID),
         "patch": {"x": x0, "y": y0, "w": w, "h": h},
@@ -218,8 +256,8 @@ def main():
         "palette": COLOURS,
         "timing_ms": {"half": 55, "closed": 85, "blink_every": [2800, 6500], "talk": [90, 150]},
     }
-    (OUT / "faces.json").write_text(json.dumps(meta, indent=2) + "\n")
-    print(f"grid {nw} x {nh}, offset ({ox}, {oy}); wrote {OUT}")
+    (out / "faces.json").write_text(json.dumps(meta, indent=2) + "\n")
+    print(f"grid {nw} x {nh}, offset ({ox}, {oy}); wrote {out}")
 
 
 if __name__ == "__main__":
