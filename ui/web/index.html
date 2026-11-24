@@ -139,6 +139,15 @@ p { margin: 0; }
 .acts button:focus-visible { outline: 2px dashed var(--clay); outline-offset: -2px; }
 .acts button:disabled { opacity: .4; cursor: default; }
 .acts:not(.latest) .regen { display: none; }
+.acts button { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.feedback { text-align: left; }
+.feedback .inner { padding: 14px 18px 16px; gap: 10px; }
+.feedback .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.feedback .tag { border: 2px solid var(--ink); background: var(--paper); padding: 6px 10px; font-size: 14px; line-height: 18px; }
+.feedback .tag[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.feedback textarea { width: 100%; min-height: 72px; resize: vertical; border: 1px solid var(--clay); background: var(--paper); padding: 8px 10px; font-size: 16px; line-height: 21px; }
+.feedback textarea::placeholder { color: var(--muted); }
+.feedback .btn.go { background: var(--clay); }
 .more { width: 30px; height: 30px; display: grid; place-items: center; flex: none; align-self: flex-start; margin: 2px -6px 0 -4px; border: 2px solid transparent; }
 .more[aria-expanded="true"] { border-color: var(--ink); background: var(--white); }
 .menu { position: absolute; right: var(--pad-r); top: 58px; z-index: 15; width: 230px; animation: popin .2s steps(3); }
@@ -385,8 +394,8 @@ const ICONS = {
   markFull: "M5 2h12v18h-2v-2h-2v-2H9v2H7v2H5z",
   copy: "M4 4h10v2H4zM4 6h2v10H4zM4 14h4v2H4zM12 6h2v2h-2zM8 8h10v2H8zM8 10h2v8H8zM16 10h2v8h-2zM8 16h10v2H8z",
   book: "M2 4h8v2H2zM12 4h8v2h-8zM2 6h2v12H2zM18 6h2v12h-2zM10 6h2v14h-2zM4 16h6v2H4zM12 16h6v2h-6zM5 9h3v2H5zM14 9h3v2h-3zM5 12h3v2H5zM14 12h3v2h-3z",
-  up: "M2 9h6v2H2zM2 11h2v6H2zM2 17h6v2H2zM6 11h2v6H6zM8 5h2v12H8zM10 3h2v2h-2zM12 5h2v4h-2zM12 9h6v2h-6zM18 11h2v6h-2zM8 17h10v2H8z",
-  upFull: "M2 9h6v10H2zM8 5h2v14H8zM10 3h2v16h-2zM12 5h2v14h-2zM14 9h4v10h-4zM18 11h2v6h-2z",
+  up: "M3 10h4v9H3zM7 10h2v9H7zM9 6h2v4H9zM11 3h2v7h-2zM13 9h5v2h-5zM17 11h2v6h-2zM9 17h8v2H9z",
+  upFull: "M3 10h4v9H3zM7 10h2v9H7zM9 6h2v13H9zM11 3h2v16h-2zM13 9h4v10h-4zM17 11h2v6h-2z",
   // two arrows chasing each other round (a single arrow read as "back" or "undo")
   regen: "M2 6h2v4H2zM4 4h2v2H4zM6 2h9v2H6zM15 0h2v6h-2zM17 1h2v4h-2zM19 2h2v2h-2zM18 12h2v4h-2zM16 16h2v2h-2zM7 18h9v2H7zM5 16h2v6H5zM3 17h2v4H3zM1 18h2v2H1z",
   more: "M3 9h4v4H3zM9 9h4v4H9zM15 9h4v4h-4z"
@@ -555,9 +564,10 @@ const backend = {
     if (!r.ok) throw new Error(r.status);
     return r.json();
   },
-  async rate(rating, ex) {   // 7.9: one thumb -> updated reply preferences
+  async rate(rating, ex, feedback = null) {   // 7.9: one thumb (or its feedback window) -> updated reply preferences
     const r = await fetch("preferences", { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
-                                           body: JSON.stringify({ rating, persona_id: ex.who, user_text: ex.you, reply: ex.them, prefs: prefs.get() }) });
+                                           body: JSON.stringify({ rating, persona_id: ex.who, user_text: ex.you, reply: ex.them, prefs: prefs.get(),
+                                                                  ...(feedback ? { feedback } : {}) }) });
     if (!r.ok) throw new Error(r.status);
     return (await r.json()).prefs;
   }
@@ -574,7 +584,20 @@ const prefs = {
   // "shorter replies, plainer words" — what the dials currently ask for
   summary(v = this.get()) { return Object.keys(DIALS).filter(k => v[k]).map(k => (Math.abs(v[k]) === 2 ? "much " : "") + DIALS[k][v[k] > 0 ? 1 : 0]).join(", "); },
   // the offline rule (no server, or it failed): a thumbs-down on a long reply asks for shorter ones
-  rule(rating, reply) { const v = this.get(); if (rating === "down" && reply.split(/\s+/).length > 120) v.length = Math.max(-2, v.length - 1); return v; }
+  rule(rating, reply) { const v = this.get(); if (rating === "down" && reply.split(/\s+/).length > 120) v.length = Math.max(-2, v.length - 1); return v; },
+  // the feedback window's tags without a server: one step per dial they name
+  tags(rating, tags) { const v = this.get(), step = {};
+    tags.forEach(t => { const [k, d] = FEEDBACK_TAGS[rating][t].dial; step[k] = (step[k] || 0) + d; });
+    Object.keys(step).forEach(k => { v[k] = Math.max(-2, Math.min(2, v[k] + Math.sign(step[k]))); }); return v; }
+};
+// Long-press on a filled thumb opens these (the server keeps the same list, app/prefs.py).
+const FEEDBACK_TAGS = {
+  down: { too_long: { label: "Too long", dial: ["length", -1] }, too_short: { label: "Too short", dial: ["length", 1] },
+          too_technical: { label: "Too technical", dial: ["plain", -1] }, too_many_questions: { label: "Too many questions", dial: ["questions", -1] },
+          too_many_quotes: { label: "Too many quotes", dial: ["quotes", -1] } },
+  up: { nice_and_short: { label: "Nice and short", dial: ["length", -1] }, nicely_detailed: { label: "Nicely detailed", dial: ["length", 1] },
+        clear_words: { label: "Clear, everyday words", dial: ["plain", -1] }, good_questions: { label: "Good questions", dial: ["questions", 1] },
+        liked_the_quotes: { label: "Liked the quotes", dial: ["quotes", 1] } }
 };
 const setMode = () => {
   const live = backend.live;
@@ -912,7 +935,8 @@ function addActions(b, ex) {
   acts.innerHTML = btn("save", "Save to My notes", "mark") + btn("copy", "Copy", "copy") +
     (ex.cites.length ? btn("source", "From the source", "book") : "") +
     btn("up", "Good reply", "up") + btn("down", "Bad reply", "down") + btn("regen", "Regenerate", "regen");
-  acts.querySelectorAll("button").forEach(x => x.onclick = () => ACTIONS[x.dataset.a](acts, x));
+  acts.querySelectorAll("button").forEach(x => x.onclick = () => { if (x._held) { x._held = false; return; } ACTIONS[x.dataset.a](acts, x); });
+  acts.querySelectorAll(".up, .down").forEach(x => longPress(x, () => { if (acts._ex.rating === x.dataset.a) openFeedback(acts, x.dataset.a); }));
   row.after(acts);
   return acts;
 }
@@ -946,11 +970,53 @@ const ACTIONS = {
   regen(acts) { regenerate(acts); }
 };
 
+// Long press (about half a second) on a button; the click that follows it is swallowed.
+function longPress(x, fn) {
+  let t = null;
+  const stop = () => clearTimeout(t);
+  x.addEventListener("pointerdown", () => { stop(); t = setTimeout(() => { x._held = true; fn(); }, 500); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(e => x.addEventListener(e, stop));
+  x.addEventListener("contextmenu", e => e.preventDefault());
+}
+
+// The feedback window (7.9): tags and a short note on a rated reply. They only move the reply-style
+// dials (the note is read by the server's model, never put in the persona's prompt, FR-37).
+function openFeedback(acts, rating) {
+  const ex = acts._ex, picked = new Set(ex.feedback?.tags || []);
+  const veil = el("div", "veil");
+  veil.innerHTML = `<form class="pop card feedback" role="dialog" aria-label="Feedback">
+    <div class="titlebar"><span>${rating === "up" ? "What worked?" : "What missed?"}</span><button class="x" type="button" aria-label="Close">×</button></div>
+    <div class="inner">
+      <p class="t14 muted">${esc(PH[ex.who].name)} will keep this in mind for the next replies.</p>
+      <div class="tags">${Object.entries(FEEDBACK_TAGS[rating]).map(([k, t]) => `<button type="button" class="tag" data-t="${k}" aria-pressed="${picked.has(k)}">${esc(t.label)}</button>`).join("")}</div>
+      <textarea maxlength="500" placeholder="Anything else? (optional)" aria-label="Your feedback">${esc(ex.feedback?.text || "")}</textarea>
+      <div class="btns"><button class="btn" type="button" data-a="cancel">CANCEL</button><button class="btn go" type="submit">SEND</button></div>
+    </div></form>`;
+  veil.querySelectorAll(".tag").forEach(b => b.onclick = () => { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", on); on ? picked.add(b.dataset.t) : picked.delete(b.dataset.t); });
+  const close = () => veil.remove();
+  $(".x", veil).onclick = close; $('[data-a="cancel"]', veil).onclick = close;
+  veil.onclick = e => { if (e.target === veil) close(); };
+  $("form", veil).onsubmit = async e => {
+    e.preventDefault();
+    const feedback = { tags: [...picked], text: $("textarea", veil).value.trim() };
+    if (!feedback.tags.length && !feedback.text) return close();
+    ex.feedback = feedback;
+    $(".go", veil).disabled = true;
+    let next = null;
+    if (backend.live) { try { next = await backend.rate(rating, ex, feedback); } catch {} }
+    prefs.set(next || prefs.tags(rating, feedback.tags));
+    close();
+    toast("Thanks, noted");
+  };
+  $(".screens").append(veil);
+  $(".tag", veil).focus();
+}
+
 // A thumb (7.9): toggles the rating; a new rating asks the server how to move the reply style.
 async function rate(acts, x, rating) {
   const ex = acts._ex;
   const off = ex.rating === rating;
-  ex.rating = off ? null : rating;
+  ex.rating = off ? null : rating; ex.feedback = null;
   acts.querySelectorAll(".up, .down").forEach(b => { const on = b.dataset.a === ex.rating; b.setAttribute("aria-pressed", on); setIcon(b, b.dataset.a + (on ? "Full" : ""), on ? "ink" : "muted"); });
   if (off) return;
   let next = null;

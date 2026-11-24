@@ -112,3 +112,33 @@ def test_note_from_a_bookmarked_exchange():
     assert r.status_code == 200
     name, msgs = seen[-1]
     assert name == "Seneca" and [m.content for m in msgs] == ["an earlier line", "an earlier reply"]
+
+
+def test_feedback_tags_move_their_dials_without_the_model():
+    client, _, _ = make()
+    r = client.post("/preferences", json={"rating": "down", "persona_id": "socrates", "reply": "word " * 200,
+                                          "prefs": {"length": 0},
+                                          "feedback": {"tags": ["too_technical", "too_many_quotes", "evil"], "text": ""}})
+    # tags only: no rule step on top, so a long reply's length stays where it was
+    assert r.json() == {"prefs": {"length": 0, "plain": -1, "questions": 0, "quotes": -1}, "source": "tags"}
+
+
+def test_feedback_note_goes_to_the_model_and_still_moves_one_step():
+    seen = []
+    def tune(rating, name, you, reply, prefs, text=""):
+        seen.append(text)
+        return {"length": -1, "plain": 0, "questions": 0, "quotes": 0}
+    client, _, voice = make(tune_prefs=tune)
+    r = client.post("/preferences", json={"rating": "down", "persona_id": "socrates", "reply": "x",
+                                          "feedback": {"tags": ["too_long"], "text": "far too wordy " * 100}})
+    assert r.json()["prefs"]["length"] == -1              # tag + model both say shorter: still one step
+    assert seen and len(seen[0]) == 500                    # the note is capped
+    send(client, "t1", "is virtue teachable")              # and never reaches the persona prompt
+    assert "wordy" not in str(voice.last_messages) and "wordy" not in voice.last_system
+
+
+def test_up_tags_are_separate_from_down_tags():
+    client, _, _ = make()
+    r = client.post("/preferences", json={"rating": "up", "persona_id": "socrates", "reply": "x",
+                                          "feedback": {"tags": ["too_long", "good_questions"]}})
+    assert r.json()["prefs"] == {"length": 0, "plain": 0, "questions": 1, "quotes": 0}

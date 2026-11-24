@@ -40,7 +40,7 @@ from app.config import ROOT
 from app.deps import Deps
 from app.graph import CannotRegenerate, build_graph, rewind_last_turn, run_turn
 from app.persona import persona_history
-from app.prefs import apply_changes, clean_prefs, rule_changes
+from app.prefs import MAX_FEEDBACK, apply_changes, clean_prefs, merge_changes, rule_changes, tag_changes
 from app.submissions import MAX_TRANSCRIPT, SEVERAL, MemorySubmissions, PostgresSubmissions, to_csv
 
 log = logging.getLogger(__name__)
@@ -222,16 +222,23 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         if not reply.strip():
             return error(400, "empty_reply", "The rated reply is empty.")
         prefs = clean_prefs(body.get("prefs"))
+        # The feedback window (long-press on a filled thumb): tags are fixed steps; the note goes to the
+        # model as data and only moves dials. Neither reaches the persona prompt (FR-37).
+        feedback = body.get("feedback") if isinstance(body.get("feedback"), dict) else None
+        tags = tag_changes(rating, feedback.get("tags")) if feedback else {}
+        text = str(feedback.get("text") or "").strip()[:MAX_FEEDBACK] if feedback else ""
         changes, source = None, "rule"
-        if deps.tune_prefs is not None:
+        if deps.tune_prefs is not None and (feedback is None or text):
             try:
-                changes = await run_in_threadpool(deps.tune_prefs, rating, persona.name, user_text, reply, prefs)
+                changes = await run_in_threadpool(deps.tune_prefs, rating, persona.name, user_text, reply, prefs,
+                                                  text)
                 source = "model"
             except Exception as e:
                 log.warning("preference update failed, using the offline rule: %s", type(e).__name__)
         if changes is None:
-            changes = rule_changes(rating, reply)
-        return JSONResponse({"prefs": apply_changes(prefs, changes), "source": source})
+            changes = {} if feedback is not None else rule_changes(rating, reply)
+            source = "tags" if feedback is not None else source
+        return JSONResponse({"prefs": apply_changes(prefs, merge_changes(tags, changes)), "source": source})
 
     async def purge(request: Request) -> JSONResponse:
         # Vercel Cron sends "Authorization: Bearer $CRON_SECRET".
