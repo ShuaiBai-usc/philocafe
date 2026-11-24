@@ -1,236 +1,168 @@
-"""Socrates' full-screen chat scene: a generated picture, put on the bust's pixel grid.
+"""Socrates' full-screen chat scene: a generated picture turned into true pixel art.
 
-1. sources/socrates_seated_gen.jpg was generated (ElevenLabs, Nano Banana 2, 9:16) from the
-   bust and the café scene as references. It is median-filtered (generated "pixel art" is
-   noisy and not on a true grid), then each 5.9 px cell is read back as its most common
-   colour onto a 130 x 232 grid: on a 390 x 844 phone a cell is 3.64 px, as on the bust.
-2. The grid is reduced to 20 colours and lone cells (fewer than three matching neighbours)
-   take their neighbours' colour, so areas read as flat, clean shapes.
-3. The generated head is taken out (wall stripes run down the columns, the frame and the
-   wainscot are continued) and the bust's head goes in, drawn at 40 x 46 cells instead of
-   56 x 64 so it sits in proportion with the body. Its skin is mapped onto the arms' own
-   tones (base, shadow, deep shadow), so face and hands are one skin.
-4. Expressions are small patches over the face (eyes, brows, mouth, cheeks).
+1. sources/socrates_seated_gen.webp was generated (ElevenLabs, Nano Banana 2, 9:16, 768 x 1376;
+   the bust and the café scene as references) and picked by Christopher (sample #4). It is
+   stored losslessly.
+2. pixelate.py finds the picture's own pixel grid (143 x 256 cells of about 5.4 px), takes the
+   median of each cell's centre and reduces the colours to 48 with k-means in Lab space.
+   The scene no longer depends on the bust; it keeps its own head and proportions.
+3. Expressions are small patches over the face (brows, eyes, mouth, cheeks), drawn here
+   by hand on the scene's own palette: one row per mood, columns open, half, closed, talk1,
+   talk2. A mood change goes through a blink (open, half, closed, then the new mood's half
+   and open), so the switch is hidden behind closed eyes.
 
     .venv/bin/python ui/web/tools/art/socrates_scene.py
 
-writes ui/web/assets/personas/socrates/full/: scene.png (130 x 232, the attentive face),
-faces.png (one row per mood: open, half, closed, talk1, talk2), faces.json, and bust.png
-(the bust's framing cut from the scene, for comparison with the Meet page portrait).
-The table that will cover his lower half is a separate layer, added later.
+writes ui/web/assets/personas/socrates/full/: scene.png (143 x 256, the attentive face),
+faces.png and faces.json. The table that will cover his lower half is a separate layer,
+added later.
 """
 import json
-from collections import Counter
+import sys
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 
-ROOT = Path(__file__).resolve().parents[4]
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from pixelate import find_grid, quantize, sample  # noqa: E402
+
+ROOT = HERE.parents[3]
 OUT = ROOT / "ui/web/assets/personas/socrates/full"
-SOURCE = Path(__file__).resolve().parent / "sources/socrates_seated_gen.jpg"
-PORTRAIT = ROOT / "ui/web/assets/portrait_socrates.png"
-W, H = 130, 232
-COLOURS = 20
-HEAD_GRID = (40, 46)             # the bust's 56 x 64 grid at 5/7: the head in proportion with the body
-DX, DY = 45, 39                  # where the small bust's grid sits on the scene's
+SOURCE = HERE / "sources/socrates_seated_gen.webp"
+GRID = (143, 256)
+COLOURS = 48
+
+MOODS = ("attentive", "curious", "amused", "skeptical", "pondering", "pleased")
+FRAMES = ("open", "half", "closed", "talk1", "talk2")
+PATCH = (61, 52, 18, 19)          # x, y, w, h on the scene: brows, eyes, cheeks, mouth
+
+# the scene's own colours around the face (all from the 48-colour palette, plus a blush)
+C = {
+    "skin": (223, 176, 128), "skin2": (201, 152, 106), "shade": (196, 141, 101), "deep": (165, 116, 76),
+    "light": (241, 204, 165), "brow": (153, 144, 123), "pupil": (62, 44, 27), "dark": (124, 94, 62),
+    "white": (243, 236, 218), "white2": (230, 220, 188), "mouth": (136, 102, 66), "lip": (147, 73, 51), "inside": (102, 76, 49), "blush": (214, 140, 112),
+}
+
+# brows: (x, row) per pixel; left brow is image-left (his right), inner end at x 67 / 73
+BROWS = {
+    "attentive": ([(63, 54), (64, 54), (65, 54), (66, 54), (67, 54)], [(73, 54), (74, 54), (75, 54), (76, 54)]),
+    "curious":   ([(63, 54), (64, 53), (65, 53), (66, 53), (67, 53)], [(73, 53), (74, 53), (75, 53), (76, 54)]),
+    "amused":    ([(63, 54), (64, 53), (65, 53), (66, 54), (67, 54)], [(73, 54), (74, 54), (75, 53), (76, 53)]),
+    "skeptical": ([(63, 54), (64, 53), (65, 52), (66, 52), (67, 53)], [(73, 55), (74, 55), (75, 54), (76, 54)]),
+    "pondering": ([(63, 54), (64, 54), (65, 54), (66, 55), (67, 55)], [(73, 55), (74, 55), (75, 54), (76, 54)]),
+    "pleased":   ([(63, 55), (64, 54), (65, 54), (66, 54), (67, 54)], [(73, 54), (74, 54), (75, 54), (76, 55)]),
+}
+
+# eyes when open: per side, a list of (x, row, colour); row 57 is the eye line
+EYES = {
+    "attentive": ([(64, 57, "white"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "white2")],
+                  [(74, 57, "dark"), (75, 57, "pupil"), (76, 57, "white2")]),
+    "curious":   ([(64, 57, "white"), (65, 56, "pupil"), (66, 56, "pupil"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "white2")],
+                  [(74, 56, "pupil"), (75, 56, "pupil"), (74, 57, "pupil"), (75, 57, "pupil"), (76, 57, "white2")]),
+    "amused":    ([(64, 57, "deep"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "deep"), (64, 58, "light"), (65, 58, "light"), (66, 58, "light"), (67, 58, "light")],
+                  [(74, 57, "pupil"), (75, 57, "pupil"), (76, 57, "deep"), (74, 58, "light"), (75, 58, "light")]),
+    "skeptical": ([(64, 57, "white"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "white2")],
+                  [(74, 56, "deep"), (75, 56, "deep"), (76, 56, "deep"), (74, 57, "dark"), (75, 57, "pupil"), (76, 57, "shade")]),
+    "pondering": ([(64, 57, "white"), (65, 57, "white"), (66, 57, "pupil"), (67, 57, "pupil")],
+                  [(74, 57, "white"), (75, 57, "pupil"), (76, 57, "pupil")]),
+    "pleased":   ([(64, 57, "dark"), (65, 56, "dark"), (66, 56, "dark"), (67, 57, "dark")],
+                  [(73, 57, "dark"), (74, 56, "dark"), (75, 56, "dark"), (76, 57, "dark")]),
+}
+
+# mouth when closed; talk frames open it in the same place
+MOUTHS = {
+    "attentive": [(68, 67, "dark"), (69, 67, "lip"), (70, 67, "mouth"), (71, 67, "dark"), (72, 67, "dark"), (73, 67, "dark"), (74, 67, "dark")],
+    "curious":   [(69, 67, "dark"), (70, 67, "pupil"), (71, 67, "pupil"), (72, 67, "dark"), (70, 68, "inside"), (71, 68, "inside")],
+    "amused":    [(67, 66, "dark"), (68, 67, "dark"), (69, 67, "white"), (70, 67, "white"), (71, 67, "white"), (72, 67, "white"), (73, 67, "white"), (74, 67, "dark"), (75, 66, "dark"),
+                  (69, 68, "dark"), (70, 68, "lip"), (71, 68, "lip"), (72, 68, "lip"), (73, 68, "dark")],
+    "skeptical": [(68, 67, "dark"), (69, 67, "dark"), (70, 67, "dark"), (71, 67, "dark"), (72, 66, "dark"), (73, 66, "dark"), (74, 65, "dark")],
+    "pondering": [(69, 67, "dark"), (70, 67, "dark"), (71, 67, "dark"), (72, 67, "dark")],
+    "pleased":   [(67, 66, "dark"), (68, 67, "dark"), (69, 67, "lip"), (70, 67, "dark"), (71, 67, "dark"), (72, 67, "dark"), (73, 67, "dark"), (74, 66, "dark")],
+}
+TALK = {
+    "talk1": [(69, 67, "pupil"), (70, 67, "pupil"), (71, 67, "pupil"), (72, 67, "pupil"), (70, 68, "lip"), (71, 68, "lip")],
+    "talk2": [(69, 67, "pupil"), (70, 67, "pupil"), (71, 67, "pupil"), (72, 67, "pupil"), (73, 67, "pupil"),
+              (69, 68, "pupil"), (70, 68, "lip"), (71, 68, "lip"), (72, 68, "lip"), (73, 68, "pupil"), (70, 69, "inside"), (71, 69, "inside"), (72, 69, "inside")],
+}
+BLUSH = {"amused": [(63, 59), (64, 59), (76, 59), (77, 59)], "pleased": [(63, 59), (64, 59), (65, 59), (75, 59), (76, 59), (77, 59)]}
 
 
-def cells(src, gw, gh, inset=0, bucket=1):
-    """Each cell's most common colour (colours bucketed to ignore compression noise)."""
-    a = np.asarray(src.convert("RGB")).astype(np.int32)
-    h0, w0, _ = a.shape
-    out = np.zeros((gh, gw, 3), np.uint8)
-    for gy in range(gh):
-        y0, y1 = int(gy * h0 / gh), max(int(gy * h0 / gh) + 1, int((gy + 1) * h0 / gh))
-        for gx in range(gw):
-            x0, x1 = int(gx * w0 / gw), max(int(gx * w0 / gw) + 1, int((gx + 1) * w0 / gw))
-            c = a[y0 + inset:max(y0 + inset + 1, y1 - inset), x0 + inset:max(x0 + inset + 1, x1 - inset)].reshape(-1, 3)
-            q = c // bucket
-            keys = q[:, 0] * 1_000_000 + q[:, 1] * 1000 + q[:, 2]
-            vals, counts = np.unique(keys, return_counts=True)
-            out[gy, gx] = c[keys == vals[counts.argmax()]].mean(0)
-    return Image.fromarray(out)
+def clean(base):
+    """The face without its features: each brow, eye and mouth pixel painted with what is next to it."""
+    p = base.copy()
+    for x in list(range(63, 68)) + list(range(73, 77)):
+        p[54, x] = base[53, x]                    # brows: forehead skin from the row above
+    for x in list(range(64, 68)) + list(range(74, 77)):
+        p[57, x] = C["skin2"]                     # eyes: cheek skin
+    for x in range(68, 75):
+        p[67, x] = base[68, x]                    # mouth line: the beard just below it
+    return p
 
 
-def despeckle(img, passes=3, keep=3):
-    """A cell that matches fewer than `keep` of its neighbours takes their most common colour."""
-    a = np.asarray(img).copy()
-    h, w, _ = a.shape
-    for _ in range(passes):
-        b = a.copy()
-        for y in range(h):
-            for x in range(w):
-                c = tuple(a[y, x])
-                nb = [tuple(a[y + dy, x + dx]) for dy in (-1, 0, 1) for dx in (-1, 0, 1)
-                      if (dy or dx) and 0 <= y + dy < h and 0 <= x + dx < w]
-                if sum(n == c for n in nb) < keep:
-                    b[y, x] = Counter(nb).most_common(1)[0][0]
-        a = b
-    return Image.fromarray(a)
-
-
-def remove_head(base, keep):
-    """Take the generated head out; `keep` is the cells the new head will cover."""
-    bp = base.load(); out = base.copy(); op = out.load()
-    wall = {(231, 221, 187), (239, 219, 177)}
-    fx0, fy0, fy1 = 63, 13, 42                 # the painting's frame: left edge, top, bottom
-    frame = Counter(bp[x, y] for y in range(fy0, fy1 + 1) for x in range(78, 97))
-    mask = set()
-    for y in range(28, 58):
-        for x in range(46, 84):
-            if x >= fx0 and y <= fy1:
-                if frame[bp[x, y]] < 6: mask.add((x, y))
-            elif bp[x, y] not in wall:
-                mask.add((x, y))
-    around = Counter(bp[x, y] for y in range(56, 80) for x in [*range(38, 48), *range(84, 94)])
-    headish = {c for c in Counter(bp[x, y] for y in range(56, 78) for x in range(52, 80)) if around[c] < 4}
-    mask |= {(x, y) for y in range(56, 80) for x in range(48, 84) if bp[x, y] in headish}
-    for (x, y) in sorted(mask - keep, key=lambda p: p[1]):
-        if x >= fx0 and y <= fy1:
-            if x <= fx0 + 1: op[x, y] = bp[x, 25]          # the frame's left edge
-            elif y >= fy1 - 2: op[x, y] = bp[86, y]        # its bottom edge
-            else: op[x, y] = bp[x + 12, y]                 # the painting, from further right
-        elif y < 58:
-            op[x, y] = bp[x, 10]                           # wall stripes run down the columns
-        else:                                              # wainscot, chair, robe: nearest in the row
-            for d in range(1, 40):
-                if (x - d, y) not in mask: op[x, y] = bp[x - d, y]; break
-                if (x + d, y) not in mask: op[x, y] = bp[x + d, y]; break
+def eyes_for(mood, state):
+    out = []
+    for side in EYES[mood]:
+        if state == "open" or mood == "pleased":
+            out += side
+            continue
+        xs = sorted({x for x, _, _ in side})
+        if state == "half":                       # upper lid down: lid line above, pupils dimmed, whites covered
+            for x, r, c in side:
+                if r == 57:
+                    out.append((x, r, "dark" if c == "pupil" else "skin2"))
+            out += [(x, 56, "deep") for x in xs]
+        else:                                     # closed: one lash line
+            out += [(x, 57, "dark") for x in xs]
     return out
 
 
-# ---------- the scene ----------
-_raw = cells(Image.open(SOURCE).convert("RGB").filter(ImageFilter.MedianFilter(5)), W, H, inset=1, bucket=10)
-_q = despeckle(_raw.quantize(colors=COLOURS, method=Image.Quantize.MEDIANCUT, kmeans=5,
-                             dither=Image.Dither.NONE).convert("RGB"))
-SKIN, SHADE, DEEP = (221, 175, 128), (201, 154, 109), (188, 141, 100)   # the arms' tones
-LIGHT = (233, 193, 148)          # the one highlight, on the crown
-
-# ---------- the head, smaller than the bust's, in the arms' skin ----------
-DROP = {(171, 175, 136), (162, 168, 128), (153, 160, 120), (179, 182, 145), (144, 153, 111), (124, 122, 87),   # background
-        (253, 250, 240), (242, 236, 218), (221, 209, 178), (187, 169, 138),                                    # robe
-        (184, 112, 79), (148, 87, 61), (111, 63, 44), (211, 140, 104)}                                         # sash
-_bust = cells(Image.open(PORTRAIT), *HEAD_GRID)
-_bp = _bust.load()
-HEAD = {}
-for by in range(6, 36):          # top of the head to the bottom of the beard
-    for bx in range(HEAD_GRID[0]):
-        c = _bp[bx, by]
-        if c in DROP:
-            continue
-        HEAD[(bx, by)] = {(242, 207, 168): LIGHT if by <= 11 else SKIN, (226, 180, 132): SKIN,
-                          (201, 154, 108): SHADE, (168, 119, 79): DEEP}.get(c, c)
-base = remove_head(_q, {(x + DX, y + DY) for (x, y) in HEAD})
-_b = base.load()
-for (x, y), c in HEAD.items():
-    _b[x + DX, y + DY] = c
-PALETTE = sorted(set(base.get_flattened_data()))
-
-
-# ---------- expressions ----------
-C = dict(x=(246,239,226), A=(63,45,28), B=(91,66,42), k=(156,148,128), t=(164,112,75), u=(164,112,75),
-         z=(156,90,68), v=(111,63,44), y=(232,162,131), m=(112,104,90))
-# Where the features are, on the small bust's grid.
-EYE_ROW, EYES = 18, {'L': (16, 18), 'R': (23, 25)}
-BROW_ROW, BROWS = 16, {'L': (15, 18), 'R': (23, 26)}
-MOUTH_ROW, MOUTH = 26, (19, 21)
-CHEEKS = [(15, 21), (16, 21), (17, 21), (24, 21), (25, 21), (26, 21)]
-PATCH = (13, 14, 29, 29)         # box that holds every change (x0, y0, x1, y1)
-BROW_SHAPES = {                  # rows relative to BROW_ROW, one per brow column (left, right)
-    'neutral': ([0] * 4, [0] * 4), 'raised': ([-1] * 4, [-1] * 4),
-    'one_up': ([0, 0, 1, 1], [-1] * 4), 'inner_up': ([0, 0, -1, -1], [-1, -1, 0, 0]),
-    'relaxed': ([1, 0, 0, 0], [0, 0, 0, 1]),
-}
-MOODS = {
-    'attentive': dict(brows='neutral', eyes='open', mouth='rest'),
-    'curious':   dict(brows='raised', eyes='wide', mouth='o'),
-    'amused':    dict(brows='raised', eyes='smile', mouth='grin', blush=True),
-    'skeptical': dict(brows='one_up', eyes=('half', 'side'), mouth='side'),
-    'pondering': dict(brows='inner_up', eyes='up', mouth='hmm'),
-    'pleased':   dict(brows='relaxed', eyes='soft', mouth='smile', blush=True),
-}
-
-
-def face(mood='attentive', eyes=None, mouth=None):
-    img = base.copy(); p = img.load()
-    def s(x, y, c): p[x + DX, y + DY] = C[c] if isinstance(c, str) else c
-    skin = lambda x, y: base.getpixel((x + DX, y + DY))
-    spec = MOODS[mood]
-    # brows
-    bl, br = BROW_SHAPES[spec['brows']]
-    for side, rows in (('L', bl), ('R', br)):
-        x0, x1 = BROWS[side]
-        for x in range(x0, x1 + 1): s(x, BROW_ROW, skin(x, BROW_ROW + 1))
-        for x, r in zip(range(x0, x1 + 1), rows): s(x, BROW_ROW + r, 'k')
-    # eyes
-    def eye(side, state):
-        x0, x1 = EYES[side]; dark = 't' if side == 'L' else 'u'
-        for x in range(x0, x1 + 1): s(x, EYE_ROW, skin(x, EYE_ROW + 1))
-        seq = {'open': 'xAx', 'half': dark + 'A' + dark, 'closed': dark * 3, 'soft': dark + 'A' + dark,
-               'side': 'xxA', 'wide': 'xAx', 'up': 'xxx', 'smile': dark + '.' + dark}[state]
-        if state == 'smile': s(x0 + 1, EYE_ROW - 1, dark)                       # happy closed eyes: a little arch
-        if state == 'up': s(x0 + 1, EYE_ROW - 1, 'A')                           # iris above, white below
-        if state == 'wide': s(x0 + 1, EYE_ROW - 1, 'x')
-        for x, ch in zip(range(x0, x1 + 1), seq):
-            if ch != '.': s(x, EYE_ROW, ch)
-    base_eyes = spec['eyes'] if isinstance(spec['eyes'], tuple) else (spec['eyes'], spec['eyes'])
-    if eyes in ('half', 'closed') and spec['eyes'] != 'smile':
-        base_eyes = (eyes, eyes)       # a blink; smiling eyes are already closed
-    eye('L', base_eyes[0]); eye('R', base_eyes[1])
-    if spec.get('blush'):
-        for (x, y) in CHEEKS: s(x, y, 'y')
-    # mouth, under the moustache
-    m0, m1 = MOUTH
-    for x in range(m0 - 1, m1 + 2):
-        s(x, MOUTH_ROW, 'm' if m0 <= x <= m1 else skin(x, MOUTH_ROW)); s(x, MOUTH_ROW + 1, skin(x, MOUTH_ROW + 1))
-    mo = mouth or spec['mouth']
-    row = lambda xs, cs, r=MOUTH_ROW: [s(x, r, c) for x, c in zip(xs, cs)]
-    mid = range(m0, m1 + 1); wide = range(m0 - 1, m1 + 2)
-    if mo == 'rest':    row(mid, 'zzz')
-    elif mo == 'smile': row(mid, 'zzz'); s(m0 - 1, MOUTH_ROW - 1, 'z'); s(m1 + 1, MOUTH_ROW - 1, 'z')
-    elif mo == 'grin':  row(wide, 'zvvvz'); row(mid, 'zzz', MOUTH_ROW + 1)
-    elif mo == 'o':     row(mid, 'zvz'); s(m0 + 1, MOUTH_ROW + 1, 'z')
-    elif mo == 'side':  row(range(m0 + 1, m1 + 2), 'zzz')
-    elif mo == 'hmm':   row(range(m0 + 1, m1 + 1), 'zz')
-    elif mo == 'talk1': row(mid, 'zvz'); s(m0 + 1, MOUTH_ROW + 1, 'z')
-    elif mo == 'talk2': row(wide, 'zvvvz'); row(mid, 'zvz', MOUTH_ROW + 1)
-    return img
-
-
-FRAMES = ("open", "half", "closed", "talk1", "talk2")
-
-
-def frame(mood, name):
-    if name in ("half", "closed"):
-        return face(mood, eyes=name)
-    if name.startswith("talk"):
-        return face(mood, mouth=name)
-    return face(mood)
+def frame(base, cleaned, mood, name):
+    p = cleaned.copy()
+    for side in BROWS[mood]:
+        for x, r in side:
+            p[r, x] = C["brow"]
+    state = name if name in ("half", "closed") else "open"
+    for x, r, c in eyes_for(mood, state):
+        p[r, x] = C[c]
+    for x, r in BLUSH.get(mood, []):
+        p[r, x] = C["blush"]
+    for x, r, c in MOUTHS[mood]:
+        p[r, x] = C[c]
+    if name in TALK:
+        for x, r, c in TALK[name]:
+            p[r, x] = C[c]
+    return p
 
 
 def main():
+    src = np.asarray(Image.open(SOURCE).convert("RGB")).astype(float)
+    nw, nh, ox, oy = find_grid(src, [GRID[0]], [GRID[1]])
+    scene = quantize(sample(src, nw, nh, ox, oy), COLOURS)
+    base = np.asarray(scene).copy()
+    cleaned = clean(base)
+    x0, y0, w, h = PATCH
+    sheet = np.zeros((h * len(MOODS), w * len(FRAMES), 3), np.uint8)
+    for i, mood in enumerate(MOODS):
+        for j, name in enumerate(FRAMES):
+            sheet[i * h:(i + 1) * h, j * w:(j + 1) * w] = frame(base, cleaned, mood, name)[y0:y0 + h, x0:x0 + w]
+    attentive = frame(base, cleaned, "attentive", "open")
     OUT.mkdir(parents=True, exist_ok=True)
-    x0, y0, x1, y1 = PATCH
-    px0, py0, pw, ph = x0 + DX, y0 + DY, x1 - x0, y1 - y0
-    face("attentive").save(OUT / "scene.png")
-    base.crop((DX, DY, DX + HEAD_GRID[0], DY + HEAD_GRID[1])).save(OUT / "bust.png")     # the bust's framing, cut from the scene
-    sheet = Image.new("RGB", (pw * len(FRAMES), ph * len(MOODS)))
-    for r, mood in enumerate(MOODS):
-        for c, name in enumerate(FRAMES):
-            sheet.paste(frame(mood, name).crop((px0, py0, px0 + pw, py0 + ph)), (c * pw, r * ph))
-    sheet.save(OUT / "faces.png")
+    Image.fromarray(attentive).save(OUT / "scene.png", optimize=True)
+    Image.fromarray(sheet).save(OUT / "faces.png", optimize=True)
     meta = {
-        "grid": [W, H], "patch": {"x": px0, "y": py0, "w": pw, "h": ph},
-        "moods": list(MOODS), "frames": list(FRAMES),
-        "anchor": {"face": [DX + 20, DY + 20], "head": [DX + 9, DY + 6, DX + 32, DY + 36]},
-        "source": SOURCE.name, "palette": len(PALETTE),
-        # A blink and a change of mood share one path, so expressions never jump:
-        # open -> half -> closed (the new mood's brows and mouth arrive here) -> half -> open.
+        "grid": list(GRID),
+        "patch": {"x": x0, "y": y0, "w": w, "h": h},
+        "moods": list(MOODS),
+        "frames": list(FRAMES),
+        "anchor": {"face": [70, 60], "head": [54, 38, 88, 82]},
+        "source": SOURCE.name,
+        "palette": COLOURS,
         "timing_ms": {"half": 55, "closed": 85, "blink_every": [2800, 6500], "talk": [90, 150]},
     }
     (OUT / "faces.json").write_text(json.dumps(meta, indent=2) + "\n")
-    print("wrote", OUT, "-", len(PALETTE), "colours")
+    print(f"grid {nw} x {nh}, offset ({ox}, {oy}); wrote {OUT}")
 
 
 if __name__ == "__main__":

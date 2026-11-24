@@ -1,13 +1,13 @@
 {
   "grid": [
-    130,
-    232
+    143,
+    256
   ],
   "patch": {
-    "x": 58,
-    "y": 53,
-    "w": 16,
-    "h": 15
+    "x": 61,
+    "y": 52,
+    "w": 18,
+    "h": 19
   },
   "moods": [
     "attentive",
@@ -26,18 +26,18 @@
   ],
   "anchor": {
     "face": [
-      65,
-      59
+      70,
+      60
     ],
     "head": [
       54,
-      45,
-      77,
-      75
+      38,
+      88,
+      82
     ]
   },
-  "source": "socrates_seated_gen.jpg",
-  "palette": 31,
+  "source": "socrates_seated_gen.webp",
+  "palette": 48,
   "timing_ms": {
     "half": 55,
     "closed": 85,
