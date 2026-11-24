@@ -208,7 +208,8 @@ p { margin: 0; }
 .excerpt .line.me { background: var(--sage); margin-left: 28px; }
 .excerpt .line.them { margin-right: 28px; }
 .excerpt .who { font: 8px/10px var(--f-label); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
-.excerpt .cites a { display: block; }
+.excerpt .cites { margin-top: 8px; border-top: 1px dashed var(--clay); }
+.excerpt .cite { padding: 8px 0 2px; }
 .notepop .btn.del { background: var(--rust); color: var(--paper); }
 .notepop .btn.done { background: var(--clay); color: var(--ink); }
 .notepop textarea { width: 100%; min-height: 84px; resize: vertical; cursor: text; border: 1px solid var(--clay); background: var(--paper); padding: 8px 10px; font-size: 16px; line-height: 21px; }
@@ -1152,7 +1153,7 @@ async function saveExchange(ex) {
     try { const j = await backend.note(ex); if (j.title) note = { title: j.title, why: j.why || "", topic: j.topic || "From your conversation" }; } catch {}
   }
   if (!note) note = { title: lastQuestion(ex.them), why: ex.you ? `From your talk about “${ex.you}”.` : "A thought to revisit later.", topic: "From your conversation" };
-  const cites = ex.cites.map(c => ({ n: c.n, where: c.section ? `${c.work}, ${c.section}` : c.work, quote: c.quote || "", url: c.source_url || "" }));
+  const cites = ex.cites.map(c => ({ n: c.n, where: c.section ? `${c.work}, ${c.section}` : c.work, quote: c.quote || "", passage: c.passage || "", url: c.source_url || "" }));
   const n = { id: Date.now().toString(36), who: ex.who, reflection: "", ...note, from: { you: ex.you, them: ex.them, cites } };
   dropSample(); notes.unshift(n); store.set(notes);
   return n.id;
@@ -1228,8 +1229,11 @@ function openNote(id) {
       <p class="label muted">From your conversation</p>
       ${n.from ? `<div class="excerpt">
         ${n.from.you ? `<div class="line me"><p class="who">You</p><p class="t14">${esc(n.from.you)}</p></div>` : ""}
-        <div class="line them"><p class="who">${PH[n.who].name}</p><p class="t14">${esc(n.from.them)}</p></div>
-        ${n.from.cites?.length ? `<div class="cites">${n.from.cites.map(c => `<p class="t11 muted">[${c.n}] ${esc(c.where)}</p>${c.quote ? `<p class="t14">“${esc(c.quote)}”</p>` : ""}${c.url ? `<a class="t14" href="${esc(c.url)}" target="_blank" rel="noopener">Read it in the source ↗</a>` : ""}`).join("")}</div>` : ""}
+        <div class="line them"><p class="who">${PH[n.who].name}</p><p class="t14">${esc(n.from.them)}</p>
+          ${n.from.cites?.length ? `<div class="cites">${n.from.cites.map(c => `<div class="cite"><p class="t11 muted">[${c.n}] ${esc(c.where)}</p>
+            ${c.quote ? `<blockquote class="t14">${esc(c.quote)}</blockquote>` : ""}
+            ${c.passage ? `<details><summary class="t14">Full passage</summary><p class="t14 passage">${esc(c.passage)}</p></details>` : ""}
+            ${c.url ? `<a class="t14" href="${esc(c.url)}" target="_blank" rel="noopener">Read it in the source ↗</a>` : ""}</div>`).join("")}</div>` : ""}</div>
       </div>` : `<p class="t14 muted">This note was saved before the café kept the conversation with it.</p>`}
       <hr>
       <p class="t20">Your reflection</p>
