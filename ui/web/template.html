@@ -1233,10 +1233,66 @@ async function stopRecording(dock) {
 const player = new Audio();
 let speaking = null;   // {stop: () => void, acts}
 function unlockAudio() {
+  const ctx = audioCtx();
+  if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
   if (player._unlocked) return;
   player._unlocked = true;
   player.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
   player.play().catch(() => {});
+  if (ctx) { const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(); }
+}
+
+// Even volume across voices (7.6): every clip is measured and brought to the same loudness before it
+// plays, since ElevenLabs voices come in at quite different levels. Gated RMS over 50 ms frames
+// (silence below -50 dBFS left out), a gain toward TARGET_DB within ±18 dB, then a limiter.
+const TARGET_DB = -20, MAX_GAIN_DB = 18, GATE = 1e-5;
+let actx = null, limiter = null, clipSource = null;
+const lastLevel = { measured: null, gainDb: null };          // for tests and the debug panel
+function audioCtx() {
+  if (actx) return actx;
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!C) return null;
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}   // iPhone: play with the silent switch on
+  actx = new C();
+  limiter = actx.createDynamicsCompressor();
+  Object.entries({ threshold: -3, knee: 0, ratio: 20, attack: 0.003, release: 0.1 }).forEach(([k, v]) => { limiter[k].value = v; });
+  limiter.connect(actx.destination);
+  return actx;
+}
+function loudnessDb(channels, sampleRate) {
+  const n = Math.max(1, Math.round(sampleRate * 0.05)), len = channels[0].length;
+  let sum = 0, count = 0;
+  for (let s = 0; s + n <= len; s += n) {
+    let e = 0;
+    for (const d of channels) for (let k = s; k < s + n; k++) e += d[k] * d[k];
+    e /= n * channels.length;
+    if (e > GATE) { sum += e; count++; }
+  }
+  return count ? 10 * Math.log10(sum / count) : null;
+}
+const levelGainDb = db => db == null ? 0 : Math.max(-MAX_GAIN_DB, Math.min(MAX_GAIN_DB, TARGET_DB - db));
+async function playClip(blob) {
+  const ctx = audioCtx();
+  if (ctx) {
+    try {
+      if (ctx.state === "suspended") await ctx.resume();
+      const buf = await ctx.decodeAudioData(await blob.arrayBuffer());
+      const chans = Array.from({ length: buf.numberOfChannels }, (_, i) => buf.getChannelData(i));
+      lastLevel.measured = loudnessDb(chans, buf.sampleRate);
+      lastLevel.gainDb = levelGainDb(lastLevel.measured);
+      const src = ctx.createBufferSource(), gain = ctx.createGain();
+      src.buffer = buf; gain.gain.value = 10 ** (lastLevel.gainDb / 20);
+      src.connect(gain).connect(limiter);
+      clipSource = src;
+      await new Promise(res => { src.onended = res; src.start(); });
+      clipSource = null;
+      return;
+    } catch { clipSource = null; }                          // fall back to the plain audio element
+  }
+  const url = URL.createObjectURL(blob);
+  player.src = url;
+  await new Promise(res => { player.onended = player.onerror = res; player.play().catch(res); });
+  URL.revokeObjectURL(url);
 }
 let saidByVoice = false;      // the message on its way came from the mic
 // Replies are read aloud by default (when voice is set up); the ⋯ menu turns it off for this device.
@@ -1263,7 +1319,7 @@ async function speak(acts) {
   let stopped = false;
   const btn = $(".speak", acts);
   const paint = on => { if (btn) { btn.setAttribute("aria-pressed", on); btn.setAttribute("aria-label", on ? "Stop reading" : "Read aloud"); setIcon(btn, on ? "stop" : "speaker", on ? "ink" : "muted"); } };
-  speaking = { acts, stop: () => { stopped = true; player.pause(); player.removeAttribute("src"); paint(false); } };
+  speaking = { acts, stop: () => { stopped = true; try { clipSource?.stop(); } catch {} player.pause(); player.removeAttribute("src"); paint(false); } };
   paint(true);
   const fetchClip = t => fetch(`threads/${ex.thread}/speech`, { method: "POST", headers: backend.headers({ "Content-Type": "application/json" }), body: JSON.stringify({ text: t }) })
     .then(r => r.ok ? r.blob() : null).catch(() => null);
@@ -1272,10 +1328,7 @@ async function speak(acts) {
     const blob = await next;
     next = i + 1 < list.length ? fetchClip(list[i + 1]) : null;     // fetch the next sentence while this one plays
     if (!blob || stopped) break;
-    const url = URL.createObjectURL(blob);
-    player.src = url;
-    await new Promise(res => { player.onended = player.onerror = res; player.play().catch(res); });
-    URL.revokeObjectURL(url);
+    await playClip(blob);
   }
   if (!stopped) { paint(false); speaking = null; }
 }

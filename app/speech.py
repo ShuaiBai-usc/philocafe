@@ -237,11 +237,29 @@ def silent_wav(seconds: float = 0.4, rate: int = 8000) -> bytes:
     return out.getvalue()
 
 
+def tone_wav(amplitude: float, seconds: float = 0.6, rate: int = 16000, hz: float = 220.0) -> bytes:
+    """A sine tone, for checking the browser's volume levelling offline."""
+    import math
+    frames = int(seconds * rate)
+    out = io.BytesIO()
+    out.write(b"RIFF" + struct.pack("<I", 36 + frames * 2) + b"WAVEfmt ")
+    out.write(struct.pack("<IHHIIHH", 16, 1, 1, rate, rate * 2, 2, 16))
+    out.write(b"data" + struct.pack("<I", frames * 2))
+    out.write(b"".join(struct.pack("<h", int(32767 * amplitude * math.sin(2 * math.pi * hz * i / rate)))
+                       for i in range(frames)))
+    return out.getvalue()
+
+
+# Offline demo: each persona's stand-in voice at its own level, like real voices.
+FAKE_LEVELS = {"socrates": 0.05, "montaigne": 0.5, "schopenhauer": 0.15, "seneca": 0.8, "epictetus": 0.02}
+
+
 class FakeVoiceIO:
     media_type = "audio/wav"
 
-    def __init__(self, transcript: str = "Is virtue something we can teach?"):
+    def __init__(self, transcript: str = "Is virtue something we can teach?", levels: bool = False):
         self.transcript = transcript
+        self.levels = levels
         self.spoken: list[tuple[str, str, str, dict | None]] = []
 
     def transcribe(self, audio: bytes, content_type: str) -> dict:
@@ -249,4 +267,4 @@ class FakeVoiceIO:
 
     def speak(self, text: str, persona, mood: dict | None = None) -> Iterator[bytes]:
         self.spoken.append((text, persona.voice, persona.voice_style, mood))
-        yield silent_wav()
+        yield tone_wav(FAKE_LEVELS.get(persona.id, 0.2)) if self.levels else silent_wav()

@@ -79,7 +79,7 @@ def deps_from_env() -> Deps:
         from app.fakes import FAKE_QUOTING_REPLY, FakeVoice, fake_deps, fake_distill_note
         from app.speech import FakeVoiceIO
         return fake_deps(generate=FakeVoice([w + " " for w in FAKE_QUOTING_REPLY.split(" ")], delay=0.03),
-                         distill_note=fake_distill_note, voice_io=FakeVoiceIO())
+                         distill_note=fake_distill_note, voice_io=FakeVoiceIO(levels=True))
     from app import retrieval
     from app.deps import default_deps
     deps = default_deps()
