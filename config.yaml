@@ -26,3 +26,9 @@ retrieval:
   # Non-English questions are translated into English before retrieval (the corpus is English).
   translate_model: claude-haiku-5-5
   translate_timeout_s: 5.0
+
+voice:
+  # Voice conversation (design doc 7.6): speech-to-text in, text-to-speech out (OpenAI, OPENAI_API_KEY).
+  # Both are announced for shutdown in early 2027 (after the course); swap the names here.
+  transcribe_model: gpt-4o-mini-transcribe
+  speech_model: gpt-4o-mini-tts

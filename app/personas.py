@@ -26,6 +26,8 @@ class PersonaConfig:
     k: int | None = None
     min_score: float | None = None
     tier2_passages: dict[str, str] = field(default_factory=dict)
+    voice: str = "ash"              # stock text-to-speech voice (7.6); never a real person's voice
+    voice_style: str = ""           # one-line speaking style sent with each sentence
 
 
 def load_persona(path: Path) -> PersonaConfig:
@@ -39,7 +41,9 @@ def load_persona(path: Path) -> PersonaConfig:
                          corpus=raw.get("corpus", raw["id"]), prompt=raw["prompt"].strip(),
                          texts=raw.get("texts") or PersonaConfig.texts,
                          style=tuple(raw.get("style") or ()), k=retrieval.get("k"),
-                         min_score=retrieval.get("min_score"), tier2_passages=dict(tier2))
+                         min_score=retrieval.get("min_score"), tier2_passages=dict(tier2),
+                         voice=(raw.get("voice") or {}).get("name", PersonaConfig.voice),
+                         voice_style=((raw.get("voice") or {}).get("style") or "").strip())
 
 
 def load_personas(directory: Path = PERSONAS_DIR) -> dict[str, PersonaConfig]:

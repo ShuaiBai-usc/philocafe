@@ -38,7 +38,8 @@ def test_register_sign_in_and_me():
     r = client.post("/auth/login", json={"nickname": "ADA", "passcode": "lovelace"})
     assert r.status_code == 200
     me = client.get("/me", headers={"Authorization": f"Bearer {r.json()['token']}"}).json()
-    assert me == {"nickname": "Ada", "prefs": {"length": 0, "plain": 0, "questions": 0, "quotes": 0}, "paused": False}
+    assert me == {"nickname": "Ada", "prefs": {"length": 0, "plain": 0, "questions": 0, "quotes": 0}, "paused": False,
+                  "voice": False}
     assert "lovelace" not in str(store.users)
 
 

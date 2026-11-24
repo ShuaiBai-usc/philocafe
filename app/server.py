@@ -45,6 +45,7 @@ from app.deps import Deps
 from app.graph import CannotRegenerate, build_graph, rewind_last_turn, run_turn
 from app.auth import MAX_PASSCODE, MIN_PASSCODE, Tokens, check_passcode, hash_passcode, valid_nickname
 from app.prefs import MAX_FEEDBACK, apply_changes, clean_prefs, merge_changes, rule_changes, tag_changes
+from app.speech import MAX_CLIP_BYTES, MAX_SPEECH_CHARS, clip_name
 from app.store import LOCK_FAILURES, MemoryStore, NicknameTaken, PostgresStore
 from app.submissions import MAX_TRANSCRIPT, SEVERAL, MemorySubmissions, PostgresSubmissions, to_csv
 
@@ -76,8 +77,9 @@ def sse(event: dict) -> str:
 def deps_from_env() -> Deps:
     if os.environ.get("PHILOCAFE_FAKE") == "1":
         from app.fakes import FAKE_QUOTING_REPLY, FakeVoice, fake_deps, fake_distill_note
+        from app.speech import FakeVoiceIO
         return fake_deps(generate=FakeVoice([w + " " for w in FAKE_QUOTING_REPLY.split(" ")], delay=0.03),
-                         distill_note=fake_distill_note)
+                         distill_note=fake_distill_note, voice_io=FakeVoiceIO())
     from app import retrieval
     from app.deps import default_deps
     deps = default_deps()
@@ -223,7 +225,7 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
             await run_in_threadpool(store.set_prefs, user["id"], clean_prefs(body["prefs"]))
             user = store.user(user["id"])
         return JSONResponse({"nickname": user["nickname"], "prefs": clean_prefs(user["prefs"]),
-                             "paused": bool(user["paused"])})
+                             "paused": bool(user["paused"]), "voice": deps.voice_io is not None})
 
     def forget_checkpoint(thread_id: str) -> None:
         if hasattr(checkpointer, "delete_thread"):
@@ -327,6 +329,62 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
             return None
         you = next((m.content for m in reversed(msgs[:i]) if isinstance(m, HumanMessage)), "")
         return you, msgs[i]
+
+    # ---------- voice (7.6): speech in, the shown reply read aloud ----------
+    async def transcribe(request: Request) -> JSONResponse:
+        """FR-08: a push-to-talk clip -> its transcript, for the user to check before sending.
+        Starts no turn; the clip goes to the transcription API and is dropped (NFR-16)."""
+        user, denied = signed_in(request)
+        if denied:
+            return denied
+        if deps.voice_io is None:
+            return error(501, "voice_off", "Voice is not set up on this server.")
+        if await run_in_threadpool(owned, user, request.path_params["thread_id"]) is None:
+            return error(404, "unknown_thread", "No such conversation.")
+        content_type = request.headers.get("content-type", "")
+        if clip_name(content_type) is None:
+            return error(415, "not_audio", "Send the recording as audio/webm or audio/mp4.")
+        audio = await request.body()
+        if not audio:
+            return error(400, "empty_audio", "The recording is empty.")
+        if len(audio) > MAX_CLIP_BYTES:
+            return error(413, "audio_too_long", "Recordings are limited to about a minute.")
+        try:
+            out = await run_in_threadpool(deps.voice_io.transcribe, audio, content_type)
+        except Exception as e:
+            log.warning("transcription failed: %s", type(e).__name__)
+            return error(502, "transcribe_failed", type(e).__name__)
+        return JSONResponse({"text": out["text"][:MAX_TEXT], "language": out.get("language")})
+
+    async def speech(request: Request):
+        """FR-09: one sentence of the conversation's latest persona reply, in that persona's voice.
+        Only text from that reply is spoken, so this is no general text-to-speech service, and
+        handover or support-mode text is never spoken in a persona voice (FR-35)."""
+        user, denied = signed_in(request)
+        if denied:
+            return denied
+        if deps.voice_io is None:
+            return error(501, "voice_off", "Voice is not set up on this server.")
+        thread_id = request.path_params["thread_id"]
+        c = await run_in_threadpool(owned, user, thread_id)
+        if c is None:
+            return error(404, "unknown_thread", "No such conversation.")
+        if user["paused"]:
+            return error(409, "support_mode", "Nothing is read aloud while the café is paused.")
+        body = await json_body(request)
+        text = " ".join(str((body or {}).get("text") or "").split())
+        if not text or len(text) > MAX_SPEECH_CHARS:
+            return error(400, "bad_text", f"Send one sentence of up to {MAX_SPEECH_CHARS} characters.")
+        msgs = (await run_in_threadpool(thread_state, thread_id)).get("messages") or []
+        last = msgs[-1] if msgs else None
+        if not isinstance(last, AIMessage) or last.name in (None, "system"):
+            return error(409, "no_reply", "There is no persona reply to read.")
+        if text not in " ".join(last.content.split()):
+            return error(400, "not_in_reply", "Only the latest reply can be read aloud.")
+        persona = deps.personas.get(c["persona_id"])
+        audio = deps.voice_io.speak(text, persona.voice if persona else "ash", persona.voice_style if persona else "")
+        return StreamingResponse(audio, media_type=getattr(deps.voice_io, "media_type", "audio/mpeg"),
+                                 headers={"Cache-Control": "no-store"})
 
     # ---------- notes (FR-07, 7.7) ----------
     async def note(request: Request) -> JSONResponse:
@@ -504,6 +562,8 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
               Route("/threads/{thread_id}", thread, methods=["GET", "DELETE"]),
               Route("/threads/{thread_id}/messages", messages, methods=["POST"]),
               Route("/threads/{thread_id}/note", note, methods=["POST"]),
+              Route("/threads/{thread_id}/transcribe", transcribe, methods=["POST"]),
+              Route("/threads/{thread_id}/speech", speech, methods=["POST"]),
               Route("/notes", notes, methods=["GET", "POST"]),
               Route("/notes/{note_id}", one_note, methods=["PATCH", "DELETE"]),
               Route("/preferences", preferences, methods=["POST"]),

@@ -46,6 +46,8 @@ class Config:
     min_score: float | None = None   # None: the retrieval default
     translate_model: str = "claude-haiku-5-5"   # for non-English retrieval queries
     translate_timeout_s: float = 5.0
+    transcribe_model: str = "gpt-4o-mini-transcribe"   # voice input (FR-08)
+    speech_model: str = "gpt-4o-mini-tts"              # voice output (FR-09)
 
 
 def load_config(path: Path = CONFIG_PATH) -> Config:
@@ -62,6 +64,8 @@ def load_config(path: Path = CONFIG_PATH) -> Config:
         min_score=retrieval.get("min_score"),
         translate_model=retrieval.get("translate_model", Config.translate_model),
         translate_timeout_s=retrieval.get("translate_timeout_s", Config.translate_timeout_s),
+        transcribe_model=raw.get("voice", {}).get("transcribe_model", Config.transcribe_model),
+        speech_model=raw.get("voice", {}).get("speech_model", Config.speech_model),
     )
 
 

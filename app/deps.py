@@ -43,6 +43,7 @@ class Deps:
     translate: Callable[[str], str] | None = None   # non-English query -> English, before retrieval
     distill_note: Callable[[str, Sequence[AnyMessage]], dict] | None = None   # "Save thought" (FR-07)
     tune_prefs: Callable[..., dict] | None = None   # thumbs -> preference changes (7.9); None: the offline rule
+    voice_io: object | None = None                  # speech in and out (7.6): .transcribe(), .speak(); None: off
 
 
 def default_deps(config: Config | None = None) -> Deps:
@@ -67,4 +68,14 @@ def default_deps(config: Config | None = None) -> Deps:
                 resources=load_resources(),
                 translate=ClaudeTranslator(config.translate_model, config.translate_timeout_s),
                 distill_note=NoteDistiller(config.notes_model),
-                tune_prefs=PreferenceTuner(config.notes_model))
+                tune_prefs=PreferenceTuner(config.notes_model),
+                voice_io=voice_io(config))
+
+
+def voice_io(config: Config):
+    """Voice is on only when an OpenAI key is set (7.6)."""
+    import os
+    if not os.environ.get("OPENAI_API_KEY", "").strip():
+        return None
+    from app.speech import OpenAIVoice
+    return OpenAIVoice(config.transcribe_model, config.speech_model)
