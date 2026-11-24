@@ -233,7 +233,11 @@ p { margin: 0; }
 .menu .danger-text { color: var(--rust); }
 .account .switch { text-decoration: underline; color: var(--ink); }
 .account .err { color: var(--rust); }
-.account .codein + .codein { margin-top: -4px; }
+.account .pw { position: relative; display: block; width: 100%; margin-top: -4px; }
+.account .pw input { color: transparent; caret-color: var(--ink); font-family: "Courier New", ui-monospace, monospace; letter-spacing: 2px; }
+.account .pw input::placeholder { color: var(--ink); opacity: .55; font-family: var(--f-pixel); letter-spacing: 0; }
+.account .pw .mask { position: absolute; left: 11px; top: 0; height: 40px; line-height: 40px; font: 16px/40px "Courier New", ui-monospace, monospace;
+  letter-spacing: 2px; color: var(--ink); pointer-events: none; white-space: pre; overflow: hidden; right: 10px; text-align: left; }
 
 /* ---------- 06 Pause ---------- */
 #pause .rest { width: 100%; height: 160px; object-fit: cover; flex: none; }
@@ -419,13 +423,15 @@ const ICONS = {
   upFull: "M3 10h4v9H3zM7 10h2v9H7zM9 6h2v13H9zM11 3h2v16h-2zM13 9h4v10h-4zM17 11h2v6h-2z",
   // two arrows chasing each other round (a single arrow read as "back" or "undo")
   regen: "M2 6h2v4H2zM4 4h2v2H4zM6 2h9v2H6zM15 0h2v6h-2zM17 1h2v4h-2zM19 2h2v2h-2zM18 12h2v4h-2zM16 16h2v2h-2zM7 18h9v2H7zM5 16h2v6H5zM3 17h2v4H3zM1 18h2v2H1z",
-  more: "M3 9h4v4H3zM9 9h4v4H9zM15 9h4v4h-4z"
+  more: "M3 9h4v4H3zM9 9h4v4H9zM15 9h4v4h-4z",
+  close: "M0 0h2v1h-2zM10 0h2v1h-2zM0 1h3v1h-3zM9 1h3v1h-3zM1 2h3v1h-3zM8 2h3v1h-3zM2 3h3v1h-3zM7 3h3v1h-3zM3 4h6v1h-6zM4 5h4v1h-4zM4 6h4v1h-4zM3 7h6v1h-6zM2 8h3v1h-3zM7 8h3v1h-3zM1 9h3v1h-3zM8 9h3v1h-3zM0 10h3v1h-3zM9 10h3v1h-3zM0 11h2v1h-2zM10 11h2v1h-2z"   // window close: a 12-pixel X, three pixels thick
 };
 const COLORS = { ink: "#6b4e2e", paper: "#fffae0", clay: "#d4aa73", muted: "#79694f" };
 const icon = (name, color = "ink", size = 22) => {
   const box = name === "back" ? '<rect x=".5" y=".5" width="21" height="21" fill="none" stroke="#d4aa73"/>' : "";
   const down = name.startsWith("down");               // thumbs down = thumbs up flipped
-  return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 22 22" shape-rendering="crispEdges" aria-hidden="true">${box}<path fill="${COLORS[color]}" d="${ICONS[down ? name.replace("down", "up") : name]}"${down ? ' transform="matrix(1 0 0 -1 0 22)"' : ""}/></svg>`;
+  const box22 = name === "close" ? "0 0 12 12" : "0 0 22 22";
+  return `<svg class="ico" width="${size}" height="${size}" viewBox="${box22}" shape-rendering="crispEdges" aria-hidden="true">${box}<path fill="${COLORS[color]}" d="${ICONS[down ? name.replace("down", "up") : name]}"${down ? ' transform="matrix(1 0 0 -1 0 22)"' : ""}/></svg>`;
 };
 const TAIL = {
   them: '<svg class="tail" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="#6b4e2e" d="M0 0h14v2H0zM12 2h2v2h-2zM10 4h2v2h-2zM12 6h2v2h-2zM12 8h2v2h-2z"/><path fill="#faedcd" d="M0 2h12v2H0zM0 4h10v2H0z"/></svg>',
@@ -616,11 +622,13 @@ function askAccount(message = "") {
     <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
       <div class="lead">${esc(message || "Sign in to keep your conversations and notes.")}</div>
       <input class="codein" name="nickname" autocomplete="username" placeholder="Nickname" aria-label="Nickname" required minlength="3" maxlength="24">
-      <input class="codein" name="passcode" type="password" autocomplete="current-password" placeholder="Passcode" aria-label="Passcode" required minlength="6">
+      <label class="pw"><input class="codein" name="passcode" type="password" autocomplete="current-password" placeholder="Passcode" aria-label="Passcode" required minlength="6"><span class="mask" aria-hidden="true"></span></label>
       <p class="t14 err" role="alert" hidden></p>
       <div class="btns"><button class="btn go" type="submit">SIGN IN</button></div>
       <button class="switch t14" type="button">New here? Create a card</button></div></form>`;
   const err = $(".err", veil), go = $(".go", veil), sw = $(".switch", veil), pass = $('[name="passcode"]', veil);
+  // The passcode stays a password field (managers and autofill still work); a layer over it shows * per character.
+  pass.addEventListener("input", () => { $(".mask", veil).textContent = "*".repeat(pass.value.length); });
   sw.onclick = () => {
     mode = mode === "in" ? "up" : "in";
     go.textContent = mode === "in" ? "SIGN IN" : "CREATE";
@@ -837,7 +845,7 @@ function openChat(id) {
   // "A table for you" popup, as in the design
   const veil = el("div", "veil");
   veil.innerHTML = `<div class="pop card" role="dialog" aria-label="A table for you">
-    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">A table for you<button class="x" aria-label="Not yet">×</button></div>
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">A table for you<button class="x" aria-label="Not yet">${icon("close", "ink", 13)}</button></div>
     <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
       <div>${p.name} has saved you a seat.<br>Would you like to sit down?</div>
       <div class="btns"><button class="btn" data-a="no">NOT YET</button><button class="btn go" data-a="yes">SIT DOWN</button></div></div></div>`;
@@ -876,7 +884,7 @@ function noChatYet() {
   show("home");
   const veil = el("div", "veil");
   veil.innerHTML = `<div class="pop card" role="dialog" aria-label="No conversation yet">
-    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">No conversation yet<button class="x" aria-label="Close">×</button></div>
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">No conversation yet<button class="x" aria-label="Close">${icon("close", "ink", 13)}</button></div>
     <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
       <div>Tap a philosopher in the café<br>and take a seat to start talking.</div>
       <div class="btns"><button class="btn go">OK</button></div></div></div>`;
@@ -1116,7 +1124,7 @@ function openFeedback(acts, rating) {
   const ex = acts._ex, picked = new Set(ex.feedback?.tags || []);
   const veil = el("div", "veil");
   veil.innerHTML = `<form class="pop card feedback" role="dialog" aria-label="Feedback">
-    <div class="titlebar"><span>${rating === "up" ? "What worked?" : "What missed?"}</span><button class="x" type="button" aria-label="Close">×</button></div>
+    <div class="titlebar"><span>${rating === "up" ? "What worked?" : "What missed?"}</span><button class="x" type="button" aria-label="Close">${icon("close", "ink", 13)}</button></div>
     <div class="inner">
       <p class="t14 muted">${esc(PH[ex.who].name)} will keep this in mind for the next replies.</p>
       <div class="tags">${Object.entries(FEEDBACK_TAGS[rating]).map(([k, t]) => `<button type="button" class="tag" data-t="${k}" aria-pressed="${picked.has(k)}">${esc(t.label)}</button>`).join("")}</div>
@@ -1228,7 +1236,7 @@ function openSource(list = citations.map((c, i) => ({ ...c, n: i + 1 }))) {
   if (!list.length) return;     // nothing quoted, nothing to show
   const veil = el("div", "veil");
   veil.innerHTML = `<div class="pop card source" role="dialog" aria-label="From the source">
-    <div class="titlebar"><span>From the source</span><button class="x" type="button" aria-label="Close">×</button></div><div class="inner"></div></div>`;
+    <div class="titlebar"><span>From the source</span><button class="x" type="button" aria-label="Close">${icon("close", "ink", 13)}</button></div><div class="inner"></div></div>`;
   const inner = $(".inner", veil);
   list.forEach(c => {
     const where = c.section ? `${c.work}, ${c.section}` : c.work;
@@ -1376,7 +1384,7 @@ function openNote(id) {
   const when = savedOn(n);
   const veil = el("div", "veil notesveil");
   veil.innerHTML = `<div class="pop card notepop" role="dialog" aria-label="Saved thought">
-    <div class="titlebar"><span>${n.id === SAMPLE ? "Example" : "Saved thought"}</span><button class="x" type="button" aria-label="Close">×</button></div>
+    <div class="titlebar"><span>${n.id === SAMPLE ? "Example" : "Saved thought"}</span><button class="x" type="button" aria-label="Close">${icon("close", "ink", 13)}</button></div>
     <div class="inner">
       <p class="t11 muted">${[PH[n.who].name.toUpperCase(), esc(n.topic).toUpperCase(), when.toUpperCase()].filter(Boolean).join(" · ")}</p>
       <p class="t28">${esc(n.title)}</p>
@@ -1437,7 +1445,7 @@ async function renderConvos() {
       <div class="csec-head"><img class="px" src="${A}mono_${id}.png" alt=""><h2>${PH[id].name}</h2>
         <button class="newc" data-new="${id}">+ New</button></div>
       ${by[id].length ? by[id].map(r => `<button class="card ccard" data-t="${r.thread_id}">
-          <div class="titlebar"><span class="when">${ago(r.updated_at)}</span><span class="x" role="button" tabindex="0" data-del="${r.thread_id}" aria-label="Delete this conversation">×</span></div>
+          <div class="titlebar"><span class="when">${ago(r.updated_at)}</span><span class="x" role="button" tabindex="0" data-del="${r.thread_id}" aria-label="Delete this conversation">${icon("close", "ink", 13)}</span></div>
           <div class="inner"><p class="ctitle">${esc(r.title)}</p><p class="t14 muted last">${esc(r.last_line)}</p></div></button>`).join("")
         : `<button class="cempty t14" data-new="${id}">No conversations with ${PH[id].name} yet. Take a seat →</button>`}
     </section>`).join("")}</div>`;
