@@ -352,7 +352,8 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         try:
             out = await run_in_threadpool(deps.voice_io.transcribe, audio, content_type)
         except Exception as e:
-            log.warning("transcription failed: %s", type(e).__name__)
+            from app.speech import upstream_error
+            log.warning("transcription failed: %s", upstream_error(e))
             return error(502, "transcribe_failed", type(e).__name__)
         return JSONResponse({"text": out["text"][:MAX_TEXT], "language": out.get("language")})
 

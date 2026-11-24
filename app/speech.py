@@ -5,7 +5,9 @@ Two providers over plain HTTP (no SDKs, to keep the Vercel bundle lean), picked 
 config.yaml voice.provider: ElevenLabs (Scribe in, Flash or Multilingual voices out) or OpenAI
 (gpt-4o-mini-transcribe and gpt-4o-mini-tts, announced for shutdown in early 2027, after the
 course). Either way the clip is sent to the transcription API and dropped: nothing is written
-to disk or logs (NFR-16).
+to disk or logs here (NFR-16). ElevenLabs keeps its own request history by default; its
+zero-retention mode (enable_logging=false) is for enterprise accounts only and is refused
+otherwise.
 
 speak(text, persona) uses the persona config's voice for that provider: `voice.elevenlabs`
 (a voice id) or `voice.name` plus `voice.style` (OpenAI follows a one-line style; ElevenLabs
@@ -25,6 +27,21 @@ import httpx
 from app.config import secret
 
 log = logging.getLogger(__name__)
+
+
+def upstream_error(e: Exception) -> str:
+    """A short, key-free description of a failed provider call, for the server log."""
+    r = getattr(e, "response", None)
+    if r is None:
+        return type(e).__name__
+    try:
+        detail = r.json().get("detail") or r.json().get("error") or {}
+        if isinstance(detail, dict):
+            detail = detail.get("status") or detail.get("code") or detail.get("message") or ""
+        detail = str(detail)[:160]
+    except Exception:
+        detail = ""
+    return f"HTTP {r.status_code} {detail}".strip()
 
 API = "https://api.openai.com/v1/audio"
 MAX_CLIP_BYTES = 4 * 1024 * 1024          # about 60 s of compressed speech
@@ -83,7 +100,6 @@ class ElevenLabsVoice:
     def transcribe(self, audio: bytes, content_type: str) -> dict:
         name = clip_name(content_type) or "clip.webm"
         r = httpx.post(f"{ELEVEN}/speech-to-text", headers=self._headers(), timeout=self.timeout_s,
-                       params={"enable_logging": "false"},
                        data={"model_id": self.stt_model, "tag_audio_events": "false"},
                        files={"file": (name, audio, content_type.split(";")[0])})
         r.raise_for_status()
@@ -92,7 +108,7 @@ class ElevenLabsVoice:
 
     def _stream(self, voice_id: str, text: str):
         return httpx.stream("POST", f"{ELEVEN}/text-to-speech/{voice_id}/stream", headers=self._headers(),
-                            params={"output_format": "mp3_44100_128", "enable_logging": "false"},
+                            params={"output_format": "mp3_44100_128"},
                             json={"text": text, "model_id": self.tts_model}, timeout=self.timeout_s)
 
     def speak(self, text: str, persona) -> Iterator[bytes]:
