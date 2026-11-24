@@ -93,13 +93,15 @@ p { margin: 0; }
 
 /* ---------- 03 / 04 Conversation ---------- */
 .convhead { display: flex; align-items: center; gap: 12px; padding: 12px var(--pad-r) 0 var(--pad-l); flex: none; }
-.back { width: 32px; height: 44px; display: grid; place-items: center; flex: none; }
+.back { width: 40px; height: 44px; display: grid; place-items: center; flex: none; margin-left: -8px; }
 .mono { width: 52px; height: 52px; border: 1px solid var(--clay); flex: none; }
-.convhead h1 { margin: 0; font: 400 20px/1.3 var(--f-display); }
+.convhead h1 { margin: 0; font: 500 20px/1.3 var(--f-display); }
 .convhead > div { min-width: 0; }
 .convhead .sub { font: 11px/1.4 var(--f-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mode { margin-left: auto; align-self: flex-start; margin-top: 6px; font: 9px var(--f-label); letter-spacing: .08em; border: 2px solid var(--muted); color: var(--muted); padding: 1px 4px; }
-.mode.live { border-color: #6f8a55; color: #55703d; }
+/* Chat bar tools: copy the chat, read replies aloud on/off (FR-09); bare icons, no frames. */
+.tools { margin-left: auto; align-self: flex-start; display: flex; gap: 2px; margin-top: 4px; }
+.tool { width: 40px; height: 40px; display: grid; place-items: center; }
+.tool:active { transform: translate(1px, 1px); }
 
 .scene-wrap { margin: 12px var(--pad-r) 0 var(--pad-l); border: 2px solid var(--ink); position: relative; overflow: hidden; flex: none; aspect-ratio: 354 / 164; transition: aspect-ratio .5s ease; }
 #chat.convo .scene-wrap { aspect-ratio: 354 / 110; }
@@ -153,8 +155,6 @@ p { margin: 0; }
 .feedback textarea { width: 100%; min-height: 72px; resize: vertical; border: 1px solid var(--clay); background: var(--paper); padding: 8px 10px; font-size: 16px; line-height: 21px; }
 .feedback textarea::placeholder { color: var(--muted); }
 .feedback .btn.go { background: var(--clay); }
-.more { width: 30px; height: 30px; display: grid; place-items: center; flex: none; align-self: flex-start; margin: 2px -6px 0 -4px; border: 2px solid transparent; }
-.more[aria-expanded="true"] { border-color: var(--ink); background: var(--white); }
 .menu { position: absolute; right: var(--pad-r); top: 58px; z-index: 15; width: 230px; animation: popin .2s steps(3); }
 .menu .inner { padding: 6px 0 8px; gap: 0; }
 .menu button { display: block; width: 100%; text-align: left; padding: 9px 14px; font-size: 15px; line-height: 20px; }
@@ -212,11 +212,13 @@ body.fixed { position: fixed; inset: 0; overscroll-behavior: none; }
   align-items: flex-start; gap: 8px; pointer-events: none; }
 #chat.full .convhead > * { pointer-events: auto; }
 #chat.full .convhead .mono, #chat.full .convhead .sub { display: none; }
-#chat.full .back, #chat.full .more { width: 44px; height: 44px; margin: 0; border: 2px solid var(--ink); background: var(--paper); box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
-#chat.full .more[aria-expanded="true"] { background: var(--sage); }
-#chat.full .convhead h1 { font-size: 16px; line-height: 40px; padding: 0 10px; background: var(--paper); border: 2px solid var(--ink); box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
-#chat.full .mode { margin-top: 13px; background: var(--paper); }
-#chat.full ~ .menu { top: calc(env(safe-area-inset-top, 0px) + 62px); }
+/* Over the scene: bare icons and name, bold, with a one-pixel paper outline so they read on dark wood too. */
+#chat.full .convhead { align-items: center; }
+#chat.full .back { margin-left: -6px; }
+#chat.full .convhead h1 { font: 500 20px/44px var(--f-display);
+  text-shadow: 1px 0 var(--paper), -1px 0 var(--paper), 0 1px var(--paper), 0 -1px var(--paper); }
+#chat.full .convhead .ico { filter: drop-shadow(1px 0 0 var(--paper)) drop-shadow(-1px 0 0 var(--paper)) drop-shadow(0 1px 0 var(--paper)) drop-shadow(0 -1px 0 var(--paper)); }
+#chat.full .tools { margin-top: 0; align-self: center; }
 
 #chat.full .scroll { position: absolute; left: 0; right: 0; top: var(--chat-top); bottom: calc(var(--kb) + var(--dock-h)); padding: 52px 10px 10px; gap: 10px;
   transition: top var(--dur) cubic-bezier(.2,.8,.2,1), bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
@@ -309,7 +311,10 @@ body.fixed { position: fixed; inset: 0; overscroll-behavior: none; }
 .seat-body .btn { flex: none; width: 100%; }
 .cempty { border: 2px dashed var(--clay); padding: 12px 14px; text-align: left; width: 100%; color: var(--muted); }
 .btn.danger { background: var(--rust); color: var(--paper); }
-.menu .danger-text { color: var(--rust); }
+.danger-text { color: var(--rust); }
+.acct .inner { padding: 12px 16px 14px; gap: 10px; }
+.acct .btns { margin-top: 2px; }
+.acct .danger-text { align-self: flex-start; text-decoration: underline; text-underline-offset: 3px; }
 .account .switch { text-decoration: underline; color: var(--ink); }
 .account .err { color: var(--rust); }
 .account .pw { position: relative; display: block; width: 100%; margin-top: -4px; }
@@ -494,6 +499,7 @@ const ICONS = {
   chat: "M3 3h16v2H3zM3 5h2v10H3zM17 5h2v10h-2zM3 15h6v2H3zM11 15h8v2h-8zM7 17h2v2H7zM9 17h2v2H9z",
   mark: "M5 2h12v2H5zM5 4h2v16H5zM15 4h2v16h-2zM7 16h2v2H7zM9 14h4v2H9zM13 16h2v2h-2z",
   back: "M12 5h2v2h-2zM10 7h2v2h-2zM8 9h2v4H8zM10 13h2v2h-2zM12 15h2v2h-2z",
+  backBold: "M13 3h3v2h-3zM11 5h4v2h-4zM9 7h4v2H9zM7 9h4v4H7zM9 13h4v2H9zM11 15h4v2h-4zM13 17h3v2h-3z",     // the chat bar's back: bigger, thicker
   // reply actions (7.9)
   markFull: "M5 2h12v18h-2v-2h-2v-2H9v2H7v2H5z",
   copy: "M4 4h10v2H4zM4 6h2v10H4zM4 14h4v2H4zM12 6h2v2h-2zM8 8h10v2H8zM8 10h2v8H8zM16 10h2v8h-2zM8 16h10v2H8z",
@@ -504,6 +510,7 @@ const ICONS = {
   mic: "M8 2h6v12H8zM6 4h2v8H6zM14 4h2v8h-2zM3 9h2v4H3zM17 9h2v4h-2zM5 13h2v2H5zM15 13h2v2h-2zM7 15h8v2H7zM10 17h2v3h-2zM7 20h8v2H7z",
   speaker: "M3 8h4v6H3zM7 6h2v10H7zM9 4h2v14H9zM14 7h2v2h-2zM16 9h2v4h-2zM14 13h2v2h-2zM17 3h2v2h-2zM19 5h2v12h-2zM17 17h2v2h-2z",
   stop: "M6 6h10v10H6z",
+  speakerOff: "M3 8h4v6H3zM7 6h2v10H7zM9 4h2v14H9zM14 7h2v2h-2zM16 9h2v2h-2zM18 11h2v2h-2zM18 7h2v2h-2zM14 11h2v2h-2z",
   send: "M10 4h2v15h-2zM8 6h2v2H8zM12 6h2v2h-2zM6 8h2v2H6zM14 8h2v2h-2zM4 10h2v2H4zM16 10h2v2h-2z",
   regen: "M2 6h2v4H2zM4 4h2v2H4zM6 2h9v2H6zM15 0h2v6h-2zM17 1h2v4h-2zM19 2h2v2h-2zM18 12h2v4h-2zM16 16h2v2h-2zM7 18h9v2H7zM5 16h2v6H5zM3 17h2v4H3zM1 18h2v2H1z",
   more: "M3 9h4v4H3zM9 9h4v4H9zM15 9h4v4h-4z",
@@ -867,7 +874,6 @@ const FEEDBACK_TAGS = {
 };
 const setMode = () => {
   const live = backend.live;
-  document.querySelectorAll(".mode").forEach(m => { m.textContent = live ? "Live" : "Demo"; m.classList.toggle("live", live); m.title = live ? "Replies come from the PhiloCafe server" : "Scripted demo replies"; });
   $("#modeNote").textContent = live ? "Replies: live from the PhiloCafe server, with a safety check on every turn." : "Replies: scripted demo lines (open the page from the PhiloCafe server for live replies).";
 };
 backend.init().then(setMode);
@@ -1175,45 +1181,31 @@ function sceneFor(p) {
 function header(id, sub) {
   const p = PH[id];
   const head = el("header", "convhead");
-  head.innerHTML = `<button class="back" aria-label="Back to the café">${icon("back")}</button>
+  head.innerHTML = `<button class="back" aria-label="Back to the café">${icon("backBold", "ink", 30)}</button>
     <img class="mono px" src="${A}mono_${id}.png" alt="">
     <div><h1>${p.name}</h1><p class="sub">${sub}</p></div>
-    <span class="mode"></span>
-    <button class="more" aria-label="More" aria-haspopup="menu" aria-expanded="false">${icon("more")}</button>`;
+    <span class="tools"><button class="tool copychat" aria-label="Copy chat" title="Copy chat">${icon("copy", "ink", 24)}</button>
+      <button class="tool aloud" hidden></button></span>`;
   $(".back", head).onclick = leaveChat;
-  $(".more", head).onclick = e => { e.stopPropagation(); toggleMenu($(".more", head)); };
+  $(".copychat", head).onclick = () => copyChat();
+  $(".aloud", head).onclick = () => {
+    unlockAudio(); readAloud.set(!readAloud.get());
+    if (!readAloud.get()) stopSpeaking();
+    paintAloud();
+    toast(readAloud.get() ? "Replies will be read aloud" : "Reading aloud is off");
+  };
   return head;
 }
-
-// The ⋯ menu: Copy chat (the user test page relies on it) and the reply style the thumbs have set.
-function toggleMenu(btn) {
-  const open = document.querySelector(".menu");
-  open?.remove(); document.querySelectorAll(".more").forEach(b => b.setAttribute("aria-expanded", "false"));
-  if (open) return;
-  const style = prefs.summary();
-  const menu = el("div", "card menu");
-  menu.setAttribute("role", "menu");
-  menu.innerHTML = `<div class="inner"><button role="menuitem" data-a="copy">Copy chat</button>
-    ${voiceOn() ? `<button role="menuitemcheckbox" aria-checked="${readAloud.get()}" data-a="aloud">Read replies aloud: ${readAloud.get() ? "on" : "off"}</button>` : ""}
-    <p class="t11 muted style">REPLY STYLE · ${style ? esc(style.toUpperCase()) : "AS THE PHILOSOPHER LIKES"}</p>
-    ${style ? `<button role="menuitem" data-a="reset">Reset reply style</button>` : `<p class="t14 muted" style="padding:2px 14px 6px">Thumbs up or down on a reply to tune it.</p>`}
-    ${backend.me ? `<p class="t11 muted style">SIGNED IN AS ${esc(backend.me.nickname.toUpperCase())}</p>
-      <button role="menuitem" data-a="out">Sign out</button><button role="menuitem" data-a="del" class="danger-text">Delete my café card</button>` : ""}</div>`;
-  const close = () => { menu.remove(); btn.setAttribute("aria-expanded", "false"); document.removeEventListener("click", outside); };
-  const outside = e => { if (!menu.contains(e.target)) close(); };
-  menu.querySelector('[data-a="copy"]').onclick = () => { close(); copyChat(); };
-  const aloud = menu.querySelector('[data-a="aloud"]');
-  if (aloud) aloud.onclick = () => { close(); unlockAudio(); readAloud.set(!readAloud.get()); if (!readAloud.get()) stopSpeaking();
-                                      toast(readAloud.get() ? "Replies will be read aloud" : "Reading aloud is off"); };
-  const reset = menu.querySelector('[data-a="reset"]');
-  if (reset) reset.onclick = async () => { close(); try { await prefs.reset(); toast("Reply style reset"); } catch { toast("Couldn’t reset just now"); } };
-  const out = menu.querySelector('[data-a="out"]'), del = menu.querySelector('[data-a="del"]');
-  if (out) out.onclick = () => { close(); signOut(); };
-  if (del) del.onclick = () => { close(); deleteAccount(); };
-  $(".screens").append(menu);
-  btn.setAttribute("aria-expanded", "true");
-  setTimeout(() => document.addEventListener("click", outside));
-  menu.querySelector("button").focus();
+// The read-aloud switch (FR-09): shown when the server has voice; the speaker is crossed out when off.
+function paintAloud() {
+  document.querySelectorAll(".convhead .aloud").forEach(b => {
+    const on = readAloud.get();
+    b.hidden = !voiceOn();
+    b.setAttribute("aria-pressed", on);
+    b.setAttribute("aria-label", on ? "Reading replies aloud: on" : "Reading replies aloud: off");
+    b.title = b.getAttribute("aria-label");
+    b.innerHTML = icon(on ? "speaker" : "speakerOff", "ink", 24);
+  });
 }
 
 function buildChat(id) {
@@ -1246,7 +1238,7 @@ function buildChat(id) {
     chatBand = band(scroll);
     new ResizeObserver(() => chat.style.setProperty("--dock-h", dock.offsetHeight + "px")).observe(dock);
   } else chat.append(header(id, "A table for your thoughts"), sceneFor(p), scroll, dock);
-  setMode();
+  setMode(); paintAloud();
   show("chat");
   if (FULL[id]) { setKb(0); stage.layout(); chatBand.setup(); fullApply(); }
   return p;
@@ -1551,7 +1543,7 @@ function wireComposer(dock) {
   dock._mode = mode;
   mode();
 }
-const refreshComposer = () => $("#chat .dock")?._mode?.();
+const refreshComposer = () => { $("#chat .dock")?._mode?.(); paintAloud(); };
 
 let rec = null;        // {recorder, stream, chunks, started, timer}
 async function startRecording(dock) {
@@ -2107,13 +2099,30 @@ async function renderConvos() {
           <div class="titlebar"><span class="when">${ago(r.updated_at)}</span><span class="x" role="button" tabindex="0" data-del="${r.thread_id}" aria-label="Delete this conversation">${icon("close", "ink", 22)}</span></div>
           <div class="inner"><p class="ctitle">${esc(r.title)}</p><p class="t14 muted last">${esc(r.last_line)}</p></div></button>`).join("")
         : `<button class="cempty t14" data-new="${id}">No conversations with ${PH[id].name} yet. Take a seat →</button>`}
-    </section>`).join("")}</div>`;
+    </section>`).join("")}
+    ${accountCard()}</div>`;
+  wireAccountCard(v);
   v.querySelectorAll("[data-new]").forEach(b => b.onclick = () => { pauseScene(); openChat(b.dataset.new); });
   v.querySelectorAll(".ccard").forEach(b => b.onclick = e => {
     const del = e.target.closest("[data-del]");
     if (del) return deleteConvo(rows.find(r => r.thread_id === del.dataset.del));
     openThread(rows.find(r => r.thread_id === b.dataset.t));
   });
+}
+// Your café card: reply style, sign out, delete (moved here from the chat's old ⋯ menu).
+function accountCard() {
+  const style = prefs.summary();
+  return `<section class="card acct" aria-label="Your café card"><div class="titlebar">Your café card</div>
+    <div class="inner"><p class="t14">Signed in as <b>${esc(backend.me.nickname)}</b></p>
+      <p class="t14 muted">Reply style: ${style ? esc(style) : "as the philosopher likes. Thumbs up or down on a reply to tune it."}</p>
+      <div class="btns">${style ? `<button class="btn" data-a="reset">RESET STYLE</button>` : ""}<button class="btn" data-a="out">SIGN OUT</button></div>
+      <button class="t14 danger-text" data-a="del">Delete my café card</button></div></section>`;
+}
+function wireAccountCard(v) {
+  const on = (a, fn) => { const b = v.querySelector(`.acct [data-a="${a}"]`); if (b) b.onclick = fn; };
+  on("reset", async () => { try { await prefs.reset(); toast("Reply style reset"); renderConvos(); } catch { toast("Couldn’t reset just now"); } });
+  on("out", signOut);
+  on("del", deleteAccount);
 }
 async function deleteConvo(r) {
   const ok = await confirmBox("Delete this conversation?", `“${r.title}” with ${PH[r.persona_id].name} will be gone for good. Notes you saved from it stay.`, "DELETE");
