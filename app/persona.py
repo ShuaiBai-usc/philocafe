@@ -65,6 +65,26 @@ def passages_note(chunks: Sequence[Chunk], retrieved: bool, texts: str = "your w
     return "Passages for this turn (quote only from these):\n\n" + "\n\n".join(blocks)
 
 
+def persona_history(messages: Sequence[AnyMessage], persona_id: str) -> list[AnyMessage]:
+    """The part of the visit's shared thread that belongs to one philosopher (FR-13).
+
+    The thread is shared so support mode holds whoever the visitor talks to next (FR-32) and
+    the safety node sees the whole visit; each persona, though, remembers only its own
+    conversation. A user message belongs to the persona whose voice answered it; one not
+    answered yet (this turn) belongs to the persona it was addressed to (its `name`).
+    Exchanges answered by the system voice (exit, support mode) are left out, so a returning
+    persona never sees what led to the pause (REENTRY_NOTE tells it the visitor stepped away)."""
+    out: list[AnyMessage] = []
+    for i, m in enumerate(messages):
+        if isinstance(m, HumanMessage):
+            reply = next((x for x in messages[i + 1:] if isinstance(x, AIMessage)), None)
+            if (reply.name == persona_id) if reply is not None else (m.name in (None, persona_id)):
+                out.append(m)
+        elif isinstance(m, AIMessage) and m.name == persona_id:
+            out.append(m)
+    return out
+
+
 def retrieval_query(messages: Sequence[AnyMessage]) -> str:
     """The latest user message, with the one before it when it is short ("why?")."""
     said = [m.content for m in messages if isinstance(m, HumanMessage)]
@@ -78,11 +98,12 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
     persona = deps.personas[state["persona_id"]]
     emit("voice", speaker="persona", persona_id=persona.id)
 
+    history = persona_history(state["messages"], persona.id)
     wants_passages = state["safety"]["needs_retrieval"]
     chunks: list[Chunk] = []
     query = ""
     if wants_passages:
-        query = retrieval_query(state["messages"])
+        query = retrieval_query(history)
         if deps.translate is not None and needs_translation(query):
             try:
                 query = deps.translate(query)
@@ -107,7 +128,7 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
 
     returning = state.get("mode") == "support"      # FR-32: safety let the persona back in
     notes_for_turn = ([SystemMessage(REENTRY_NOTE)] if returning else []) + [SystemMessage(passages_note(chunks, wants_passages, persona.texts))]
-    messages = [*state["messages"], *notes_for_turn]
+    messages = [*history, *notes_for_turn]
     for delta in deps.generate(system_prompt(persona), messages):
         send(quotes.feed(notes.feed(delta)))
     send(quotes.feed(notes.close()))

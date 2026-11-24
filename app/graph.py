@@ -66,7 +66,8 @@ def run_turn(graph, thread_id: str, text: str, persona_id: str, intent: str | No
     `intent="return"` marks the web app's "ready to come back" button (FR-32)."""
     config = {"configurable": {"thread_id": thread_id}}
     # Per-turn fields are reset here; messages and mode carry over in the checkpoint.
-    turn = {"thread_id": thread_id, "persona_id": persona_id, "messages": [HumanMessage(text)],
+    # The message is tagged with the persona it is addressed to, so each persona gets its own history.
+    turn = {"thread_id": thread_id, "persona_id": persona_id, "messages": [HumanMessage(text, name=persona_id)],
             "trace": [], "retrieved": [], "reply": "", "citations": [], "quotes": [], "retrieval_query": "",
             "return_request": intent == "return"}
     try:

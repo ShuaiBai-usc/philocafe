@@ -54,7 +54,7 @@ deploy/     Vercel build step and deployment notes; asgi.py is the Vercel entryp
 Modules talk only through these. Changing one means updating the design doc first and telling the team.
 
 - 7.1 `retrieve(persona, query, k=5, min_score=None) -> list[Chunk]`; `Chunk` = chunk_id, persona, work, section, text, source_url, score. No safety fields in `Chunk`, and `retrieve()` never filters for safety.
-- 7.2 UI events: voice, token, citation (optional `quote`, `passage`), exit, safety, trace (includes `skipped`), done, error, over `GET /personas`, `POST /threads`, `POST /threads/{id}/messages` (SSE) and `POST /threads/{id}/note`. One thread per visit; `persona_id` travels with each message.
+- 7.2 UI events: voice, token, citation (optional `quote`, `passage`), exit, safety, trace (includes `skipped`), done, error, over `GET /personas`, `POST /threads`, `POST /threads/{id}/messages` (SSE) and `POST /threads/{id}/note`. One thread per visit; `persona_id` travels with each message. Each persona sees only its own exchanges in that thread (`persona_history`), while support mode and the safety node span the whole visit.
 - 7.3 `SafetyDecision` = tier, tier_probs, needs_retrieval, route, source ("jev" | "fallback"), model_version. In support mode `route` names the persona the user asked to have back (FR-32).
 
 ## Safety rules
