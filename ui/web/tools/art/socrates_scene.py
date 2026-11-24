@@ -45,58 +45,73 @@ C = {
     "white": (243, 236, 218), "white2": (230, 220, 188), "mouth": (136, 102, 66), "lip": (147, 73, 51), "inside": (102, 76, 49), "blush": (214, 140, 112),
 }
 
-# brows: (x, row) per pixel; left brow is image-left (his right), inner end at x 67 / 73
+# The generated face is turned a little: its right eye sat 3 cells further out than the left
+# one mirrored. Features are drawn symmetric about the face's centre line (between x 69 and
+# 70, where the nose and the hair tufts put it): the left side is listed, the right side is
+# its mirror, except where a mood is one-sided on purpose.
+AXIS = 139                        # x -> AXIS - x mirrors a cell across the centre line
+
+
+def mirror(cells):
+    return [(AXIS - c[0],) + tuple(c[1:]) for c in cells]
+
+
+def both(left, right=None):
+    return (left, mirror(left) if right is None else right)
+
+
+# brows: (x, row) per pixel, image-left brow (his right); inner ends at x 67 and 72
 BROWS = {
-    "attentive": ([(63, 54), (64, 54), (65, 54), (66, 54), (67, 54)], [(73, 54), (74, 54), (75, 54), (76, 54)]),
-    "curious":   ([(63, 54), (64, 53), (65, 53), (66, 53), (67, 53)], [(73, 53), (74, 53), (75, 53), (76, 54)]),
-    "amused":    ([(63, 54), (64, 53), (65, 53), (66, 54), (67, 54)], [(73, 54), (74, 54), (75, 53), (76, 53)]),
-    "skeptical": ([(63, 54), (64, 53), (65, 52), (66, 52), (67, 53)], [(73, 55), (74, 55), (75, 54), (76, 54)]),
-    "pondering": ([(63, 54), (64, 54), (65, 54), (66, 55), (67, 55)], [(73, 55), (74, 55), (75, 54), (76, 54)]),
-    "pleased":   ([(63, 55), (64, 54), (65, 54), (66, 54), (67, 54)], [(73, 54), (74, 54), (75, 54), (76, 55)]),
+    "attentive": both([(63, 54), (64, 54), (65, 54), (66, 54), (67, 54)]),
+    "curious":   both([(63, 54), (64, 53), (65, 53), (66, 53), (67, 53)]),
+    "amused":    both([(63, 53), (64, 53), (65, 54), (66, 54), (67, 54)]),
+    "skeptical": both([(63, 54), (64, 53), (65, 52), (66, 52), (67, 53)], [(72, 55), (73, 55), (74, 54), (75, 54), (76, 54)]),
+    "pondering": both([(63, 54), (64, 54), (65, 54), (66, 55), (67, 55)]),
+    "pleased":   both([(63, 55), (64, 54), (65, 54), (66, 54), (67, 54)]),
 }
 
-# eyes when open: per side, a list of (x, row, colour); row 57 is the eye line
+# eyes when open: (x, row, colour); row 57 is the eye line, the eyes are x 64-67 and 72-75
 EYES = {
-    "attentive": ([(64, 57, "white"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "white2")],
-                  [(74, 57, "dark"), (75, 57, "pupil"), (76, 57, "white2")]),
-    "curious":   ([(64, 57, "white"), (65, 56, "pupil"), (66, 56, "pupil"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "white2")],
-                  [(74, 56, "pupil"), (75, 56, "pupil"), (74, 57, "pupil"), (75, 57, "pupil"), (76, 57, "white2")]),
-    "amused":    ([(64, 57, "deep"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "deep"), (64, 58, "light"), (65, 58, "light"), (66, 58, "light"), (67, 58, "light")],
-                  [(74, 57, "pupil"), (75, 57, "pupil"), (76, 57, "deep"), (74, 58, "light"), (75, 58, "light")]),
-    "skeptical": ([(64, 57, "white"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "white2")],
-                  [(74, 56, "deep"), (75, 56, "deep"), (76, 56, "deep"), (74, 57, "dark"), (75, 57, "pupil"), (76, 57, "shade")]),
-    "pondering": ([(64, 57, "white"), (65, 57, "white"), (66, 57, "pupil"), (67, 57, "pupil")],
-                  [(74, 57, "white"), (75, 57, "pupil"), (76, 57, "pupil")]),
-    "pleased":   ([(64, 57, "dark"), (65, 56, "dark"), (66, 56, "dark"), (67, 57, "dark")],
-                  [(73, 57, "dark"), (74, 56, "dark"), (75, 56, "dark"), (76, 57, "dark")]),
+    "attentive": both([(64, 57, "white"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "white2")]),
+    "curious":   both([(64, 57, "white"), (65, 56, "pupil"), (66, 56, "pupil"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "white2")]),
+    "amused":    both([(64, 57, "deep"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "deep"), (64, 58, "light"), (65, 58, "light"), (66, 58, "light"), (67, 58, "light")]),
+    "skeptical": both([(64, 57, "white"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "white2")],
+                      [(72, 56, "deep"), (73, 56, "deep"), (74, 56, "deep"), (75, 56, "deep"), (72, 57, "shade"), (73, 57, "dark"), (74, 57, "pupil"), (75, 57, "shade")]),
+    "pondering": both([(64, 57, "white"), (65, 57, "white2"), (66, 57, "pupil"), (67, 57, "pupil")],          # both look to the side
+                      [(72, 57, "white"), (73, 57, "white2"), (74, 57, "pupil"), (75, 57, "pupil")]),
+    "pleased":   both([(64, 57, "dark"), (65, 56, "dark"), (66, 56, "dark"), (67, 57, "dark")]),
 }
 
-# mouth when closed; talk frames open it in the same place
+# mouth when closed, centred on the same line; talk frames open it in the same place
 MOUTHS = {
-    "attentive": [(68, 67, "dark"), (69, 67, "lip"), (70, 67, "mouth"), (71, 67, "dark"), (72, 67, "dark"), (73, 67, "dark"), (74, 67, "dark")],
-    "curious":   [(69, 67, "dark"), (70, 67, "pupil"), (71, 67, "pupil"), (72, 67, "dark"), (70, 68, "inside"), (71, 68, "inside")],
-    "amused":    [(67, 66, "dark"), (68, 67, "dark"), (69, 67, "white"), (70, 67, "white"), (71, 67, "white"), (72, 67, "white"), (73, 67, "white"), (74, 67, "dark"), (75, 66, "dark"),
-                  (69, 68, "dark"), (70, 68, "lip"), (71, 68, "lip"), (72, 68, "lip"), (73, 68, "dark")],
-    "skeptical": [(68, 67, "dark"), (69, 67, "dark"), (70, 67, "dark"), (71, 67, "dark"), (72, 66, "dark"), (73, 66, "dark"), (74, 65, "dark")],
-    "pondering": [(69, 67, "dark"), (70, 67, "dark"), (71, 67, "dark"), (72, 67, "dark")],
-    "pleased":   [(67, 66, "dark"), (68, 67, "dark"), (69, 67, "lip"), (70, 67, "dark"), (71, 67, "dark"), (72, 67, "dark"), (73, 67, "dark"), (74, 66, "dark")],
+    "attentive": [(67, 67, "dark"), (68, 67, "dark"), (69, 67, "lip"), (70, 67, "lip"), (71, 67, "dark"), (72, 67, "dark")],
+    "curious":   [(68, 67, "dark"), (69, 67, "pupil"), (70, 67, "pupil"), (71, 67, "dark"), (69, 68, "inside"), (70, 68, "inside")],
+    "amused":    [(66, 66, "dark"), (67, 67, "dark"), (68, 67, "white"), (69, 67, "white"), (70, 67, "white"), (71, 67, "white"), (72, 67, "dark"), (73, 66, "dark"),
+                  (68, 68, "dark"), (69, 68, "lip"), (70, 68, "lip"), (71, 68, "dark")],
+    "skeptical": [(66, 67, "dark"), (67, 67, "dark"), (68, 67, "dark"), (69, 67, "dark"), (70, 66, "dark"), (71, 66, "dark"), (72, 65, "dark")],
+    "pondering": [(68, 67, "dark"), (69, 67, "dark"), (70, 67, "dark"), (71, 67, "dark")],
+    "pleased":   [(66, 66, "dark"), (67, 67, "dark"), (68, 67, "dark"), (69, 67, "lip"), (70, 67, "lip"), (71, 67, "dark"), (72, 67, "dark"), (73, 66, "dark")],
 }
 TALK = {
-    "talk1": [(69, 67, "pupil"), (70, 67, "pupil"), (71, 67, "pupil"), (72, 67, "pupil"), (70, 68, "lip"), (71, 68, "lip")],
-    "talk2": [(69, 67, "pupil"), (70, 67, "pupil"), (71, 67, "pupil"), (72, 67, "pupil"), (73, 67, "pupil"),
-              (69, 68, "pupil"), (70, 68, "lip"), (71, 68, "lip"), (72, 68, "lip"), (73, 68, "pupil"), (70, 69, "inside"), (71, 69, "inside"), (72, 69, "inside")],
+    "talk1": [(68, 67, "pupil"), (69, 67, "pupil"), (70, 67, "pupil"), (71, 67, "pupil"), (69, 68, "lip"), (70, 68, "lip")],
+    "talk2": [(67, 67, "pupil"), (68, 67, "pupil"), (69, 67, "pupil"), (70, 67, "pupil"), (71, 67, "pupil"), (72, 67, "pupil"),
+              (68, 68, "pupil"), (69, 68, "lip"), (70, 68, "lip"), (71, 68, "pupil"), (69, 69, "inside"), (70, 69, "inside")],
 }
-BLUSH = {"amused": [(63, 59), (64, 59), (76, 59), (77, 59)], "pleased": [(63, 59), (64, 59), (65, 59), (75, 59), (76, 59), (77, 59)]}
+BLUSH = {"amused": [(c, 59) for c in (63, 64, 75, 76)], "pleased": [(c, 59) for c in (62, 63, 64, 75, 76, 77)]}
 
 
 def clean(base):
-    """The face without its features: each brow, eye and mouth pixel painted with what is next to it."""
+    """The face without the generated features: brows, eyes and mouth painted with the skin and beard around them."""
     p = base.copy()
-    for x in list(range(63, 68)) + list(range(73, 77)):
-        p[54, x] = base[53, x]                    # brows: forehead skin from the row above
-    for x in list(range(64, 68)) + list(range(74, 77)):
-        p[57, x] = C["skin2"]                     # eyes: cheek skin
-    for x in range(68, 75):
+    for x in range(62, 78):
+        for y in (53, 54):                        # brows (and stray brow hairs) back to forehead skin
+            if x not in (68, 69, 70, 71):
+                p[y, x] = C["skin"] if x < 70 else C["skin2"]
+    p[55, 62] = C["skin2"]                        # a stray brow hair at the left temple
+    for x in range(63, 77):
+        if x not in (68, 69, 70, 71):
+            p[57, x] = base[58, x]                # eyes: the cheek just below
+    for x in range(66, 76):
         p[67, x] = base[68, x]                    # mouth line: the beard just below it
     return p
 
