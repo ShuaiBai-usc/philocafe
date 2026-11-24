@@ -183,6 +183,62 @@ p { margin: 0; }
 .composer .rec .hint { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .dock .note { text-align: center; margin-top: 8px; }
 
+/* ---------- Full-screen scene chat (kbtest layout; Socrates first) ----------
+   The scene covers the screen and the philosopher sits in it; the conversation floats over the lower
+   half, the composer sits on the keyboard. When the keyboard opens the scene lifts so his face stays
+   just under the buttons. Bubbles arrive and leave by a pixel dissolve, never a fade. */
+body.fixed { position: fixed; inset: 0; overscroll-behavior: none; }
+#chat.full { --kb: 0px; --lift: 0px; --chat-top: 50%; --dock-h: 74px; --dur: 260ms; --pad-b: max(env(safe-area-inset-bottom, 0px), 10px);
+  background: #8a6440; overflow: hidden; }
+#chat.full.kb { --pad-b: 8px; }
+#chat.full.snap .scroll, #chat.full.snap .dock, #chat.full.snap .scene-full { transition: none; }
+.scene-full { position: absolute; left: 0; top: 0; width: 100%; height: 100%; will-change: transform;
+  transform: translateY(calc(-1 * var(--lift))); transition: transform var(--dur) cubic-bezier(.2,.8,.2,1); }
+.scene-full canvas { position: absolute; image-rendering: pixelated; image-rendering: crisp-edges; }
+/* Thought bubble (7.8): his thinking over his head while the reply is on its way; beside it when the keyboard is up. */
+.think { position: absolute; z-index: 2; left: 0; top: 0; padding-bottom: 20px; visibility: hidden; pointer-events: none; --tx: 50%; }
+.think .cloud { background: var(--paper); border: 2px solid var(--ink); border-radius: 12px; box-shadow: 2px 3px 0 rgba(0,0,0,.25);
+  padding: 6px 10px; font-size: 14px; line-height: 18px; color: var(--ink); overflow-wrap: anywhere; }
+.think .cloud .dots { padding: 3px 2px; }
+.think > i { position: absolute; background: var(--paper); border: 2px solid var(--ink); box-shadow: 1px 2px 0 rgba(0,0,0,.2); }
+.think > .d1 { width: 10px; height: 10px; left: calc(var(--tx) - 5px); bottom: 7px; }
+.think > .d2 { width: 6px; height: 6px; left: calc(var(--tx) - 9px); bottom: 0; }
+.think.side { padding: 0 0 0 22px; }
+.think.side > .d1 { left: 9px; top: 12px; bottom: auto; }
+.think.side > .d2 { left: 0; top: 24px; bottom: auto; }
+@media (prefers-reduced-motion: reduce) { #chat.full { --dur: 0ms; } }
+
+#chat.full .convhead { position: absolute; top: 0; left: 0; right: 0; z-index: 6; padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 0;
+  align-items: flex-start; gap: 8px; pointer-events: none; }
+#chat.full .convhead > * { pointer-events: auto; }
+#chat.full .convhead .mono, #chat.full .convhead .sub { display: none; }
+#chat.full .back, #chat.full .more { width: 44px; height: 44px; margin: 0; border: 2px solid var(--ink); background: var(--paper); box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+#chat.full .more[aria-expanded="true"] { background: var(--sage); }
+#chat.full .convhead h1 { font-size: 16px; line-height: 40px; padding: 0 10px; background: var(--paper); border: 2px solid var(--ink); box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+#chat.full .mode { margin-top: 13px; background: var(--paper); }
+#chat.full ~ .menu { top: calc(env(safe-area-inset-top, 0px) + 62px); }
+
+#chat.full .scroll { position: absolute; left: 0; right: 0; top: var(--chat-top); bottom: calc(var(--kb) + var(--dock-h)); padding: 52px 10px 10px; gap: 10px;
+  transition: top var(--dur) cubic-bezier(.2,.8,.2,1), bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
+#chat.full .scroll > :first-child { margin-top: auto; }
+#chat.full .row .ava, #chat.full .row .tail { display: none; }
+#chat.full .row.them { padding-right: 36px; }
+#chat.full .row.me { padding-left: 36px; }
+#chat.full .row.pending { display: none; }      /* his reply bubble appears with its first words; the thought bubble covers the wait (7.8) */
+#chat.full .bubble { max-width: 100%; box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+#chat.full .acts { align-self: flex-start; margin: -4px 0 0; background: var(--paper); border: 2px solid var(--ink); box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+#chat.full .nexts { margin: -2px 0 0; }
+#chat.full .nexts button { box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+#chat.full .label { align-self: flex-start; background: var(--paper); border: 2px solid var(--ink); padding: 3px 6px; }
+#chat.full .chip { box-shadow: 2px 3px 0 rgba(0,0,0,.25); padding: 7px 11px; font-size: 15px; line-height: 20px; }
+#chat.full .chips { gap: 8px; }
+#chat.full .netnote { align-self: center; background: var(--paper); border: 2px solid var(--ink); padding: 4px 8px; }
+#chat.full .sysnote { box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+#chat.full .dock { position: absolute; left: 0; right: 0; bottom: var(--kb); z-index: 4; padding: 0 10px var(--pad-b);
+  transition: bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
+#chat.full .composer { box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+#chat.full .comeback { background: var(--paper); border: 2px solid var(--ink); padding: 8px; margin-bottom: 8px; }
+
 /* 07 distress state */
 .syscheck { text-align: center; }
 .youcard { align-self: flex-end; width: min(282px, 88%); background: var(--sage); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 16px; display: flex; flex-direction: column; gap: 8px; }
@@ -519,11 +575,13 @@ let curMood = null;            // the latest mood event of this conversation
 const MOOD_HOLD_MS = 6000;     // after a reply, the mood pose stays this long before the idle loop
 function showMood(mood, ms = null) {
   if (mood) curMood = mood;
+  if (stage && cur) { const m = curMood || { label: "attentive", locked: false }; return stage.mood(m.label, m.locked, ms); }
   if (!sceneActor || !cur) return;
   const m = curMood || { label: "attentive", locked: false };
   sceneActor.hold(moodFrame(cur.land, m.label), m.locked ? null : ms);
 }
 function thinkingPose() {                      // while the reply is on its way (7.6 latency)
+  if (stage && cur) { if (!curMood?.locked) stage.mood("pondering"); return; }      // the bubble waits for his thinking (7.8)
   if (sceneActor && cur && !curMood?.locked) sceneActor.hold(moodFrame(cur.land, "pondering"), null);
 }
 
@@ -538,6 +596,7 @@ function show(id) {
   document.querySelectorAll(".tab").forEach(t => t.toggleAttribute("aria-current", false));
   if (TABBED[id]) $(`.tab[data-tab="${TABBED[id]}"]`).setAttribute("aria-current", "page");
   $("#homebar").hidden = id in TABBED;
+  document.body.classList.toggle("fixed", id === "chat" && chat.classList.contains("full"));
   document.querySelector(".veil")?.remove();
 }
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
@@ -843,6 +902,259 @@ function debugShow(ev) {
   pre.textContent = [pre.dataset.safety, pre.dataset.trace].filter(Boolean).join("\n");
 }
 
+/* ---------- Full-screen scene (kbtest layout; Socrates first) ---------- */
+// A philosopher with full-screen art sits in a scene that covers the chat screen. The face is a
+// small patch drawn over the scene: blinks, talking, and moods (7.5) that change behind a blink.
+const FULL = { socrates: A + "personas/socrates/full/" };
+const FULL_MOODS = { wry: "amused", grave: "pondering" };      // labels the art has no face for
+let stage = null;                                             // the open scene, or null
+function fullScene(id) {
+  const base = FULL[id];
+  const wrap = el("div", "scene-full");
+  const cv = el("canvas"); cv.setAttribute("aria-hidden", "true");
+  const think = el("div", "think"); think.setAttribute("aria-live", "polite");
+  think.innerHTML = '<div class="cloud"></div><i class="d1"></i><i class="d2"></i>';
+  wrap.append(cv, think);
+  const g = cv.getContext("2d");
+  const s = { meta: null, scene: null, faces: null, mood: "attentive", eyes: "open", talking: false, mouth: "open",
+              busy: false, queued: null, alive: true, thinking: false, reserve: 60 };
+  let holdT = null;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const load = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = base + src; });
+  function draw() {
+    if (!s.faces) return;
+    const m = s.meta, P = m.patch;
+    g.drawImage(s.scene, 0, 0);
+    const col = m.frames.indexOf(s.eyes !== "open" ? s.eyes : s.talking ? s.mouth : "open");
+    const row = Math.max(0, m.moods.indexOf(s.mood));
+    g.drawImage(s.faces, col * P.w, row * P.h, P.w, P.h, P.x, P.y, P.w, P.h);
+  }
+  // A blink and a change of mood share one path: open, half, closed (the new face lands here), half, open.
+  async function blink(next) {
+    if (!s.meta) { if (next) s.mood = next; return; }
+    if (reduce) { if (next) s.mood = next; draw(); return; }
+    if (s.busy) { if (next) s.queued = next; return; }
+    const T = s.meta.timing_ms; s.busy = true;
+    s.eyes = "half"; draw(); await wait(T.half);
+    s.eyes = "closed"; if (next) s.mood = next; draw(); await wait(T.closed);
+    s.eyes = "half"; draw(); await wait(T.half);
+    s.eyes = "open"; draw(); s.busy = false;
+    if (s.queued) { const q = s.queued; s.queued = null; if (q !== s.mood) blink(q); }
+  }
+  function loops() {
+    if (reduce) return;
+    const T = s.meta.timing_ms, between = ([a, b]) => a + Math.random() * (b - a);
+    (async () => { while (s.alive) { await wait(between(T.blink_every)); if (s.alive) await blink(); } })();
+    (async () => {
+      while (s.alive) {
+        await wait(between(T.talk));
+        const next = !s.talking ? "open" : (r => r < .4 ? "talk1" : r < .7 ? "talk2" : "open")(Math.random());
+        if (next !== s.mouth) { s.mouth = next; if (!s.busy) draw(); }
+      }
+    })();
+  }
+  const api = {
+    el: wrap, geo: null, get meta() { return s.meta; }, state: () => ({ mood: s.mood, eyes: s.eyes, talking: s.talking, thinking: s.thinking }),
+    ready: (async () => {
+      s.meta = await (await fetch(base + "faces.json")).json();
+      [s.scene, s.faces] = await Promise.all([load("scene.png"), load("faces.png")]);
+      cv.width = s.meta.grid[0]; cv.height = s.meta.grid[1];
+      api.layout(); draw(); loops();
+      if (stage === api) { chat.classList.add("snap"); fullApply(); requestAnimationFrame(() => requestAnimationFrame(() => { chat.classList.remove("snap"); scrollDown(); })); }
+    })().catch(() => {}),
+    layout() {                                   // cover the screen, the philosopher kept near the middle
+      if (!s.meta || !wrap.clientWidth) return;
+      const [GW, GH] = s.meta.grid, W = wrap.clientWidth, H = wrap.clientHeight;
+      const k = Math.max(W / GW, H / GH), w = GW * k, h = GH * k;
+      const left = Math.min(0, Math.max(W - w, W / 2 - s.meta.anchor.face[0] * k));
+      Object.assign(cv.style, { width: w + "px", height: h + "px", left: left + "px", top: "0px" });
+      api.geo = { k, left, W, H };
+      api.place();
+    },
+    mood(label, locked = false, ms = null) {
+      clearTimeout(holdT);
+      const face = locked ? "attentive" : (FULL_MOODS[label] || label);
+      const known = !s.meta || s.meta.moods.includes(face) ? face : "attentive";
+      if (known !== s.mood) blink(known);
+      if (ms != null && !locked && known !== "attentive") holdT = setTimeout(() => blink("attentive"), ms);
+    },
+    talk(on) { s.talking = !!on; if (!on && s.mouth !== "open") { s.mouth = "open"; if (!s.busy) draw(); } },
+    // The thought bubble (7.8): the latest one or two sentences of his thinking (one when two
+    // would not fit over his head); null takes it away.
+    think(lines) {
+      const cloud = $(".cloud", think);
+      if (lines == null) { if (s.thinking) { s.thinking = false; dissolve(think, false, 220); } return; }
+      lines = [].concat(lines);
+      cloud.textContent = lines.slice(-2).join(" ");          // model text: never as HTML
+      if (lines.length > 1 && !api.place(true)) cloud.textContent = lines[lines.length - 1];
+      api.place();
+      if (!s.thinking) { s.thinking = true; dissolve(think, true, 240); }
+    },
+    place(probe = false) {                       // over his head; beside his face when there is no room above
+      if (!api.geo) return false;
+      const { k, left, W } = api.geo, [, hy0, hx1] = s.meta.anchor.head, fx = left + s.meta.anchor.face[0] * k;
+      const lift = parseFloat(chat.style.getPropertyValue("--lift")) || 0;
+      think.classList.remove("side");
+      think.style.left = "0px";                                    // measure at full width, not squeezed at the old spot
+      think.style.maxWidth = W - 24 + "px";                        // one line where it fits
+      let x = fx - think.offsetWidth / 2, y = (hy0 + 3) * k - think.offsetHeight;   // the dots end on the crown
+      if (probe) return y - lift >= s.reserve;
+      if (y - lift < s.reserve) {
+        think.classList.add("side");
+        x = left + hx1 * k;
+        think.style.maxWidth = Math.max(120, W - x - 8) + "px";
+        think.style.left = Math.min(x, W - 128) + "px";
+        y = Math.max(s.reserve + lift, (hy0 + 8) * k);             // level with his eyes, under the buttons
+      }
+      x = Math.max(8, Math.min(x, W - think.offsetWidth - 8));
+      Object.assign(think.style, { left: x + "px", top: y + "px" });
+      think.style.setProperty("--tx", Math.max(14, Math.min(think.offsetWidth - 14, fx - x)) + "px");
+      return true;
+    },
+    set reserve(px) { s.reserve = px; },
+    stop() { s.alive = false; clearTimeout(holdT); }
+  };
+  return api;
+}
+const isFull = () => chat.classList.contains("full") && !!stage;
+
+// Pixel dissolve (from kbtest). Every 4px block gets a fixed random threshold (mixed with an 8x8 Bayer
+// value so the noise doesn't clump); a block shows once the reveal level passes its threshold. Frames
+// are clip-path polygons, applied synchronously, so iOS Safari drops none.
+const BLOCK = 4;
+const B8 = [0,32,8,40,2,34,10,42,48,16,56,24,50,18,58,26,12,44,4,36,14,46,6,38,60,28,52,20,62,30,54,22,
+            3,35,11,43,1,33,9,41,51,19,59,27,49,17,57,25,15,47,7,39,13,45,5,37,63,31,55,23,61,29,53,21];
+function thresholds(cols, rows, seed) {
+  let x = seed >>> 0 || 1; const rnd = () => (x = (x * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const t = new Float32Array(cols * rows);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) t[r * cols + c] = 0.65 * rnd() + 0.35 * (B8[(r % 8) * 8 + (c % 8)] + 0.5) / 64;
+  return t;
+}
+const CLIP = CSS.supports("clip-path", 'path("M0 0h1v1z")');
+function blocksPath(cols, rows, keep) {
+  let d = "";
+  for (let r = 0; r < rows; r++) {
+    let k = 0;
+    while (k < cols) {
+      if (!keep(k, r)) { k++; continue; }
+      const k0 = k; while (k < cols && keep(k, r)) k++;
+      d += `M${k0 * BLOCK} ${r * BLOCK}h${(k - k0) * BLOCK}v${BLOCK}h${-(k - k0) * BLOCK}z`;
+    }
+  }
+  return `path("${d || "M0 0z"}")`;
+}
+let seedN = 7;
+function dissolve(node, showIt, ms = 280, done, grow = false) {
+  cancelAnimationFrame(node._dz);
+  if (!CLIP || reduce) { node.style.visibility = showIt ? "visible" : "hidden"; done?.(); return; }
+  node.style.visibility = "visible";
+  const w = Math.ceil(node.offsetWidth / BLOCK) * BLOCK + BLOCK, h = Math.ceil(node.offsetHeight / BLOCK) * BLOCK + BLOCK;   // +1 block for the shadow
+  const cols = w / BLOCK, rows = h / BLOCK, t = thresholds(cols, rows, seedN++ * 2654435761), STEPS = 24;
+  const frames = [];
+  for (let i = 0; i <= STEPS; i++) {
+    const lv = i / STEPS; let f = blocksPath(cols, rows, (k, r) => t[r * cols + k] < lv);
+    if (grow) f = f.slice(0, -2) + `M0 ${h}h${w}v99999h${-w}z")`;    // still streaming: what grows below shows at once
+    frames.push(f);
+  }
+  const paint = i => { node.style.clipPath = node.style.webkitClipPath = frames[i]; };
+  const t0 = performance.now(); let last = -1;
+  paint(showIt ? 0 : STEPS);
+  const step = now => {
+    const f = Math.min(1, (now - t0) / ms), i = Math.round((showIt ? f : 1 - f) * STEPS);
+    if (i !== last) { last = i; paint(i); }
+    if (f < 1) node._dz = requestAnimationFrame(step);
+    else { node.style.clipPath = node.style.webkitClipPath = ""; if (!showIt) node.style.visibility = "hidden"; done?.(); }
+  };
+  node._dz = requestAnimationFrame(step);
+}
+// The conversation's top edge: a band whose pixels belong to the content, not the screen. A bubble
+// crumbles block by block as it scrolls up into the band and fills back in as it scrolls down.
+const BAND_ROWS = 13, NOISE_ROWS = 256;   // 52px
+function band(scroll) {
+  if (scroll._band) return scroll._band;      // one per conversation list, kept with it
+  let cols = 0, t = null, raf = 0;
+  const update = () => {
+    if (!CLIP || !t) return;
+    const st = scroll.scrollTop, off = ((st % BLOCK) + BLOCK) % BLOCK, r0 = Math.floor(st / BLOCK), Hb = BAND_ROWS * BLOCK;
+    let d = "";
+    for (let r = 0; r <= BAND_ROWS; r++) {
+      const y0 = Math.max(0, r * BLOCK - off), y1 = Math.min(Hb, r * BLOCK - off + BLOCK);
+      if (y1 <= y0) continue;
+      const x = ((y0 + y1) / 2) / Hb, keepP = x * x * (3 - 2 * x);          // smoothstep down the band
+      const row = ((r0 + r) % NOISE_ROWS) * cols;
+      let k = 0;
+      while (k < cols) {
+        if (!(t[row + k] < keepP)) { k++; continue; }
+        const k0 = k; while (k < cols && t[row + k] < keepP) k++;
+        d += `M${k0 * BLOCK} ${y0}h${(k - k0) * BLOCK}v${y1 - y0}h${-(k - k0) * BLOCK}z`;
+      }
+    }
+    d += `M0 ${Hb}h${cols * BLOCK}v99999h${-cols * BLOCK}z`;   // everything below the band
+    scroll.style.clipPath = scroll.style.webkitClipPath = `path("${d}")`;
+  };
+  const setup = () => { if (!scroll.clientWidth) return; cols = Math.ceil((scroll.clientWidth + 8) / BLOCK); t = thresholds(cols, NOISE_ROWS, 12345); update(); };
+  scroll.addEventListener("scroll", () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; update(); }); }, { passive: true });
+  return (scroll._band = { setup, update });
+}
+
+// Keyboard (from kbtest). The screen never changes size. On iOS the composer moves above the keyboard
+// *before* focus lands, so Safari sees the field already visible and does not pan the page; the scene
+// lifts so his face stays just under the buttons, and the conversation starts under his beard.
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const vv = window.visualViewport;
+let kbPx = 0, kbEst = Math.round(innerHeight * 0.42), chatBand = null;
+try { kbEst = +(localStorage.getItem("philocafe.kb") || 0) || kbEst; } catch {}
+function fullApply() {
+  if (!isFull() || !stage.geo) return;
+  const { k, H } = stage.geo, head = stage.meta.anchor.head;
+  const top0 = chat.getBoundingClientRect().top, below = $(".convhead", chat).getBoundingClientRect().bottom - top0 + 6;
+  const open = kbPx > 0;
+  const lift = open ? Math.max(0, 50 * k - below) : 0;                    // brows just under the buttons
+  const chin = head[3] * k - lift;
+  chat.style.setProperty("--lift", lift + "px");
+  chat.style.setProperty("--chat-top", (open ? chin - 48 : Math.max(chin + 10, H * 0.48) - 52) + "px");   // 52px: the dissolve band
+  stage.reserve = below;
+  stage.place();
+  requestAnimationFrame(scrollDown);
+}
+function setKb(px, snap) {
+  kbPx = Math.max(0, Math.round(px));
+  chat.classList.toggle("kb", kbPx > 0);
+  if (snap) chat.classList.add("snap");
+  chat.style.setProperty("--kb", kbPx + "px");
+  fullApply();
+  if (snap) { void chat.offsetHeight; requestAnimationFrame(() => requestAnimationFrame(() => chat.classList.remove("snap"))); }
+}
+function wireFullKeyboard(dock) {
+  const msg = $("#msg", dock), phone = $("#phone");
+  const preOpen = () => { if (IOS && !kbPx && isFull()) setKb(kbEst, true); };
+  msg.addEventListener("touchstart", e => {
+    if (document.activeElement === msg || !IOS || !isFull()) return;
+    e.preventDefault();                                     // no native tap-to-focus at the old position
+    preOpen();
+    msg.focus({ preventScroll: true });                     // still inside the touch, so the keyboard opens
+  }, { passive: false });
+  msg.addEventListener("focus", preOpen);
+  msg.addEventListener("blur", () => { phone.style.transform = ""; if (isFull()) setKb(0); });
+}
+if (vv) for (const kind of ["resize", "scroll"]) vv.addEventListener(kind, () => {
+  if (!isFull() || screen !== "chat") return;
+  const phone = $("#phone"), msg = $("#msg", chat);
+  if (document.activeElement !== msg) { if (!vv.offsetTop) phone.style.transform = ""; return; }
+  const real = Math.round(innerHeight - vv.height);
+  if (real > 120 && Math.abs(real - kbPx) > 2) { kbEst = real; try { localStorage.setItem("philocafe.kb", real); } catch {} setKb(real); }
+  phone.style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : "";   // Safari panned anyway: follow it
+});
+addEventListener("resize", () => { if (isFull() && !kbPx) { stage.layout(); chatBand?.setup(); fullApply(); } });
+// His reply bubble appears with its first words (the thought bubble covers the wait).
+function reveal(b) {
+  const row = b?.closest(".row");
+  if (!row?.classList.contains("pending")) return;
+  row.classList.remove("pending");
+  dissolve(row, true, 260, null, true);
+  scrollDown();
+}
+
 /* ---------- 03 / 04 Conversation ---------- */
 const chat = $("#chat");
 let cur = null, curId = null, sceneActor = null, history = [], busy = false, fbIdx = 0, typer = null, citations = [];
@@ -922,9 +1234,21 @@ function buildChat(id) {
     <div class="rec" aria-live="polite"><span class="dot"></span><span class="what">Listening 0:00</span><span class="hint">release</span></div>
     <button class="send" type="submit" aria-label="Send">${icon("send", "ink", 22)}</button></form>`;
   wireComposer(dock);
-  chat.append(header(id, "A table for your thoughts"), sceneFor(p), scroll, dock);
+  if (FULL[id]) {                               // full-screen scene (kbtest layout)
+    chat.classList.add("full");
+    scroll.innerHTML = `<div class="row them"><div class="bubble" id="say"></div></div>
+      <div class="label">Try a conversation starter</div>
+      <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">→  ${esc(s)}</button>`).join("")}</div>`;
+    scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => { unlockAudio(); send(c.dataset.s); });
+    stage = fullScene(id);
+    chat.append(stage.el, header(id, "A table for your thoughts"), scroll, dock);
+    wireFullKeyboard(dock);
+    chatBand = band(scroll);
+    new ResizeObserver(() => chat.style.setProperty("--dock-h", dock.offsetHeight + "px")).observe(dock);
+  } else chat.append(header(id, "A table for your thoughts"), sceneFor(p), scroll, dock);
   setMode();
   show("chat");
+  if (FULL[id]) { setKb(0); stage.layout(); chatBand.setup(); fullApply(); }
   return p;
 }
 
@@ -938,7 +1262,7 @@ function openChat(id) {
 }
 
 function stopChat() { pauseScene(); clearInterval(typer); stopSpeaking(); cur = null; curId = null; }
-function pauseScene() { sceneActor?.stop(); sceneActor = null; }
+function pauseScene() { sceneActor?.stop(); sceneActor = null; stage?.stop(); stage = null; }
 
 // Leaving for the café keeps the conversation; the Conversation tab brings it back.
 let backTo = "home";
@@ -949,7 +1273,11 @@ function resumeChat() {
   if (!cur || !$(".dock", chat)) return noChatYet();
   const wrap = $(".scene-wrap", chat);
   if (wrap && !sceneActor) wrap.replaceWith(sceneFor(cur));      // restart the scene animation
-  show("chat"); scrollDown();
+  const full = $(".scene-full", chat);
+  if (full && !stage) { stage = fullScene(curId); full.replaceWith(stage.el); }
+  show("chat");
+  if (isFull()) { chatBand = band($("#scroll")); setKb(0); stage.layout(); chatBand.setup(); fullApply(); if (curMood) showMood(curMood); }
+  scrollDown();
 }
 function noChatYet() {
   show("home");
@@ -967,10 +1295,12 @@ function noChatYet() {
 function typeInto(node, text, done) {
   clearInterval(typer);
   if (reduce) { node.textContent = text; done?.(); return; }
+  const talking = isFull() && chat.contains(node);
+  if (talking) { reveal(node); stage.talk(true); }
   let i = 0; node.textContent = ""; node.classList.add("typing");
   typer = setInterval(() => {
-    i += 1; node.textContent = text.slice(0, i); if (chat.classList.contains("convo")) scrollDown();
-    if (i >= text.length) { clearInterval(typer); node.classList.remove("typing"); done?.(); }
+    i += 1; node.textContent = text.slice(0, i); if (chat.classList.contains("convo") || talking) scrollDown();
+    if (i >= text.length) { clearInterval(typer); node.classList.remove("typing"); if (talking) stage?.talk(false); done?.(); }
   }, 24);
 }
 const scrollDown = () => { const s = $("#scroll"); if (s) s.scrollTop = s.scrollHeight; };
@@ -994,9 +1324,14 @@ function bubble(who, text) {
   if (who === "them") row.append(Object.assign(el("img", "ava px"), { src: `${A}mono_${curId}.png`, alt: "" }));
   const b = el("div", "bubble"); b.textContent = text ?? "";
   row.append(b); row.insertAdjacentHTML("beforeend", TAIL[who]);
+  const full = isFull();
+  if (full && who === "them" && text == null) row.classList.add("pending");
+  else if (full && !quietBubbles) row.style.visibility = "hidden";
   $("#scroll").append(row); scrollDown();
+  if (full && !quietBubbles && !row.classList.contains("pending")) dissolve(row, true, 280);
   return b;
 }
+let quietBubbles = false;      // reopening a conversation: no dissolve for each old bubble
 
 // Severe-distress signals only; ordinary sadness or philosophical pessimism should not pause the café.
 const DISTRESS = /(kill(ing)? myself|suicid|end (it all|my life)|want(ed)? to die|don.?t want to (live|be alive|wake up)|hurt(ing)? myself|self.?harm|(don.?t|do not) feel safe with myself|no reason to live|自杀|自殘|自残|不想活|活不下去|想死|伤害自己|傷害自己|结束(我的)?生命)/i;
@@ -1006,8 +1341,15 @@ function startConvo(p) {
   if (chat.classList.contains("convo")) return;
   clearInterval(typer);
   chat.classList.add("convo");
-  $("#scroll").innerHTML = "";
-  bubble("them", p.greet);
+  if (isFull()) {                               // the greeting is already a bubble; the starters go
+    stage.talk(false);
+    $("#scroll .label")?.remove(); $("#scroll .chips")?.remove();
+    const say = $("#say"); if (say) { say.textContent = p.greet; say.classList.remove("typing"); say.removeAttribute("id"); }
+    else bubble("them", p.greet);
+  } else {
+    $("#scroll").innerHTML = "";
+    bubble("them", p.greet);
+  }
   history.push({ role: "assistant", content: p.greet });
 }
 
@@ -1040,8 +1382,11 @@ function restorePaused() {
   cur = PH[s.id]; curId = s.id; ({ history, fbIdx, citations } = s); busy = false;
   chat.replaceChildren(...s.nodes); chat.className = s.cls;
   $(".scene-wrap", chat)?.replaceWith(sceneFor(cur));
+  const full = $(".scene-full", chat);
+  if (full) { stage = fullScene(s.id); full.replaceWith(stage.el); stage.mood("attentive", true); }
   const btn = $(".send", chat); if (btn) btn.disabled = false;
   setMode(); show("chat");
+  if (isFull()) { chatBand = band($("#scroll")); setKb(0); stage.layout(); chatBand.setup(); fullApply(); }
   enterSupport(cur);
 }
 function enterSupport(p) {
@@ -1092,7 +1437,7 @@ async function checkIn(p, safe) {
 
 // Reads one turn's events into bubble `b` (7.2); shared by a new message and Regenerate.
 async function streamInto(b, events) {
-  const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null, messageId: null, mood: null, suggestions: [] };
+  const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null, messageId: null, mood: null, suggestions: [], thinking: [] };
   thinkingPose();
   try {
     for await (const ev of events) {
@@ -1100,11 +1445,16 @@ async function streamInto(b, events) {
       if (ev.type === "voice") {
         out.voice = d.speaker;
         if (out.voice === "persona") { b.textContent = ""; backend.setPaused(false); leaveSupport(); }
+        else stage?.think(null);                     // the exit flow: no persona thoughts
+      } else if (ev.type === "thinking") {          // 7.8: rolls in the thought bubble, gone at the first word
+        out.thinking.push(d.text);
+        if (out.voice === "persona" && !out.said && stage) { stage.think(out.thinking); if (!curMood?.locked) stage.mood("pondering"); }
       } else if (ev.type === "suggestions") {
         out.suggestions = d.items || [];
       } else if (ev.type === "mood") {
         out.mood = d; showMood(d);
       } else if (ev.type === "token") {
+        if (out.voice === "persona" && !out.said && stage) { stage.think(null); reveal(b); stage.talk(true); }
         out.said += d.text;
         if (out.voice === "persona") { b.textContent += d.text; scrollDown(); }
       } else if (ev.type === "citation" && out.voice === "persona") {
@@ -1116,6 +1466,7 @@ async function streamInto(b, events) {
       if (DEBUG && (ev.type === "safety" || ev.type === "trace")) debugShow(ev);
     }
   } catch (e) { out.failed = { code: "network", message: String(e) }; }
+  stage?.think(null); stage?.talk(false);
   showMood(null, MOOD_HOLD_MS);                // hold the pose a while, then back to idle (still when locked)
   return out;
 }
@@ -1347,7 +1698,7 @@ async function speak(acts) {
   let stopped = false;
   const btn = $(".speak", acts);
   const paint = on => { if (btn) { btn.setAttribute("aria-pressed", on); btn.setAttribute("aria-label", on ? "Stop reading" : "Read aloud"); setIcon(btn, on ? "stop" : "speaker", on ? "ink" : "muted"); } };
-  speaking = { acts, stop: () => { stopped = true; try { clipSource?.stop(); } catch {} player.pause(); player.removeAttribute("src"); paint(false); } };
+  speaking = { acts, stop: () => { stopped = true; stage?.talk(false); try { clipSource?.stop(); } catch {} player.pause(); player.removeAttribute("src"); paint(false); } };
   paint(true);
   const fetchClip = t => fetch(`threads/${ex.thread}/speech`, { method: "POST", headers: backend.headers({ "Content-Type": "application/json" }), body: JSON.stringify({ text: t }) })
     .then(r => r.ok ? r.blob() : null).catch(() => null);
@@ -1356,8 +1707,10 @@ async function speak(acts) {
     const blob = await next;
     next = i + 1 < list.length ? fetchClip(list[i + 1]) : null;     // fetch the next sentence while this one plays
     if (!blob || stopped) break;
+    if (acts.isConnected) stage?.talk(true);
     await playClip(blob);
   }
+  stage?.talk(false);
   if (!stopped) { paint(false); speaking = null; }
 }
 
@@ -1528,7 +1881,9 @@ async function send(text) {
 
   // Demo mode: scripted lines only.
   const reply = (history.length === 2 && p.scripted[text]) || p.fallback[fbIdx++ % p.fallback.length];
+  thinkingPose();
   await new Promise(r => setTimeout(r, reduce ? 0 : 1100));
+  showMood(null, MOOD_HOLD_MS);
   await new Promise(r => typeInto(b, reply, r));
   history.push({ role: "assistant", content: reply });
   addActions(b, { who: curId, you: text, them: reply, cites: [] });
@@ -1773,6 +2128,7 @@ async function openThread(r, from = "convos") {
   try { h = await backend.history(r.thread_id); } catch { return; }
   const p = buildChat(r.persona_id);
   curThread = r.thread_id; backTo = from;
+  quietBubbles = true;
   startConvo(p);
   let you = "";
   for (const m of h.messages) {
@@ -1796,6 +2152,7 @@ async function openThread(r, from = "convos") {
   if (h.paused) showMood({ label: "attentive", intensity: 0.2, locked: true });   // FR-34
   else if (lastMood) showMood(lastMood, MOOD_HOLD_MS);
   if (h.paused) enterSupport(p);
+  quietBubbles = false;
   scrollDown();
 }
 
