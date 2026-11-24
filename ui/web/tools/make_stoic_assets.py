@@ -54,6 +54,10 @@ HOME_SEQ = {
 # is centred on the right armchair, mirrored from Socrates' place in the left one.
 FEET_Y = 313 + 31 * CHAT_CELL
 CHAT_X0 = {"epictetus": 377 - 5 * CHAT_CELL, "seneca": 803 - 22.5 * CHAT_CELL}
+# Conversation frames the UI/UX team drew by hand (df0a229): keep them and their box instead of
+# regenerating from the home frames. They were exported as 1242 x 662 scene canvases and are cropped
+# to this box, the union of their visible pixels; the full canvas in the old box made him a speck.
+CHAT_DRAWN = {"epictetus": [377, 306, 598, 535]}
 # Rest frame used for the portrait, and the cells it shows (left column, top row).
 PORTRAIT = {"seneca": ("home_seneca_17_rest_smile.png", 13.5, -1.5),
             "epictetus": ("home_epictetus_03_rest.png", 4.5, -2.0)}
@@ -140,16 +144,26 @@ def build(who: str, data: dict) -> None:
     home = data.get("home_" + who) or {}
     home_frames = home.get("frames") or sorted(p.name for p in ASSETS.glob(f"home_{who}_*.png"))
     frames = []
-    for name in home_frames:
-        grid = drop_table_cup(cells(ASSETS / name))
-        out = name.removeprefix("home_")
-        render(grid, OUT_CELL).save(ASSETS / out)
-        frames.append(out)
-    rows, cols = len(grid), len(grid[0])
-    x0, y0 = CHAT_X0[who], FEET_Y - rows * CHAT_CELL
+    if who in CHAT_DRAWN:
+        x0, y0, x1, y1 = box = CHAT_DRAWN[who]
+        for name in home_frames:
+            out = name.removeprefix("home_")
+            im = Image.open(ASSETS / out)
+            if im.size == (1242, 662):          # a fresh export from the design team: crop it to the box
+                im.crop(box).save(ASSETS / out)
+            assert Image.open(ASSETS / out).size == (x1 - x0, y1 - y0), out
+            frames.append(out)
+    else:
+        for name in home_frames:
+            grid = drop_table_cup(cells(ASSETS / name))
+            out = name.removeprefix("home_")
+            render(grid, OUT_CELL).save(ASSETS / out)
+            frames.append(out)
+        rows, cols = len(grid), len(grid[0])
+        x0, y0 = CHAT_X0[who], FEET_Y - rows * CHAT_CELL
+        box = [round(x0, 1), round(y0, 1), round(x0 + cols * CHAT_CELL, 1), round(FEET_Y, 1)]
     shutil.copyfile(ASSETS / "scene_socrates.png", ASSETS / f"scene_{who}.png")
-    data[who] = {"scene": f"scene_{who}.png",
-                 "box": [round(x0, 1), round(y0, 1), round(x0 + cols * CHAT_CELL, 1), round(FEET_Y, 1)],
+    data[who] = {"scene": f"scene_{who}.png", "box": box,
                  "size": [1242, 662], "frames": frames, "seq": HOME_SEQ[who]}
     data["home_" + who] = {"box": HOME_BOX[who], "frames": home_frames, "seq": HOME_SEQ[who]}
     path = ASSETS / f"portrait_{who}.png"
