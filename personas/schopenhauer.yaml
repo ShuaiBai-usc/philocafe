@@ -43,6 +43,6 @@ moods: [grave, skeptical, wry, pondering, pleased, attentive]
 voice:
   elevenlabs: Jvf6TAXwMUVTSR20U0f9   # chosen by Christopher
   elevenlabs_by_language:            # replies in these languages use this voice instead
-    zh: YBS7vt5CeZiqlZYGamwR   # Jerry Lin: deep, calm, serious (Taiwan Mandarin)
+    zh: lcRaSg5QsH61bfHjo8qM   # chosen by Christopher
   name: onyx
   style: Low, dry and measured, with sardonic wit; calm rather than gloomy.
