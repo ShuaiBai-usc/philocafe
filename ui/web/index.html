@@ -177,14 +177,13 @@ p { margin: 0; }
 .pop { width: 100%; max-width: 342px; animation: popin .25s steps(4); }
 .pop .titlebar { display: flex; align-items: center; gap: 6px; }
 .pop .titlebar img { width: 14px; height: 14px; }
-.pop .x { margin-left: auto; width: 20px; height: 20px; margin-top: -3px; border: 2px solid var(--ink); background: var(--paper); font: 12px/14px var(--f-label); }
+.pop .x { width: 28px; height: 28px; margin: -3px -8px 0 auto; display: grid; place-items: center; font: 18px/1 var(--f-label); color: var(--ink); }
 .pop-body { padding: 18px 16px 16px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; font-size: 15px; line-height: 1.5; }
 .pop-body img { width: 64px; }
 .btns { display: flex; gap: 12px; width: 100%; margin-top: 4px; }
 .btn { flex: 1; border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 10px 0; font: 13px var(--f-label); letter-spacing: .14em; background: var(--paper); }
 .btn.go { background: var(--sage); }
 .source .inner { padding: 14px 24px 16px; gap: 8px; }
-.source .close { align-self: flex-start; font-size: 16px; line-height: 21px; padding: 4px 0; }
 
 /* ---------- 05 My Notes ---------- */
 .filters { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -225,7 +224,7 @@ p { margin: 0; }
 .ccard { text-align: left; width: 100%; }
 .ccard .titlebar { display: flex; align-items: center; }
 .ccard .titlebar .when { flex: 1; min-width: 0; }
-.ccard .x { width: 20px; height: 20px; margin-top: -3px; border: 2px solid var(--ink); background: var(--paper); font: 12px/14px var(--f-label); flex: none; display: grid; place-items: center; }
+.ccard .x { width: 28px; height: 28px; margin: -3px -8px 0 0; font: 18px/1 var(--f-label); color: var(--ink); flex: none; display: grid; place-items: center; }
 .ccard .ctitle { font-size: 17px; line-height: 22px; }
 .ccard .inner { padding: 10px 16px 12px; gap: 4px; }
 .ccard .last { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -1229,7 +1228,7 @@ function openSource(list = citations.map((c, i) => ({ ...c, n: i + 1 }))) {
   if (!list.length) return;     // nothing quoted, nothing to show
   const veil = el("div", "veil");
   veil.innerHTML = `<div class="pop card source" role="dialog" aria-label="From the source">
-    <div class="titlebar">From the source</div><div class="inner"></div></div>`;
+    <div class="titlebar"><span>From the source</span><button class="x" type="button" aria-label="Close">×</button></div><div class="inner"></div></div>`;
   const inner = $(".inner", veil);
   list.forEach(c => {
     const where = c.section ? `${c.work}, ${c.section}` : c.work;
@@ -1240,10 +1239,9 @@ function openSource(list = citations.map((c, i) => ({ ...c, n: i + 1 }))) {
       <a class="t14" href="${esc(c.source_url)}" target="_blank" rel="noopener">Read it in the source ↗</a>`;
     inner.append(block);
   });
-  inner.append(Object.assign(el("button", "close", "Close ×"), { type: "button" }));
-  veil.onclick = e => { if (e.target === veil || e.target.closest(".close")) veil.remove(); };
+  veil.onclick = e => { if (e.target === veil || e.target.closest(".x")) veil.remove(); };
   $(".screens").append(veil);
-  $(".close", veil).focus();
+  $(".x", veil).focus();
 }
 
 /* ---------- My notes (7.7): stored with the account (7.10); the scripted demo keeps them on the device ---------- */
