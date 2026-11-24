@@ -21,6 +21,7 @@
   --sage: #e9edc9;       /* user bubble, title bars */
   --clay: #d4aa73;       /* primary button, thin lines */
   --shadow: #cca370;     /* 3px 4px drop shadows */
+  --rust: #8c524a;       /* destructive action: low-saturation dark red */
   --table: #2f261c;      /* desktop surround */
   --f-display: "Pixelify Sans", "Courier New", monospace;   /* headings: pixel face like the rest of the app */
   --f-pixel: "Pixelify Sans", "Courier New", monospace;
@@ -177,7 +178,8 @@ p { margin: 0; }
 .notepop .inner { padding: 14px 20px 18px; gap: 10px; }
 .notepop .t11 + .t28 { margin-top: -2px; }
 .notepop hr { border: 0; border-top: 1px dashed var(--clay); margin: 4px 0; width: 100%; }
-.notepop .btn.del { color: var(--muted); }
+.notepop .btn.del { background: var(--rust); color: var(--paper); }
+.notepop .btn.done { background: var(--clay); color: var(--ink); }
 .notepop textarea { width: 100%; min-height: 84px; resize: vertical; cursor: text; border: 1px solid var(--clay); background: var(--paper); padding: 8px 10px; font-size: 16px; line-height: 21px; }
 .notepop textarea::placeholder { color: var(--muted); }
 .empty { padding: 18px; text-align: center; }
