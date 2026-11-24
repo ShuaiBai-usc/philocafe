@@ -38,6 +38,7 @@ from starlette.staticfiles import StaticFiles
 from app.config import ROOT
 from app.deps import Deps
 from app.graph import build_graph, run_turn
+from app.persona import persona_history
 from app.submissions import MAX_TRANSCRIPT, SEVERAL, MemorySubmissions, PostgresSubmissions, to_csv
 
 log = logging.getLogger(__name__)
@@ -174,7 +175,7 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         persona = deps.personas.get(state.get("persona_id", ""))
         try:
             result = await run_in_threadpool(deps.distill_note, persona.name if persona else "the philosopher",
-                                             state["messages"])
+                                             persona_history(state["messages"], state.get("persona_id", "")))
         except Exception as e:
             return error(502, "note_failed", type(e).__name__)
         return JSONResponse(result)
