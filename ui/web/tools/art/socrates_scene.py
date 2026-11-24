@@ -159,6 +159,28 @@ def frame(base, cleaned, mood, name):
     return p
 
 
+# The generated face is darker than his arms and feet: half of it sits in a mid shade the
+# body never uses. Face skin goes onto the body's two tones (base, shade), keeping the
+# forehead highlight, so face and hands are one skin.
+FACE_SKIN = {
+    (201, 152, 106): (223, 176, 128),   # mid shade -> body base
+    (179, 140, 98): (196, 141, 101),    # deep mid shade -> body shade
+    (165, 116, 76): (196, 141, 101),    # deep shade -> body shade
+}
+# the head's rows and right edge: above row 49 the picture frame's wood (same browns) starts
+# at x 79, and the wall stripe above the crown ends at row 41
+FACE_ROWS = [(y, 55, 78 if y < 49 else 80) for y in range(42, 63)]
+
+
+def body_skin(img):
+    p = img.copy()
+    for y, x0, x1 in FACE_ROWS:
+        row = p[y, x0:x1 + 1]
+        for src, dst in FACE_SKIN.items():
+            row[(row == src).all(1)] = dst
+    return p
+
+
 def main():
     src = np.asarray(Image.open(SOURCE).convert("RGB")).astype(float)
     nw, nh, ox, oy = find_grid(src, [GRID[0]], [GRID[1]])
@@ -169,8 +191,8 @@ def main():
     sheet = np.zeros((h * len(MOODS), w * len(FRAMES), 3), np.uint8)
     for i, mood in enumerate(MOODS):
         for j, name in enumerate(FRAMES):
-            sheet[i * h:(i + 1) * h, j * w:(j + 1) * w] = frame(base, cleaned, mood, name)[y0:y0 + h, x0:x0 + w]
-    attentive = frame(base, cleaned, "attentive", "open")
+            sheet[i * h:(i + 1) * h, j * w:(j + 1) * w] = body_skin(frame(base, cleaned, mood, name))[y0:y0 + h, x0:x0 + w]
+    attentive = body_skin(frame(base, cleaned, "attentive", "open"))
     OUT.mkdir(parents=True, exist_ok=True)
     Image.fromarray(attentive).save(OUT / "scene.png", optimize=True)
     Image.fromarray(sheet).save(OUT / "faces.png", optimize=True)
