@@ -8,6 +8,7 @@ from pathlib import Path
 import yaml
 
 from app.config import ROOT
+from app.mood import CALM, MAX_MOODS
 
 PERSONAS_DIR = ROOT / "personas"
 TIER2_MARKS = {"cautions_against", "open_to_misreading"}
@@ -29,6 +30,7 @@ class PersonaConfig:
     voice: str = "ash"              # stock text-to-speech voice (7.6); never a real person's voice
     voice_style: str = ""           # one-line speaking style sent with each sentence
     elevenlabs_voice: str = ""      # ElevenLabs voice id, when voice.provider is elevenlabs
+    moods: tuple[str, ...] = (CALM,)   # 7.5: at most six, intellectual only, always with attentive
 
 
 def load_persona(path: Path) -> PersonaConfig:
@@ -37,6 +39,9 @@ def load_persona(path: Path) -> PersonaConfig:
     bad = {cid: mark for cid, mark in tier2.items() if mark not in TIER2_MARKS}
     if bad:
         raise ValueError(f"{path.name}: tier2_passages marks must be one of {sorted(TIER2_MARKS)}: {bad}")
+    moods = tuple(str(m).strip().lower() for m in (raw.get("moods") or [CALM]))
+    if CALM not in moods or len(moods) > MAX_MOODS or len(set(moods)) != len(moods):
+        raise ValueError(f"{path.name}: moods must be at most {MAX_MOODS} distinct labels including {CALM!r}")
     retrieval = raw.get("retrieval") or {}
     return PersonaConfig(id=raw["id"], name=raw["name"], era=raw.get("era", ""), tagline=raw.get("tagline", ""),
                          corpus=raw.get("corpus", raw["id"]), prompt=raw["prompt"].strip(),
@@ -45,7 +50,8 @@ def load_persona(path: Path) -> PersonaConfig:
                          min_score=retrieval.get("min_score"), tier2_passages=dict(tier2),
                          voice=(raw.get("voice") or {}).get("name", PersonaConfig.voice),
                          voice_style=((raw.get("voice") or {}).get("style") or "").strip(),
-                         elevenlabs_voice=((raw.get("voice") or {}).get("elevenlabs") or "").strip())
+                         elevenlabs_voice=((raw.get("voice") or {}).get("elevenlabs") or "").strip(),
+                         moods=moods)
 
 
 def load_personas(directory: Path = PERSONAS_DIR) -> dict[str, PersonaConfig]:

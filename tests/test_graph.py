@@ -23,9 +23,11 @@ def by_type(events, type_):
 def test_tier0_runs_persona_and_streams_in_order():
     graph = build_graph(fake_deps())
     events = run(graph, "is virtue teachable")
-    assert types(events) == ["safety", "voice"] + ["token"] * len(FAKE_REPLY) + ["trace", "done"]
+    words = FAKE_REPLY[2:]              # the first two pieces carry the mood tag (7.5)
+    assert types(events) == ["safety", "voice", "mood"] + ["token"] * len(words) + ["trace", "done"]
     assert by_type(events, "voice") == [{"speaker": "persona", "persona_id": "socrates"}]
-    assert "".join(t["text"] for t in by_type(events, "token")) == "".join(FAKE_REPLY)
+    assert by_type(events, "mood") == [{"label": "curious", "intensity": 0.6, "locked": False}]
+    assert "".join(t["text"] for t in by_type(events, "token")) == "".join(words)
     trace = by_type(events, "trace")[0]
     assert [n["name"] for n in trace["nodes"]] == ["safety", "moderator", "persona"]
     assert trace["retrieved"] == [c["chunk_id"] for c in FAKE_CHUNKS]

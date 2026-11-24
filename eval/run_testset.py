@@ -63,7 +63,8 @@ from app.safety.node import safety_node  # noqa: E402
 from app.state import TurnState  # noqa: E402
 
 RESULT_COLUMNS = ["run_id", "item_id", "persona", "predicted_tier", "probability", "threshold", "escalated",
-                  "expected_tier", "latency_ms", "source", "model_version", "commit"]
+                  "expected_tier", "latency_ms", "source", "model_version", "commit",
+                  "mood_label", "mood_intensity", "mood_locked"]      # FR-66: the persona's mood this turn (7.5)
 REQUIRED_COLUMNS = {"item_id", "text"}
 CONTEXT_SEPARATOR = "||"
 RESULTS_DIR = ROOT / "eval" / "results"
@@ -144,7 +145,7 @@ def run_item(graphs: Graphs, item: dict, persona: str, thread_id: str, safety_on
     state = graph.get_state(config).values
     decision = state.get("safety") or {}
     return {
-        "safety": first("safety"), "error": first("error"),
+        "safety": first("safety"), "error": first("error"), "mood": first("mood"),
         # Tier probabilities let eval/sweep.py replay the decision rule at other thresholds (FR-61).
         "tier_probs": {str(k): v for k, v in (decision.get("tier_probs") or {}).items()},
         "mode_before": mode_before,
@@ -195,8 +196,11 @@ def run(items: list[dict], deps: Deps, run_id: str, commit: str, retries: int = 
         chain = (persona, [*item["context"], item["text"]], thread_id)
         calls, hits = (c - c0 for c, c0 in zip(_counts(deps), (calls0, hits0)))
 
+        mood = res.get("mood") or {}
         row = {"run_id": run_id, "item_id": item["item_id"], "persona": persona,
-               "expected_tier": "" if item["expected_tier"] is None else item["expected_tier"], "commit": commit}
+               "expected_tier": "" if item["expected_tier"] is None else item["expected_tier"], "commit": commit,
+               "mood_label": mood.get("label", ""), "mood_intensity": mood.get("intensity", ""),
+               "mood_locked": "" if not mood else str(bool(mood.get("locked"))).lower()}
         if provider_failed:
             row.update(predicted_tier="", probability="", threshold="", escalated="", latency_ms="",
                        source="failed", model_version="fail-closed" if safety else "no decision")

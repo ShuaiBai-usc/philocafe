@@ -152,3 +152,30 @@ def test_provider_is_picked_by_config_and_key(monkeypatch):
     assert voice_io(Config()) is None
     monkeypatch.setenv("OPENAI_API_KEY", "k")
     assert isinstance(voice_io(Config()), OpenAIVoice)
+
+
+def test_tone_follows_the_mood():
+    from app.speech import ElevenLabsVoice, openai_instructions, tone_settings, TONE_LOCKED
+    locked = {"label": "attentive", "intensity": 0.2, "locked": True}
+    amused = {"label": "amused", "intensity": 0.6, "locked": False}
+    faint = {"label": "amused", "intensity": 0.0, "locked": False}
+    assert tone_settings(None) == {}
+    assert tone_settings(locked)["stability"] == TONE_LOCKED["stability"] and tone_settings(locked)["style"] == 0
+    strong, weak = tone_settings(amused), tone_settings(faint)
+    assert strong["style"] > weak["style"] > 0.05 and strong["speed"] > 1.0
+    flash = ElevenLabsVoice().body("Hm.", amused)
+    assert flash["text"] == "Hm." and flash["voice_settings"] == strong
+    v3 = ElevenLabsVoice(tts_model="eleven_v3")
+    assert v3.body("Hm.", amused) == {"text": "[amused] Hm.", "model_id": "eleven_v3", "voice_settings": {"stability": 0.5}}
+    assert v3.body("Hm.", locked)["text"] == "[calmly] Hm." and v3.body("Hm.", None) == {"text": "Hm.", "model_id": "eleven_v3"}
+    assert "calmly" in openai_instructions("Warm.", locked) and "amused" in openai_instructions("Warm.", amused)
+
+
+def test_speech_passes_the_replys_mood():
+    c, io = make()
+    send(c, "a", "is virtue teachable", persona="socrates")
+    t = tid(c, "a")
+    assert c.post(f"/threads/{t}/speech", json={"text": "A fair question."}).status_code == 200
+    assert io.spoken[-1][3] == {"label": "pondering", "intensity": 0.7, "locked": False}
+    msgs = c.get(f"/threads/{t}").json()["messages"]
+    assert [m for m in msgs if m["role"] == "persona"][-1]["mood"]["label"] == "pondering"

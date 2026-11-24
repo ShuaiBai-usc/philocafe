@@ -10,7 +10,7 @@ from typing import Any, TypedDict
 
 from langgraph.config import get_stream_writer
 
-EVENT_TYPES = ("voice", "token", "citation", "exit", "safety", "trace", "done", "error")
+EVENT_TYPES = ("voice", "mood", "token", "citation", "exit", "safety", "trace", "done", "error")
 
 
 class Event(TypedDict):

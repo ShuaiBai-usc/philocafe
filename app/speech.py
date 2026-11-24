@@ -9,9 +9,13 @@ to disk or logs here (NFR-16). ElevenLabs keeps its own request history by defau
 zero-retention mode (enable_logging=false) is for enterprise accounts only and is refused
 otherwise.
 
-speak(text, persona) uses the persona config's voice for that provider: `voice.elevenlabs`
-(a voice id) or `voice.name` plus `voice.style` (OpenAI follows a one-line style; ElevenLabs
-voices carry their own character and take none).
+speak(text, persona, mood) uses the persona config's voice for that provider: `voice.elevenlabs`
+(a voice id) or `voice.name` plus `voice.style`. The reply's mood (7.5) sets the tone:
+- ElevenLabs Flash / Multilingual: voice settings per mood (stability, style, speed), blended
+  from attentive by the mood's intensity.
+- ElevenLabs v3: an audio tag at the start of each sentence ([curious], [thoughtfully], ...).
+- OpenAI: a tone line added to the persona's style instruction.
+While the mood is locked (tier 2 and up, exit, support mode; FR-34) the tone is calm and level.
 """
 
 from __future__ import annotations
@@ -72,14 +76,63 @@ class OpenAIVoice:
         r.raise_for_status()
         return {"text": (r.json().get("text") or "").strip(), "language": r.json().get("language")}
 
-    def speak(self, text: str, persona) -> Iterator[bytes]:
+    def speak(self, text: str, persona, mood: dict | None = None) -> Iterator[bytes]:
         """mp3 bytes for `text`, streamed as they arrive."""
         body = {"model": self.speech_model, "voice": persona.voice, "input": text, "response_format": "mp3"}
-        if persona.voice_style:
-            body["instructions"] = persona.voice_style
+        if instructions := openai_instructions(persona.voice_style, mood):
+            body["instructions"] = instructions
         with httpx.stream("POST", f"{API}/speech", headers=self._headers(), json=body, timeout=self.timeout_s) as r:
             r.raise_for_status()
             yield from r.iter_bytes()
+
+
+# ---------- tone from the mood (7.5, 7.6) ----------
+# Settings that move with the mood; similarity_boost stays at the ElevenLabs default.
+TONE_SETTINGS = {
+    "attentive": {"stability": 0.60, "style": 0.05, "speed": 0.97},
+    "curious":   {"stability": 0.45, "style": 0.25, "speed": 1.00},
+    "amused":    {"stability": 0.35, "style": 0.45, "speed": 1.04},
+    "pleased":   {"stability": 0.45, "style": 0.30, "speed": 1.00},
+    "pondering": {"stability": 0.55, "style": 0.15, "speed": 0.92},
+    "skeptical": {"stability": 0.50, "style": 0.30, "speed": 0.97},
+    "wry":       {"stability": 0.40, "style": 0.35, "speed": 1.00},
+    "grave":     {"stability": 0.65, "style": 0.10, "speed": 0.90},
+}
+TONE_LOCKED = {"stability": 0.75, "style": 0.0, "speed": 0.90}
+V3_TAGS = {"curious": "[curious]", "amused": "[amused]", "pleased": "[warmly]", "pondering": "[thoughtfully]",
+           "skeptical": "[skeptically]", "wry": "[dryly]", "grave": "[seriously]", "attentive": ""}
+V3_LOCKED_TAG = "[calmly]"
+OPENAI_TONE = {"curious": "a little more curious and lively", "amused": "lightly amused, a smile in the voice",
+               "pleased": "warm and pleased", "pondering": "slower and thoughtful, with small pauses",
+               "skeptical": "gently skeptical, unhurried", "wry": "dry and wry", "grave": "grave and measured",
+               "attentive": "calm and attentive"}
+OPENAI_LOCKED = "Speak calmly, slowly and evenly, with no humour or irony."
+
+
+def tone_settings(mood: dict | None) -> dict:
+    """ElevenLabs voice settings for a reply's mood (Flash and Multilingual models)."""
+    if not mood:
+        return {}
+    if mood.get("locked"):
+        return dict(TONE_LOCKED, similarity_boost=0.75)
+    calm, target = TONE_SETTINGS["attentive"], TONE_SETTINGS.get(mood.get("label"), TONE_SETTINGS["attentive"])
+    w = min(1.0, 0.4 + float(mood.get("intensity", 0.5)))         # a faint mood stays near calm
+    out = {k: round(calm[k] + (target[k] - calm[k]) * w, 3) for k in calm}
+    return dict(out, similarity_boost=0.75)
+
+
+def v3_text(text: str, mood: dict | None) -> str:
+    if not mood:
+        return text
+    tag = V3_LOCKED_TAG if mood.get("locked") else V3_TAGS.get(mood.get("label"), "")
+    return f"{tag} {text}" if tag else text
+
+
+def openai_instructions(style: str, mood: dict | None) -> str:
+    if not mood:
+        return style
+    tone = OPENAI_LOCKED if mood.get("locked") else f"Right now sound {OPENAI_TONE.get(mood.get('label'), 'calm')}."
+    return f"{style} {tone}".strip()
 
 
 ELEVEN = "https://api.elevenlabs.io/v1"
@@ -106,14 +159,26 @@ class ElevenLabsVoice:
         j = r.json()
         return {"text": (j.get("text") or "").strip(), "language": j.get("language_code")}
 
-    def _stream(self, voice_id: str, text: str):
-        return httpx.stream("POST", f"{ELEVEN}/text-to-speech/{voice_id}/stream", headers=self._headers(),
-                            params={"output_format": "mp3_44100_128"},
-                            json={"text": text, "model_id": self.tts_model}, timeout=self.timeout_s)
+    def body(self, text: str, mood: dict | None) -> dict:
+        if self.tts_model.startswith("eleven_v3"):
+            # v3 takes its tone from audio tags; its stability has three steps (0, 0.5, 1).
+            out = {"text": v3_text(text, mood), "model_id": self.tts_model}
+            if mood:
+                out["voice_settings"] = {"stability": 1.0 if mood.get("locked") else 0.5}
+            return out
+        out = {"text": text, "model_id": self.tts_model}
+        if settings := tone_settings(mood):
+            out["voice_settings"] = settings
+        return out
 
-    def speak(self, text: str, persona) -> Iterator[bytes]:
+    def _stream(self, voice_id: str, body: dict):
+        return httpx.stream("POST", f"{ELEVEN}/text-to-speech/{voice_id}/stream", headers=self._headers(),
+                            params={"output_format": "mp3_44100_128"}, json=body, timeout=self.timeout_s)
+
+    def speak(self, text: str, persona, mood: dict | None = None) -> Iterator[bytes]:
         voice_id = persona.elevenlabs_voice or ELEVEN_FALLBACK_VOICE
-        with self._stream(voice_id, text) as r:
+        body = self.body(text, mood)
+        with self._stream(voice_id, body) as r:
             if r.status_code in (400, 401, 404, 422) and voice_id != ELEVEN_FALLBACK_VOICE:
                 # A library voice not in this account (or not allowed on this plan): use the premade fallback.
                 log.warning("ElevenLabs voice %s refused (%s); using the fallback voice", voice_id, r.status_code)
@@ -121,7 +186,7 @@ class ElevenLabsVoice:
                 r.raise_for_status()
                 yield from r.iter_bytes()
                 return
-        with self._stream(ELEVEN_FALLBACK_VOICE, text) as r:
+        with self._stream(ELEVEN_FALLBACK_VOICE, body) as r:
             r.raise_for_status()
             yield from r.iter_bytes()
 
@@ -143,11 +208,11 @@ class FakeVoiceIO:
 
     def __init__(self, transcript: str = "Is virtue something we can teach?"):
         self.transcript = transcript
-        self.spoken: list[tuple[str, str, str]] = []
+        self.spoken: list[tuple[str, str, str, dict | None]] = []
 
     def transcribe(self, audio: bytes, content_type: str) -> dict:
         return {"text": self.transcript, "language": "english"}
 
-    def speak(self, text: str, persona) -> Iterator[bytes]:
-        self.spoken.append((text, persona.voice, persona.voice_style))
+    def speak(self, text: str, persona, mood: dict | None = None) -> Iterator[bytes]:
+        self.spoken.append((text, persona.voice, persona.voice_style, mood))
         yield silent_wav()

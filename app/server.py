@@ -272,6 +272,7 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
                 system = m.name == "system"
                 out.append({"id": m.id, "role": "system" if system else "persona", "text": m.content,
                             "citations": [] if system else m.additional_kwargs.get("citations", []),
+                            **({} if system or not m.additional_kwargs.get("mood") else {"mood": m.additional_kwargs["mood"]}),
                             "rating": None if system else c["ratings"].get(m.id)})
         return JSONResponse({"thread_id": thread_id, "persona_id": c["persona_id"], "title": c["title"],
                              "messages": out, "paused": bool(user["paused"])})
@@ -377,16 +378,18 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         if not text or len(text) > MAX_SPEECH_CHARS:
             return error(400, "bad_text", f"Send one sentence of up to {MAX_SPEECH_CHARS} characters.")
         msgs = (await run_in_threadpool(thread_state, thread_id)).get("messages") or []
-        replies = [" ".join(m.content.split()) for m in msgs
+        replies = [(" ".join(m.content.split()), m.additional_kwargs.get("mood")) for m in msgs
                    if isinstance(m, AIMessage) and m.name not in (None, "system")]
         if not replies:
             return error(409, "no_reply", "There is no persona reply to read.")
-        if not any(text in r for r in replies):
+        found = next((r for r in reversed(replies) if text in r[0]), None)
+        if found is None:
             return error(400, "not_in_reply", "Only the philosopher's replies in this conversation can be read aloud.")
+        mood = found[1]                       # 7.5: the tone follows the mood of the reply being read
         persona = deps.personas.get(c["persona_id"])
         if persona is None:
             return error(404, "unknown_persona", "No such persona.")
-        audio = deps.voice_io.speak(text, persona)
+        audio = deps.voice_io.speak(text, persona, mood)
         return StreamingResponse(audio, media_type=getattr(deps.voice_io, "media_type", "audio/mpeg"),
                                  headers={"Cache-Control": "no-store"})
 

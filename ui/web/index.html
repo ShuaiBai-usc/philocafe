@@ -476,7 +476,45 @@ function actor(key, W, H) {
   };
   if (!reduce) step();
   box.stop = () => { alive = false; clearTimeout(t); };
+  // Mood (7.5): hold one frame; after `ms` the idle loop comes back, with ms null it stays (locked: still).
+  box.hold = (frame, ms) => {
+    if (!alive) return;
+    clearTimeout(t);
+    img.src = A + frame;
+    if (ms != null && !reduce) { i = 0; t = setTimeout(step, ms); }
+  };
   return box;
+}
+
+/* ---------- Mood (7.5, FR-15, FR-16, FR-34) ---------- */
+// The scene sprite shows the persona's mood with poses it already has; the values are never shown.
+// From tier 2 up, at an exit and in support mode the mood is locked: a still, attentive pose.
+const MOOD_POSES = {
+  pondering: ["ponder_up_hmm"],
+  curious: ["rest_hmm_raised", "o_raised", "rest_right"],
+  skeptical: ["hold_hmm_stern", "hold_closed_hmm", "rest_hmm_raised", "ponder_up_hmm"],
+  amused: ["rest_happy_smile", "hold_happy_smile", "raise_happy_smile", "happy_smile"],
+  pleased: ["rest_smile", "hold_smile", "smile"],
+  wry: ["hold_smile", "o_raised", "rest_smile"],
+  grave: ["rest_stern", "rest_closed"],
+  attentive: ["_rest.png", "rest_left", "01_rest"],
+};
+function moodFrame(key, label) {
+  const frames = DATA[key].frames;
+  for (const k of [...(MOOD_POSES[label] || []), ...MOOD_POSES.attentive])
+    { const f = frames.find(x => x.includes(k)); if (f) return f; }
+  return frames[0];
+}
+let curMood = null;            // the latest mood event of this conversation
+const MOOD_HOLD_MS = 6000;     // after a reply, the mood pose stays this long before the idle loop
+function showMood(mood, ms = null) {
+  if (mood) curMood = mood;
+  if (!sceneActor || !cur) return;
+  const m = curMood || { label: "attentive", locked: false };
+  sceneActor.hold(moodFrame(cur.land, m.label), m.locked ? null : ms);
+}
+function thinkingPose() {                      // while the reply is on its way (7.6 latency)
+  if (sceneActor && cur && !curMood?.locked) sceneActor.hold(moodFrame(cur.land, "pondering"), null);
 }
 
 /* ---------- Navigation ---------- */
@@ -782,6 +820,7 @@ function sceneFor(p) {
   const frame = el("div", "frame");
   const bg = el("img", "px"); bg.src = A + d.scene; bg.alt = ""; Object.assign(bg.style, { position: "absolute", inset: 0, width: "100%", height: "100%" });
   sceneActor = actor(p.land, W, H);
+  if (curMood?.locked) sceneActor.hold(moodFrame(p.land, curMood.label), null);
   frame.append(bg, sceneActor); scene.append(frame); wrap.append(scene);
   return wrap;
 }
@@ -831,7 +870,7 @@ function toggleMenu(btn) {
 }
 
 function buildChat(id) {
-  const p = PH[id]; cur = p; curId = id; history = []; busy = false; fbIdx = 0; citations = []; curThread = null;
+  const p = PH[id]; cur = p; curId = id; history = []; busy = false; fbIdx = 0; citations = []; curThread = null; curMood = null;
   pauseScene(); clearInterval(typer);
   chat.className = "screen";
   chat.innerHTML = "";
@@ -1028,13 +1067,16 @@ async function checkIn(p, safe) {
 
 // Reads one turn's events into bubble `b` (7.2); shared by a new message and Regenerate.
 async function streamInto(b, events) {
-  const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null, messageId: null };
+  const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null, messageId: null, mood: null };
+  thinkingPose();
   try {
     for await (const ev of events) {
       const d = ev.data;
       if (ev.type === "voice") {
         out.voice = d.speaker;
         if (out.voice === "persona") { b.textContent = ""; backend.setPaused(false); leaveSupport(); }
+      } else if (ev.type === "mood") {
+        out.mood = d; showMood(d);
       } else if (ev.type === "token") {
         out.said += d.text;
         if (out.voice === "persona") { b.textContent += d.text; scrollDown(); }
@@ -1047,6 +1089,7 @@ async function streamInto(b, events) {
       if (DEBUG && (ev.type === "safety" || ev.type === "trace")) debugShow(ev);
     }
   } catch (e) { out.failed = { code: "network", message: String(e) }; }
+  showMood(null, MOOD_HOLD_MS);                // hold the pose a while, then back to idle (still when locked)
   return out;
 }
 
@@ -1661,6 +1704,9 @@ async function openThread(r) {
   const lastActs = [...document.querySelectorAll("#scroll > *")].pop();
   if (lastActs?.classList.contains("acts")) lastActs.classList.add("latest");     // only a final persona reply can be regenerated
   backend.setPaused(h.paused);
+  const lastMood = [...h.messages].reverse().find(m => m.role === "persona")?.mood;
+  if (h.paused) showMood({ label: "attentive", intensity: 0.2, locked: true });   // FR-34
+  else if (lastMood) showMood(lastMood, MOOD_HOLD_MS);
   if (h.paused) enterSupport(p);
   scrollDown();
 }

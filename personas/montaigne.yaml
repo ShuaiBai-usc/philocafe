@@ -33,6 +33,10 @@ tier2_passages: {}
 # Cross-persona risk sensitivity (FR-63); set at the final.
 risk_sensitivity: null
 
+# Moods (design doc 7.5): how the persona feels about the ideas, never about the user (FR-17).
+# At most six; attentive is the calm default and the safety lock (FR-34).
+moods: [curious, amused, wry, pondering, pleased, attentive]
+
 # Voice output (design doc 7.6): an ElevenLabs voice id, or an OpenAI stock voice with a one-line style.
 voice:
   elevenlabs: I1T6PEfqPxl45yKRN4aS   # chosen by Christopher
