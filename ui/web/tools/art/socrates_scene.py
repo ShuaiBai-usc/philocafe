@@ -70,6 +70,9 @@ BROWS = {
     "pleased":   both([(63, 55), (64, 54), (65, 54), (66, 54), (67, 54)]),
 }
 
+# the right brow follows the right eye one cell further out
+BROWS = {m: (l, [(x + 1, y) for x, y in r]) for m, (l, r) in BROWS.items()}
+
 # eyes when open: (x, row, colour); row 57 is the eye line, the eyes are x 64-67 and 73-76
 EYES = {
     "attentive": both([(64, 57, "white"), (65, 57, "pupil"), (66, 57, "pupil"), (67, 57, "white2")]),
