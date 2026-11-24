@@ -175,8 +175,17 @@ FACE_SKIN = {
 FACE_ROWS = [(y, 55, 78 if y < 49 else 80) for y in range(42, 63)]
 
 
+# The nose is drawn only by the mid shade beside its lit ridge (x 70): there the mid shade
+# goes to the body's shade instead, so the nose stays (right side its whole length, left side
+# the lower half, as the light falls from the left).
+NOSE = [(71, y) for y in range(57, 63)] + [(69, y) for y in range(59, 63)]
+
+
 def body_skin(img):
     p = img.copy()
+    for x, y in NOSE:
+        if tuple(p[y, x]) == (201, 152, 106):
+            p[y, x] = (196, 141, 101)
     for y, x0, x1 in FACE_ROWS:
         row = p[y, x0:x1 + 1]
         for src, dst in FACE_SKIN.items():
