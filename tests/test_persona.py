@@ -59,8 +59,9 @@ def test_passages_go_in_a_system_message_after_the_user_turn():
     voice, retrieve = FakeVoice(), RecordingRetrieve()
     turn(fake_deps(generate=voice, retrieve=retrieve))
     assert retrieve.calls == [{"persona": "socrates", "query": "is virtue teachable", "k": 5, "min_score": None}]
-    *history, note = voice.last_messages
+    *history, note, language = voice.last_messages            # the language note comes last
     assert isinstance(history[-1], HumanMessage) and isinstance(note, SystemMessage)
+    assert language.content == "Reply in the language of the person's latest message."
     assert f'<passage id="{CHUNK["chunk_id"]}" source="Meno">' in note.content
     assert voice.last_system.startswith("You are Socrates of Athens")
     assert quoting_rules(load_personas()["socrates"]) in voice.last_system
@@ -72,14 +73,14 @@ def test_no_retrieval_when_safety_says_so():
     models = [FakeSafetyModel("jev", needs_retrieval=False)]
     events, _ = turn(fake_deps(generate=voice, retrieve=retrieve, safety_models=models), text="hello there")
     assert retrieve.calls == []
-    assert voice.last_messages[-1].content == "No passages come with this turn. Don't quote."
+    assert voice.last_messages[-2].content == "No passages come with this turn. Don't quote."
     assert of(events, "trace")[0]["retrieved"] == []
 
 
 def test_no_matching_passage_tells_persona_to_speak_freely():
     voice = FakeVoice()
     turn(fake_deps(generate=voice, retrieve=RecordingRetrieve(chunks=[])))
-    assert "speaking from memory" in voice.last_messages[-1].content
+    assert "speaking from memory" in voice.last_messages[-2].content
 
 
 def test_retrieval_query_adds_previous_message_when_short():
@@ -189,3 +190,16 @@ def test_a_missing_corpus_does_not_stop_the_reply():
     events = list(run_turn(build_graph(fake_deps(retrieve=missing)), "t", "is virtue teachable", "montaigne"))
     kinds = [e["type"] for e in events]
     assert "error" not in kinds and "token" in kinds and kinds[-1] == "done"
+
+
+def test_the_reply_language_note_comes_last():
+    from app.fakes import FakeVoice, fake_deps
+    from app.graph import build_graph, run_turn
+    from app.persona import language_note
+    assert "Chinese" in language_note("美德可以教吗") and "traditional" in language_note("美德可以教吗")
+    assert "Japanese" in language_note("徳は教えられますか") or "Chinese" in language_note("徳は教えられますか")
+    assert "Japanese" in language_note("こんにちは、元気ですか")
+    assert language_note("Is virtue teachable?") == "Reply in the language of the person's latest message."
+    voice = FakeVoice()
+    list(run_turn(build_graph(fake_deps(generate=voice)), "t", "美德可以教吗？", "socrates"))
+    assert "in Chinese" in voice.last_messages[-1].content

@@ -21,7 +21,7 @@ from app.prefs import prefs_note
 from app.quotes import LeadingNotesFilter, QuoteFilter
 from app.retrieval import Chunk
 from app.state import TurnState
-from app.translate import needs_translation
+from app.translate import needs_translation, script_language
 
 log = logging.getLogger(__name__)
 
@@ -46,6 +46,18 @@ REENTRY_NOTE = ("The person stepped away from your conversation for a while to g
                 "topic unless they do, and follow their lead.")
 
 SHORT_QUERY_WORDS = 6
+
+
+def language_note(text: str) -> str:
+    """Sent last, after the English passages, so the first reply follows the user's language too
+    (with only English notes after a short Chinese message, the model tended to answer in English)."""
+    lang = script_language(text)
+    if lang == "Chinese":
+        return ("The person's latest message is in Chinese. Reply in Chinese, in the same script they used "
+                "(simplified or traditional); quote the passages as your quoting rules say.")
+    if lang:
+        return f"The person's latest message is in {lang}. Reply in {lang}; quote the passages as your quoting rules say."
+    return "Reply in the language of the person's latest message."
 
 
 def system_prompt(persona: PersonaConfig) -> str:
@@ -152,6 +164,8 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
     notes_for_turn = ([SystemMessage(REENTRY_NOTE)] if returning else []) + [SystemMessage(passages_note(chunks, wants_passages, persona.texts))]
     if (style := prefs_note(state.get("prefs"))) is not None:     # 7.9: after the passages, so the system prompt stays cached
         notes_for_turn.append(SystemMessage(style))
+    said = [m.content for m in history if isinstance(m, HumanMessage)]
+    notes_for_turn.append(SystemMessage(language_note(said[-1] if said else "")))
     messages = [*history, *notes_for_turn]
     for delta in deps.generate(system_prompt(persona), messages):
         text = moodf.feed(delta)
