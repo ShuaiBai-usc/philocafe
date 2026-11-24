@@ -18,7 +18,8 @@ Postgres so a thread, and its support mode, survives across function instances.
    |---|---|
    | `ANTHROPIC_API_KEY` | Anthropic key (voice, fallback, translation, notes) |
    | `JEV_API_KEY` | TypeSafe key |
-   | `OPENAI_API_KEY` | optional: turns on voice (design doc 7.6), transcription and read-aloud; empty = no mic or speaker |
+   | `ELEVENLABS_API_KEY` | optional: voice (design doc 7.6) when `config.yaml` voice.provider is `elevenlabs` (the default); empty = no mic or speaker |
+   | `OPENAI_API_KEY` | optional: voice when voice.provider is `openai` (or `PHILOCAFE_VOICE_PROVIDER=openai`) |
    | `PHILOCAFE_ACCESS_CODE` | the code you give the class; the app asks for it once per device |
    | `CRON_SECRET` | any long random string; guards the daily purge |
    | `PHILOCAFE_MIN_SCORE` | optional, defaults to 0.3 |

@@ -33,7 +33,8 @@ tier2_passages: {}
 # Cross-persona risk sensitivity (FR-63); set at the final.
 risk_sensitivity: null
 
-# Voice output (design doc 7.6): a stock voice and a one-line speaking style; no real person's voice.
+# Voice output (design doc 7.6): an ElevenLabs voice id, or an OpenAI stock voice with a one-line style.
 voice:
+  elevenlabs: 1YYTlNs7nGf3sEaTb78E   # Cedric Dh: calm, French accent, emotional range
   name: fable
   style: Relaxed, wry and conversational, like a friend musing over wine; easy pauses, never preachy.

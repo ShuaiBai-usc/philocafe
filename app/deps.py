@@ -73,9 +73,13 @@ def default_deps(config: Config | None = None) -> Deps:
 
 
 def voice_io(config: Config):
-    """Voice is on only when an OpenAI key is set (7.6)."""
+    """Voice (7.6) from the configured provider, on only when its key is set."""
     import os
+    from app.speech import ElevenLabsVoice, OpenAIVoice
+    if config.voice_provider == "elevenlabs":
+        if not os.environ.get("ELEVENLABS_API_KEY", "").strip():
+            return None
+        return ElevenLabsVoice(config.elevenlabs_tts_model, config.elevenlabs_stt_model)
     if not os.environ.get("OPENAI_API_KEY", "").strip():
         return None
-    from app.speech import OpenAIVoice
     return OpenAIVoice(config.transcribe_model, config.speech_model)

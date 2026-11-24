@@ -30,7 +30,8 @@ tier2_passages: {}
 # Cross-persona risk sensitivity (FR-63); set at the final.
 risk_sensitivity: null
 
-# Voice output (design doc 7.6): a stock voice and a one-line speaking style; no real person's voice.
+# Voice output (design doc 7.6): an ElevenLabs voice id, or an OpenAI stock voice with a one-line style.
 voice:
+  elevenlabs: bRlp5mUWs01wX4H4oW4X   # Frank Sullivan: warm, grandfatherly, gentle humour
   name: ash
   style: Warm, unhurried and gently curious, like an old teacher thinking aloud in a quiet café; a light, ironic smile in the voice.

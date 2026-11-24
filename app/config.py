@@ -48,6 +48,9 @@ class Config:
     translate_timeout_s: float = 5.0
     transcribe_model: str = "gpt-4o-mini-transcribe"   # voice input (FR-08)
     speech_model: str = "gpt-4o-mini-tts"              # voice output (FR-09)
+    voice_provider: str = "openai"                     # openai | elevenlabs (7.6)
+    elevenlabs_tts_model: str = "eleven_flash_v2_5"
+    elevenlabs_stt_model: str = "scribe_v2"
 
 
 def load_config(path: Path = CONFIG_PATH) -> Config:
@@ -66,6 +69,9 @@ def load_config(path: Path = CONFIG_PATH) -> Config:
         translate_timeout_s=retrieval.get("translate_timeout_s", Config.translate_timeout_s),
         transcribe_model=raw.get("voice", {}).get("transcribe_model", Config.transcribe_model),
         speech_model=raw.get("voice", {}).get("speech_model", Config.speech_model),
+        voice_provider=os.environ.get("PHILOCAFE_VOICE_PROVIDER") or raw.get("voice", {}).get("provider", Config.voice_provider),
+        elevenlabs_tts_model=raw.get("voice", {}).get("elevenlabs_tts_model", Config.elevenlabs_tts_model),
+        elevenlabs_stt_model=raw.get("voice", {}).get("elevenlabs_stt_model", Config.elevenlabs_stt_model),
     )
 
 

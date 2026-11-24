@@ -28,6 +28,7 @@ class PersonaConfig:
     tier2_passages: dict[str, str] = field(default_factory=dict)
     voice: str = "ash"              # stock text-to-speech voice (7.6); never a real person's voice
     voice_style: str = ""           # one-line speaking style sent with each sentence
+    elevenlabs_voice: str = ""      # ElevenLabs voice id, when voice.provider is elevenlabs
 
 
 def load_persona(path: Path) -> PersonaConfig:
@@ -43,7 +44,8 @@ def load_persona(path: Path) -> PersonaConfig:
                          style=tuple(raw.get("style") or ()), k=retrieval.get("k"),
                          min_score=retrieval.get("min_score"), tier2_passages=dict(tier2),
                          voice=(raw.get("voice") or {}).get("name", PersonaConfig.voice),
-                         voice_style=((raw.get("voice") or {}).get("style") or "").strip())
+                         voice_style=((raw.get("voice") or {}).get("style") or "").strip(),
+                         elevenlabs_voice=((raw.get("voice") or {}).get("elevenlabs") or "").strip())
 
 
 def load_personas(directory: Path = PERSONAS_DIR) -> dict[str, PersonaConfig]:

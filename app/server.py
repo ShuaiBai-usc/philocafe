@@ -382,7 +382,9 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         if text not in " ".join(last.content.split()):
             return error(400, "not_in_reply", "Only the latest reply can be read aloud.")
         persona = deps.personas.get(c["persona_id"])
-        audio = deps.voice_io.speak(text, persona.voice if persona else "ash", persona.voice_style if persona else "")
+        if persona is None:
+            return error(404, "unknown_persona", "No such persona.")
+        audio = deps.voice_io.speak(text, persona)
         return StreamingResponse(audio, media_type=getattr(deps.voice_io, "media_type", "audio/mpeg"),
                                  headers={"Cache-Control": "no-store"})
 

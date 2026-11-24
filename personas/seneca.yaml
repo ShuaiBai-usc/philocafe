@@ -33,7 +33,8 @@ tier2_passages: {}
 # Cross-persona risk sensitivity (FR-63); set at the final.
 risk_sensitivity: null
 
-# Voice output (design doc 7.6): a stock voice and a one-line speaking style; no real person's voice.
+# Voice output (design doc 7.6): an ElevenLabs voice id, or an OpenAI stock voice with a one-line style.
 voice:
+  elevenlabs: JBFqnCBsd6RMkjVDRZzb   # George (premade): warm, mature storyteller
   name: sage
   style: Steady, kind and composed, like a mentor writing a letter to a friend; clear and unhurried.

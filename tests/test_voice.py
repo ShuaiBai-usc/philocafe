@@ -95,7 +95,57 @@ def test_openai_requests_are_built_as_the_api_expects(monkeypatch):
     url, kw = seen["post"]
     assert url.endswith("/audio/transcriptions") and kw["data"]["model"] == "gpt-4o-mini-transcribe"
     assert kw["files"]["file"][0] == "clip.mp4" and kw["headers"]["Authorization"] == "Bearer sk-test"
-    assert b"".join(v.speak("Hi.", "ash", "Warm.")) == b"mp3"
+    from app.personas import load_personas
+    socrates = load_personas()["socrates"]
+    assert b"".join(v.speak("Hi.", socrates)) == b"mp3"
     method, url, kw = seen["stream"]
-    assert url.endswith("/audio/speech") and kw["json"] == {"model": "gpt-4o-mini-tts", "voice": "ash", "input": "Hi.",
-                                                            "response_format": "mp3", "instructions": "Warm."}
+    assert url.endswith("/audio/speech") and kw["json"]["voice"] == "ash" and kw["json"]["input"] == "Hi."
+    assert kw["json"]["instructions"] == socrates.voice_style
+
+
+def test_elevenlabs_requests_and_fallback_voice(monkeypatch):
+    import httpx
+    from app import speech
+    from app.personas import load_personas
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "xi-test")
+    calls = []
+
+    class Resp:
+        def __init__(self, status=200, body=None):
+            self.status_code, self.body = status, body or {"text": " hi ", "language_code": "eng"}
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise RuntimeError(self.status_code)
+        def json(self): return self.body
+        def iter_bytes(self): yield b"mp3"
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+
+    monkeypatch.setattr(httpx, "post", lambda url, **kw: calls.append(("post", url, kw)) or Resp())
+    statuses = iter([404, 200])
+    monkeypatch.setattr(httpx, "stream", lambda m, url, **kw: calls.append(("stream", url, kw)) or Resp(next(statuses)))
+    v = speech.ElevenLabsVoice()
+    assert v.transcribe(b"x", "audio/webm;codecs=opus") == {"text": "hi", "language": "eng"}
+    _, url, kw = calls[0]
+    assert url.endswith("/speech-to-text") and kw["data"]["model_id"] == "scribe_v2" and kw["headers"]["xi-api-key"] == "xi-test"
+    socrates = load_personas()["socrates"]
+    assert b"".join(v.speak("Hello.", socrates)) == b"mp3"
+    first, second = calls[1], calls[2]
+    assert socrates.elevenlabs_voice in first[1] and speech.ELEVEN_FALLBACK_VOICE in second[1]
+    assert second[2]["json"] == {"text": "Hello.", "model_id": "eleven_flash_v2_5"}
+
+
+def test_provider_is_picked_by_config_and_key(monkeypatch):
+    from dataclasses import replace
+    from app.config import Config
+    from app.deps import voice_io
+    from app.speech import ElevenLabsVoice, OpenAIVoice
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    eleven = replace(Config(), voice_provider="elevenlabs")
+    assert voice_io(eleven) is None
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    assert isinstance(voice_io(eleven), ElevenLabsVoice)
+    assert voice_io(Config()) is None
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    assert isinstance(voice_io(Config()), OpenAIVoice)

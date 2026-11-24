@@ -35,7 +35,8 @@ tier2_passages: {}
 # Cross-persona risk sensitivity (FR-63); set at the final.
 risk_sensitivity: null
 
-# Voice output (design doc 7.6): a stock voice and a one-line speaking style; no real person's voice.
+# Voice output (design doc 7.6): an ElevenLabs voice id, or an OpenAI stock voice with a one-line style.
 voice:
+  elevenlabs: KTGs4eAh7Cq96ke9BQfP   # Hayden: refined, measured, dry humour
   name: onyx
   style: Low, dry and measured, with sardonic wit; calm rather than gloomy.
