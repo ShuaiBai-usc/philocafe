@@ -82,6 +82,10 @@ EYES = {
     "pleased":   both([(64, 57, "dark"), (65, 56, "dark"), (66, 56, "dark"), (67, 57, "dark")]),
 }
 
+# the right eye sits on the shaded half of the face, where white2 reads as skin: its inner corner is plain white
+for _m, (_l, _r) in EYES.items():
+    EYES[_m] = (_l, [(x, y, "white") if (x, y, c) == (72, 57, "white2") else (x, y, c) for x, y, c in _r])
+
 # mouth when closed, centred on the same line; talk frames open it in the same place
 MOUTHS = {
     "attentive": [(67, 67, "dark"), (68, 67, "dark"), (69, 67, "lip"), (70, 67, "lip"), (71, 67, "dark"), (72, 67, "dark")],
