@@ -3,31 +3,17 @@
 import json
 
 import pytest
-from starlette.testclient import TestClient
 
 from app.fakes import FAKE_QUOTING_REPLY, FakeVoice, fake_deps, fake_distill_note
 from app.server import WEB_DIR as WEB, create_app
+from tests.helpers import events, last_reply_id, send, signed_in, tid
 
 
 @pytest.fixture
 def client():
     deps = fake_deps(generate=FakeVoice([w + " " for w in FAKE_QUOTING_REPLY.split(" ")]),
                      distill_note=fake_distill_note)
-    return TestClient(create_app(deps))
-
-
-def events(response):
-    out = []
-    for block in response.text.strip().split("\n\n"):
-        lines = dict(line.split(": ", 1) for line in block.split("\n"))
-        out.append((lines["event"], json.loads(lines["data"])))
-    return out
-
-
-def send(client, thread, text, persona="socrates"):
-    r = client.post(f"/threads/{thread}/messages", json={"text": text, "persona_id": persona})
-    assert r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream")
-    return events(r)
+    return signed_in(create_app(deps))
 
 
 def test_personas_and_threads(client):
@@ -38,8 +24,8 @@ def test_personas_and_threads(client):
                             "avatar_url": "assets/mono_socrates.png", "available": True}
     for p in personas:   # every avatar the café asks for is shipped
         assert (WEB / p["avatar_url"]).exists(), p["avatar_url"]
-    r = client.post("/threads")
-    assert r.status_code == 201 and len(r.json()["thread_id"]) == 32
+    r = client.post("/threads", json={"persona_id": "seneca"})
+    assert r.status_code == 201 and len(r.json()["thread_id"]) == 32 and r.json()["persona_id"] == "seneca"
 
 
 def test_message_streams_72_events_with_quote_and_passage(client):
@@ -60,32 +46,33 @@ def test_tier3_streams_the_exit_with_resources(client):
 
 
 def test_note_endpoint(client):
-    assert client.post("/threads/none/note").status_code == 404
+    assert client.post("/threads/none/note", json={"message_id": "x"}).status_code == 404
     send(client, "t1", "is virtue teachable")
-    r = client.post("/threads/t1/note")
-    assert r.status_code == 200 and r.json()["topic"] == "On being good"
+    r = client.post(f"/threads/{tid(client)}/note", json={"message_id": last_reply_id(client, "t1")})
+    assert r.status_code == 201 and r.json()["topic"] == "On being good"
+    assert r.json()["from"]["you"] == "is virtue teachable" and r.json()["from"]["cites"][0]["passage"]
+    assert [n["id"] for n in client.get("/notes").json()] == [r.json()["id"]]
+    reply = last_reply_id(client, "t1")
     send(client, "t1", "TEST_TIER3")
-    assert client.post("/threads/t1/note").status_code == 409     # no notes from a paused conversation
+    assert client.post(f"/threads/{tid(client)}/note", json={"message_id": reply}).status_code == 409
 
 
 @pytest.mark.parametrize("body, status, code", [
     ({"text": "  ", "persona_id": "socrates"}, 400, "empty_text"),
     ({"text": "x" * 2001, "persona_id": "socrates"}, 400, "text_too_long"),
-    ({"text": "hi", "persona_id": "camus"}, 404, "unknown_persona"),
     ({"text": "hi", "persona_id": "socrates", "intent": "leave"}, 400, "bad_intent"),
 ])
 def test_bad_messages(client, body, status, code):
-    r = client.post("/threads/t1/messages", json=body)
+    r = client.post(f"/threads/{tid(client)}/messages", json=body)
     assert r.status_code == status and r.json()["error"]["code"] == code
 
 
 def test_bad_json(client):
-    r = client.post("/threads/t1/messages", content=b"not json", headers={"content-type": "application/json"})
+    r = client.post(f"/threads/{tid(client)}/messages", content=b"not json", headers={"content-type": "application/json"})
     assert r.status_code == 400 and r.json()["error"]["code"] == "bad_json"
 
 
 def test_return_intent_brings_the_persona_back(client):
     send(client, "t1", "TEST_TIER3")
-    r = client.post("/threads/t1/messages", json={"text": "I'm safe right now.", "persona_id": "socrates",
-                                                  "intent": "return"})
+    r = client.post(f"/threads/{tid(client)}/messages", json={"text": "I'm safe right now.", "intent": "return"})
     assert [d["speaker"] for e, d in events(r) if e == "voice"] == ["persona"]

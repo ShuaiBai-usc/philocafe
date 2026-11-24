@@ -116,6 +116,7 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
 
     notes, quotes = LeadingNotesFilter(), QuoteFilter(chunks)
     parts: list[str] = []
+    cited: list[dict] = []      # kept on the reply so a reopened conversation shows its sources (7.10)
 
     def send(outputs):
         for kind, value in outputs:
@@ -124,8 +125,10 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
                 parts.append(value)
             else:
                 # quote and passage are optional 7.2 fields: the checked words and the full passage.
-                emit("citation", chunk_id=value["chunk_id"], work=value["work"], section=value["section"],
-                     source_url=value["source_url"], quote=value["quote"], passage=value["text"])
+                citation = dict(chunk_id=value["chunk_id"], work=value["work"], section=value["section"],
+                                source_url=value["source_url"], quote=value["quote"], passage=value["text"])
+                emit("citation", **citation)
+                cited.append(citation)
 
     returning = state.get("mode") == "support"      # FR-32: safety let the persona back in
     notes_for_turn = ([SystemMessage(REENTRY_NOTE)] if returning else []) + [SystemMessage(passages_note(chunks, wants_passages, persona.texts))]
@@ -141,4 +144,5 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
 
     reply = "".join(parts)
     return {"retrieved": chunks, "reply": reply, "citations": quotes.cited, "quotes": quotes.checks,
-            "retrieval_query": query, "mode": "persona", "messages": [AIMessage(reply, name=persona.id)]}
+            "retrieval_query": query, "mode": "persona",
+            "messages": [AIMessage(reply, name=persona.id, additional_kwargs={"citations": cited})]}

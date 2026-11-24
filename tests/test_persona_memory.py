@@ -66,18 +66,18 @@ def test_untagged_messages_from_older_threads_follow_their_reply():
     assert said(persona_history(messages, "socrates")) == ["a", "A", "c"]
 
 
-def test_a_note_is_distilled_from_the_current_philosophers_conversation_only():
-    from starlette.testclient import TestClient
+def test_a_note_is_distilled_from_its_own_conversation_only():
     from app.server import create_app
+    from tests.helpers import last_reply_id, send, signed_in, tid
     seen = {}
 
     def distill(name, messages):
         seen["text"] = said(messages)
         return fake_distill_note(name, messages)
 
-    client = TestClient(create_app(fake_deps(distill_note=distill), access_code=""))
-    tid = client.post("/threads").json()["thread_id"]
-    client.post(f"/threads/{tid}/messages", json={"text": "About courage", "persona_id": "socrates"})
-    client.post(f"/threads/{tid}/messages", json={"text": "About friendship", "persona_id": "montaigne"})
-    assert client.post(f"/threads/{tid}/note").status_code == 200
+    client = signed_in(create_app(fake_deps(distill_note=distill), access_code=""))
+    send(client, "a", "About courage", persona="socrates")
+    send(client, "b", "About friendship", persona="montaigne")
+    r = client.post(f"/threads/{tid(client, 'b')}/note", json={"message_id": last_reply_id(client, "b")})
+    assert r.status_code == 201
     assert "About courage" not in seen["text"] and "About friendship" in seen["text"]

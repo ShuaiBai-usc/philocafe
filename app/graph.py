@@ -87,22 +87,28 @@ def rewind_last_turn(graph, thread_id: str) -> tuple[str, str]:
 
 
 def run_turn(graph, thread_id: str, text: str, persona_id: str, intent: str | None = None,
-             prefs: dict[str, int] | None = None) -> Iterator[Event]:
+             prefs: dict[str, int] | None = None, paused: bool | None = None) -> Iterator[Event]:
     """Run one user turn and yield its UI events, ending with `done` or `error`.
     `intent="return"` marks the web app's "ready to come back" button (FR-32).
-    `prefs` are the visitor's reply preferences (7.9); only the persona node reads them."""
+    `prefs` are the visitor's reply preferences (7.9); only the persona node reads them.
+    `paused` is the user's pause across all their conversations (7.10): when given, it sets
+    whether this turn starts in support mode, whatever this thread's own checkpoint says."""
     config = {"configurable": {"thread_id": thread_id}}
     # Per-turn fields are reset here; messages and mode carry over in the checkpoint.
     # The message is tagged with the persona it is addressed to, so each persona gets its own history.
     turn = {"thread_id": thread_id, "persona_id": persona_id, "messages": [HumanMessage(text, name=persona_id)],
             "trace": [], "retrieved": [], "reply": "", "citations": [], "quotes": [], "retrieval_query": "",
             "return_request": intent == "return", "prefs": dict(prefs or {})}
+    if paused is not None:
+        turn["mode"] = "support" if paused else "persona"
     try:
         yield from graph.stream(turn, config, stream_mode="custom")
         state = graph.get_state(config).values
         yield event("trace", nodes=state["trace"],
                     retrieved=[c["chunk_id"] for c in state["retrieved"]],
                     skipped=skipped_quotes(state.get("quotes", [])))
-        yield event("done")
+        # The stored reply's id (7.10), so the UI can rate it or save it as a note.
+        last = state["messages"][-1] if state.get("messages") else None
+        yield event("done", **({"message_id": last.id} if isinstance(last, AIMessage) and last.name != "system" else {}))
     except Exception as e:
         yield event("error", code=type(e).__name__, message=str(e)[:500])

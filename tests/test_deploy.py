@@ -16,7 +16,9 @@ from app.config import ROOT
 from app.fakes import FAKE_QUOTING_REPLY, FakeVoice, fake_deps
 from app.graph import build_graph, run_turn
 from app.server import create_app
+from app.store import MemoryStore
 from app.submissions import MemorySubmissions
+from tests.helpers import send, signed_in, tid
 
 
 def quoting_deps():
@@ -31,9 +33,10 @@ def test_access_code_guards_every_api_route():
     assert client.post("/threads").status_code == 401
     assert client.post("/threads/t1/messages", json={"text": "hi"}).status_code == 401
     assert client.post("/threads/t1/note").status_code == 401
+    assert client.post("/auth/login", json={"nickname": "a", "passcode": "b"}).status_code == 401
     ok = {"X-Philocafe-Code": "sesame"}
     assert client.get("/personas", headers=ok).status_code == 200
-    assert client.post("/threads/t1/messages", json={"text": "hi"}, headers=ok).status_code == 200
+    assert client.post("/threads", headers=ok).json()["error"]["code"] == "sign_in"   # code alone is not enough
 
 
 def test_no_access_code_means_open_locally(monkeypatch):
@@ -71,12 +74,13 @@ def test_postgres_is_used_when_configured(monkeypatch):
     monkeypatch.setattr(server, "postgres_pool", lambda url: opened.append(url) or "pool")
     monkeypatch.setattr(server, "postgres_checkpointer", lambda pool: saver)
     monkeypatch.setattr(server, "PostgresSubmissions", lambda pool: MemorySubmissions())
+    monkeypatch.setattr(server, "PostgresStore", lambda pool: MemoryStore())
     monkeypatch.setenv("PHILOCAFE_CHECKPOINT_URL", "postgres://neon.example/db")
-    client = TestClient(create_app(quoting_deps(), access_code=""))
-    client.post("/threads/t1/messages", json={"text": "TEST_TIER3"})
+    client = signed_in(create_app(quoting_deps(), access_code=""))
+    send(client, "t1", "TEST_TIER3")
     assert opened == ["postgres://neon.example/db"]
     # the support mode was written through the configured checkpointer
-    assert saver.get_tuple({"configurable": {"thread_id": "t1"}}).checkpoint["channel_values"]["mode"] == "support"
+    assert saver.get_tuple({"configurable": {"thread_id": tid(client)}}).checkpoint["channel_values"]["mode"] == "support"
 
 
 def test_postgres_pool_checks_connections_before_use(monkeypatch):
@@ -162,28 +166,31 @@ class PostgresLikeSaver(InMemorySaver):
     conn = None
 
 
-@pytest.mark.parametrize("setting, hours", [(None, 168.0), ("", 168.0), ("24", 24.0)])
+@pytest.mark.parametrize("setting, hours", [("168", 168.0), ("24", 24.0)])
 def test_purge_deletes_conversations_older_than_the_retention_window(monkeypatch, setting, hours):
     asked = []
-    monkeypatch.setattr(server, "stale_threads", lambda saver, h: asked.append(h) or ["old"])
+    saver, store = PostgresLikeSaver(), MemoryStore()
+    client = signed_in(create_app(quoting_deps(), checkpointer=saver, access_code="", store=store))
+    send(client, "old", "hello")
+    old = tid(client, "old")
+    monkeypatch.setattr(server, "stale_threads", lambda saver, h: asked.append(h) or [old])
+    monkeypatch.setenv("CRON_SECRET", "s3cret")
+    monkeypatch.setenv("PHILOCAFE_RETENTION_HOURS", setting)
+    r = client.get("/internal/purge", headers={"Authorization": "Bearer s3cret"})
+    assert asked == [hours] and r.json() == {"deleted": 1}
+    assert saver.get_tuple({"configurable": {"thread_id": old}}) is None
+    assert client.get("/threads").json() == []                       # the conversation row goes too
+
+
+@pytest.mark.parametrize("setting", [None, "", "0"])
+def test_purge_is_off_by_default_and_at_zero(monkeypatch, setting):
+    monkeypatch.setattr(server, "stale_threads", lambda saver, h: pytest.fail("purge should be off"))
     saver = PostgresLikeSaver()
-    client = TestClient(create_app(quoting_deps(), checkpointer=saver, access_code=""))
-    client.post("/threads/old/messages", json={"text": "hello"})
+    client = signed_in(create_app(quoting_deps(), checkpointer=saver, access_code=""))
+    send(client, "kept", "hello")
     monkeypatch.setenv("CRON_SECRET", "s3cret")
     if setting is not None:
         monkeypatch.setenv("PHILOCAFE_RETENTION_HOURS", setting)
     r = client.get("/internal/purge", headers={"Authorization": "Bearer s3cret"})
-    assert asked == [hours] and r.json() == {"deleted": 1}
-    assert saver.get_tuple({"configurable": {"thread_id": "old"}}) is None
-
-
-def test_retention_zero_turns_the_purge_off(monkeypatch):
-    monkeypatch.setattr(server, "stale_threads", lambda saver, h: pytest.fail("purge should be off"))
-    saver = PostgresLikeSaver()
-    client = TestClient(create_app(quoting_deps(), checkpointer=saver, access_code=""))
-    client.post("/threads/kept/messages", json={"text": "hello"})
-    monkeypatch.setenv("CRON_SECRET", "s3cret")
-    monkeypatch.setenv("PHILOCAFE_RETENTION_HOURS", "0")
-    r = client.get("/internal/purge", headers={"Authorization": "Bearer s3cret"})
     assert r.json()["deleted"] == 0 and "off" in r.json()["note"]
-    assert saver.get_tuple({"configurable": {"thread_id": "kept"}}) is not None
+    assert saver.get_tuple({"configurable": {"thread_id": tid(client, "kept")}}) is not None

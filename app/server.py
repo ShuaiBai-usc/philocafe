@@ -11,9 +11,13 @@ On Vercel (ADR-11) the entrypoint is asgi.py and these environment variables mat
 - PHILOCAFE_CHECKPOINT_URL, else DATABASE_URL or POSTGRES_URL: conversation checkpoints
   go to Postgres, so a thread (and its support mode, FR-32) survives across function
   instances. Without one, checkpoints stay in memory, which is right for local runs.
-- CRON_SECRET: guards /internal/purge, which the daily Vercel Cron calls to delete
-  conversations older than PHILOCAFE_RETENTION_HOURS: 168 (7 days) by default, set to
-  24 on showcase day; 0 turns the purge off.
+- PHILOCAFE_SECRET: signs sign-in tokens (7.10). Set it on Vercel; without it, tokens last
+  only as long as the server process.
+- Accounts, conversation rows and notes (app/store.py) go to the same Postgres; locally they
+  stay in memory.
+- CRON_SECRET: guards /internal/purge, which the daily Vercel Cron calls. It deletes
+  conversations older than PHILOCAFE_RETENTION_HOURS; 0, the default since accounts (7.10),
+  keeps everything until the user deletes it.
 - PHILOCAFE_ADMIN_TOKEN: guards GET /test/submissions.csv, the export of what testers
   submitted on /test.html (app/submissions.py). Those submissions are not purged.
 """
@@ -25,7 +29,7 @@ import json
 import logging
 import mimetypes
 import os
-import uuid
+import re
 from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI
@@ -39,18 +43,26 @@ from starlette.staticfiles import StaticFiles
 from app.config import ROOT
 from app.deps import Deps
 from app.graph import CannotRegenerate, build_graph, rewind_last_turn, run_turn
-from app.persona import persona_history
+from app.auth import MAX_PASSCODE, MIN_PASSCODE, Tokens, check_passcode, hash_passcode, valid_nickname
 from app.prefs import MAX_FEEDBACK, apply_changes, clean_prefs, merge_changes, rule_changes, tag_changes
+from app.store import LOCK_FAILURES, MemoryStore, NicknameTaken, PostgresStore
 from app.submissions import MAX_TRANSCRIPT, SEVERAL, MemorySubmissions, PostgresSubmissions, to_csv
 
 log = logging.getLogger(__name__)
 
 MAX_TEXT = 2000
 MAX_REPLY = 8000                  # a persona reply sent back for a note or a rating
-DEFAULT_RETENTION_HOURS = 168     # 7 days, for multi-day testing; 24 on showcase day (ADR-11)
+DEFAULT_RETENTION_HOURS = 0       # accounts keep history until the user deletes it (7.10); >0 purges
 WEB_DIR = ROOT / "ui" / "web"
 CODE_HEADER = "x-philocafe-code"
 mimetypes.add_type("application/manifest+json", ".webmanifest")
+
+
+def last_question(text: str) -> str:
+    """The reply's last question (or its first sentence): a note's title when distillation fails."""
+    parts = re.findall(r"[^.!?。！？]+[.!?。！？]*", text) or [text]
+    asked = [p for p in parts if re.search(r"[?？]", p)]
+    return (asked[-1] if asked else parts[0]).strip()[:200]
 
 
 def error(status: int, code: str, message: str) -> JSONResponse:
@@ -112,14 +124,17 @@ def stale_threads(saver, hours: float) -> list[str]:
 
 
 def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | None = None,
-               submissions=None) -> FastAPI:
+               submissions=None, store=None, tokens: Tokens | None = None) -> FastAPI:
     deps = deps or deps_from_env()
     url = checkpoint_url()
-    pool = postgres_pool(url) if url and (checkpointer is None or submissions is None) else None
+    pool = postgres_pool(url) if url and (checkpointer is None or submissions is None or store is None) else None
     if checkpointer is None and pool is not None:
         checkpointer = postgres_checkpointer(pool)
     if submissions is None:
         submissions = PostgresSubmissions(pool) if pool is not None else MemorySubmissions()
+    if store is None:
+        store = PostgresStore(pool) if pool is not None else MemoryStore()
+    tokens = tokens or Tokens()
     graph = build_graph(deps, checkpointer=checkpointer)
     code = access_code if access_code is not None else os.environ.get("PHILOCAFE_ACCESS_CODE", "")
 
@@ -128,8 +143,29 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
             return error(401, "access_code", "This café needs an access code.")
         return None
 
+    def signed_in(request: Request) -> tuple[dict | None, JSONResponse | None]:
+        """The access code, then the account token (7.10): (user, None) or (None, error)."""
+        if denied := locked(request):
+            return None, denied
+        auth = request.headers.get("authorization", "")
+        user_id = tokens.user_id(auth[7:]) if auth.startswith("Bearer ") else None
+        user = store.user(user_id) if user_id else None
+        if user is None:
+            return None, error(401, "sign_in", "Please sign in.")
+        return user, None
+
+    def owned(user: dict, thread_id: str) -> dict | None:
+        return store.conversation(user["id"], thread_id)
+
     def thread_state(thread_id: str) -> dict:
         return graph.get_state({"configurable": {"thread_id": thread_id}}).values
+
+    async def json_body(request: Request):
+        try:
+            body = await request.json() if await request.body() else {}
+        except json.JSONDecodeError:
+            return None
+        return body if isinstance(body, dict) else None
 
     async def personas(request: Request) -> JSONResponse:
         if denied := locked(request):
@@ -138,90 +174,250 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
                               "avatar_url": f"assets/mono_{p.id}.png", "available": True}
                              for p in deps.personas.values()])
 
-    async def new_thread(request: Request) -> JSONResponse:
+    # ---------- accounts (FR-43) ----------
+    async def register(request: Request) -> JSONResponse:
         if denied := locked(request):
             return denied
-        return JSONResponse({"thread_id": uuid.uuid4().hex}, status_code=201)
+        body = await json_body(request)
+        if body is None:
+            return error(400, "bad_json", "The request body is not JSON.")
+        nickname, passcode = str(body.get("nickname") or "").strip(), str(body.get("passcode") or "")
+        if not valid_nickname(nickname):
+            return error(400, "bad_nickname", "Nicknames are 3 to 24 letters, numbers, spaces or . ' - _")
+        if not MIN_PASSCODE <= len(passcode) <= MAX_PASSCODE:
+            return error(400, "bad_passcode", f"Passcodes are at least {MIN_PASSCODE} characters.")
+        try:
+            user = await run_in_threadpool(store.create_user, nickname, hash_passcode(passcode))
+        except NicknameTaken:
+            return error(409, "nickname_taken", "That nickname is taken.")
+        return JSONResponse({"token": tokens.issue(user["id"]), "nickname": user["nickname"]}, status_code=201)
+
+    async def login(request: Request) -> JSONResponse:
+        if denied := locked(request):
+            return denied
+        body = await json_body(request)
+        if body is None:
+            return error(400, "bad_json", "The request body is not JSON.")
+        nickname, passcode = str(body.get("nickname") or "").strip(), str(body.get("passcode") or "")
+        if await run_in_threadpool(store.failed_recently, nickname) >= LOCK_FAILURES:
+            return error(429, "locked", "Too many tries. Please wait ten minutes.")
+        user = await run_in_threadpool(store.user_by_nickname, nickname)
+        if user is None or not await run_in_threadpool(check_passcode, passcode[:MAX_PASSCODE], user["passcode_hash"]):
+            await run_in_threadpool(store.record_failure, nickname)
+            return error(401, "bad_sign_in", "That nickname and passcode don't match.")
+        return JSONResponse({"token": tokens.issue(user["id"]), "nickname": user["nickname"]})
+
+    async def me(request: Request) -> JSONResponse:
+        user, denied = signed_in(request)
+        if denied:
+            return denied
+        if request.method == "DELETE":                     # FR-45: the account and everything in it
+            threads = await run_in_threadpool(store.delete_user, user["id"])
+            for t in threads:
+                await run_in_threadpool(forget_checkpoint, t)
+            return Response(status_code=204)
+        if request.method == "PATCH":                      # 7.9: reset (or set) the reply style
+            body = await json_body(request)
+            if body is None or "prefs" not in body:
+                return error(400, "bad_prefs", "Send {prefs}.")
+            await run_in_threadpool(store.set_prefs, user["id"], clean_prefs(body["prefs"]))
+            user = store.user(user["id"])
+        return JSONResponse({"nickname": user["nickname"], "prefs": clean_prefs(user["prefs"]),
+                             "paused": bool(user["paused"])})
+
+    def forget_checkpoint(thread_id: str) -> None:
+        if hasattr(checkpointer, "delete_thread"):
+            checkpointer.delete_thread(thread_id)
+        elif graph.checkpointer is not None and hasattr(graph.checkpointer, "delete_thread"):
+            graph.checkpointer.delete_thread(thread_id)
+
+    # ---------- conversations (FR-44) ----------
+    async def threads(request: Request) -> JSONResponse:
+        user, denied = signed_in(request)
+        if denied:
+            return denied
+        if request.method == "GET":
+            rows = await run_in_threadpool(store.conversations_of, user["id"])
+            return JSONResponse([{"thread_id": c["id"], "persona_id": c["persona_id"], "title": c["title"],
+                                  "last_line": c["last_line"], "updated_at": c["updated_at"]} for c in rows])
+        body = await json_body(request)
+        if body is None:
+            return error(400, "bad_json", "The request body is not JSON.")
+        persona_id = str(body.get("persona_id") or deps.config.default_persona)
+        if persona_id not in deps.personas:
+            return error(404, "unknown_persona", f"No persona {persona_id!r}.")
+        c = await run_in_threadpool(store.create_conversation, user["id"], persona_id)
+        return JSONResponse({"thread_id": c["id"], "persona_id": persona_id}, status_code=201)
+
+    async def thread(request: Request):
+        user, denied = signed_in(request)
+        if denied:
+            return denied
+        thread_id = request.path_params["thread_id"]
+        c = await run_in_threadpool(owned, user, thread_id)
+        if c is None:
+            return error(404, "unknown_thread", "No such conversation.")
+        if request.method == "DELETE":
+            await run_in_threadpool(store.delete_conversation, user["id"], thread_id)
+            await run_in_threadpool(forget_checkpoint, thread_id)
+            return Response(status_code=204)
+        state = await run_in_threadpool(thread_state, thread_id)
+        out = []
+        for m in state.get("messages") or []:
+            if isinstance(m, HumanMessage):
+                out.append({"id": m.id, "role": "user", "text": m.content})
+            elif isinstance(m, AIMessage):
+                system = m.name == "system"
+                out.append({"id": m.id, "role": "system" if system else "persona", "text": m.content,
+                            "citations": [] if system else m.additional_kwargs.get("citations", []),
+                            "rating": None if system else c["ratings"].get(m.id)})
+        return JSONResponse({"thread_id": thread_id, "persona_id": c["persona_id"], "title": c["title"],
+                             "messages": out, "paused": bool(user["paused"])})
+
+    def run_and_record(user: dict, thread_id: str, events, first_line: str):
+        """Stream the turn, then keep the conversation row and the user's pause up to date (7.10)."""
+        yield from events
+        state = thread_state(thread_id)
+        messages = state.get("messages") or []
+        last = messages[-1].content if messages else ""
+        store.touch(thread_id, first_line, last)
+        store.set_paused(user["id"], state.get("mode") == "support")
 
     async def messages(request: Request):
-        if denied := locked(request):
+        user, denied = signed_in(request)
+        if denied:
             return denied
-        try:
-            body = await request.json()
-        except json.JSONDecodeError:
+        body = await json_body(request)
+        if body is None:
             return error(400, "bad_json", "The request body is not JSON.")
         thread_id = request.path_params["thread_id"]
-        prefs = clean_prefs(body.get("prefs"))           # 7.9: unknown keys dropped, values clamped
+        c = await run_in_threadpool(owned, user, thread_id)
+        if c is None:
+            return error(404, "unknown_thread", "No such conversation.")
+        prefs = clean_prefs(user["prefs"])                 # 7.9: the account's preferences, clamped
+        first = next((m.content for m in (thread_state(thread_id).get("messages") or [])
+                      if isinstance(m, HumanMessage)), "")
         if body.get("regenerate") is True:               # FR-41: answer the latest message again
             try:
                 text, persona_id = await run_in_threadpool(rewind_last_turn, graph, thread_id)
             except CannotRegenerate as e:
                 return error(409, "cannot_regenerate", str(e))
-            events = run_turn(graph, thread_id, text, persona_id, None, prefs)
-            return StreamingResponse((sse(e) for e in events), media_type="text/event-stream",
-                                     headers={"Cache-Control": "no-cache"})
+            events = run_turn(graph, thread_id, text, persona_id, None, prefs, bool(user["paused"]))
+            return StreamingResponse((sse(e) for e in run_and_record(user, thread_id, events, first or text)),
+                                     media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
         text = str(body.get("text") or "").strip()
-        persona_id = str(body.get("persona_id") or deps.config.default_persona)
         if not text:
             return error(400, "empty_text", "The message is empty.")
         if len(text) > MAX_TEXT:
             return error(400, "text_too_long", f"Messages are limited to {MAX_TEXT} characters.")
-        if persona_id not in deps.personas:
-            return error(404, "unknown_persona", f"No persona {persona_id!r}.")
         intent = body.get("intent")
         if intent not in (None, "return"):
             return error(400, "bad_intent", "intent must be \"return\" or absent.")
-        events = run_turn(graph, thread_id, text, persona_id, intent, prefs)
-        return StreamingResponse((sse(e) for e in events), media_type="text/event-stream",
-                                 headers={"Cache-Control": "no-cache"})
+        # One conversation is one philosopher (7.10); the pause belongs to the user (FR-32).
+        events = run_turn(graph, thread_id, text, c["persona_id"], intent, prefs, bool(user["paused"]))
+        return StreamingResponse((sse(e) for e in run_and_record(user, thread_id, events, first or text)),
+                                 media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
+    def exchange(state: dict, message_id: str) -> tuple[str, AIMessage] | None:
+        """The persona reply with this id and the user message before it."""
+        msgs = state.get("messages") or []
+        i = next((k for k, m in enumerate(msgs) if isinstance(m, AIMessage) and m.id == message_id
+                  and m.name != "system"), None)
+        if i is None:
+            return None
+        you = next((m.content for m in reversed(msgs[:i]) if isinstance(m, HumanMessage)), "")
+        return you, msgs[i]
+
+    # ---------- notes (FR-07, 7.7) ----------
     async def note(request: Request) -> JSONResponse:
-        if denied := locked(request):
+        user, denied = signed_in(request)
+        if denied:
             return denied
-        state = thread_state(request.path_params["thread_id"])
-        if not state.get("messages"):
-            return error(404, "unknown_thread", "No conversation in this thread yet.")
-        if state.get("mode") == "support":
+        thread_id = request.path_params["thread_id"]
+        c = await run_in_threadpool(owned, user, thread_id)
+        if c is None:
+            return error(404, "unknown_thread", "No such conversation.")
+        if user["paused"]:
             return error(409, "support_mode", "Notes are not made from a paused conversation.")
-        if deps.distill_note is None:
-            return error(501, "notes_unavailable", "Notes are not set up on this server.")
-        persona = deps.personas.get(state.get("persona_id", ""))
-        messages = persona_history(state["messages"], state.get("persona_id", ""))
-        try:
-            body = await request.json() if await request.body() else {}
-        except json.JSONDecodeError:
+        body = await json_body(request)
+        if body is None:
             return error(400, "bad_json", "The request body is not JSON.")
-        if isinstance(body, dict) and body.get("them"):   # 7.7: the exchange a bookmark saved
-            persona = deps.personas.get(str(body.get("persona_id") or "")) or persona
-            you, them = str(body.get("you") or "")[:MAX_TEXT], str(body["them"])[:MAX_REPLY]
-            messages = ([HumanMessage(you)] if you else []) + [AIMessage(them, name=persona.id if persona else "")]
-        try:
-            result = await run_in_threadpool(deps.distill_note, persona.name if persona else "the philosopher",
-                                             messages)
-        except Exception as e:
-            return error(502, "note_failed", type(e).__name__)
-        return JSONResponse(result)
+        state = await run_in_threadpool(thread_state, thread_id)
+        found = exchange(state, str(body.get("message_id") or ""))
+        if found is None:
+            return error(404, "unknown_message", "No such reply in this conversation.")
+        you, reply = found
+        persona = deps.personas.get(c["persona_id"])
+        name = persona.name if persona else "the philosopher"
+        distilled = None
+        if deps.distill_note is not None:
+            msgs = ([HumanMessage(you)] if you else []) + [reply]
+            try:
+                distilled = await run_in_threadpool(deps.distill_note, name, msgs)
+            except Exception as e:
+                log.warning("note distillation failed: %s", type(e).__name__)
+        if not distilled:                                   # 7.7: the reply's own question stands in
+            distilled = {"title": last_question(reply.content), "why": f"From your talk about “{you}”." if you
+                         else "A thought to revisit later.", "topic": "From your conversation"}
+        cites = [{"n": str(k + 1), "where": f"{x['work']}, {x['section']}" if x.get("section") else x.get("work", ""),
+                  "quote": x.get("quote", ""), "passage": x.get("passage", ""), "url": x.get("source_url", "")}
+                 for k, x in enumerate(reply.additional_kwargs.get("citations", []))]
+        saved = await run_in_threadpool(store.add_note, user["id"], {
+            "persona_id": c["persona_id"], **distilled, "reflection": "",
+            "from": {"you": you, "them": reply.content, "cites": cites}})
+        return JSONResponse(saved, status_code=201)
 
-    async def preferences(request: Request) -> JSONResponse:
-        """7.9: one thumb -> the visitor's updated reply preferences. Stateless: the browser
-        holds the preferences and nothing about the rating is stored here (D8)."""
-        if denied := locked(request):
+    async def notes(request: Request):
+        user, denied = signed_in(request)
+        if denied:
             return denied
-        try:
-            body = await request.json()
-        except json.JSONDecodeError:
+        if request.method == "GET":
+            return JSONResponse(await run_in_threadpool(store.notes_of, user["id"]))
+        body = await json_body(request)                    # POST: import a note a device kept before accounts
+        if not body or not isinstance(body.get("note"), dict):
+            return error(400, "bad_note", "Send {note}.")
+        return JSONResponse(await run_in_threadpool(store.add_note, user["id"], body["note"]), status_code=201)
+
+    async def one_note(request: Request):
+        user, denied = signed_in(request)
+        if denied:
+            return denied
+        note_id = request.path_params["note_id"]
+        if request.method == "DELETE":
+            ok = await run_in_threadpool(store.delete_note, user["id"], note_id)
+            return Response(status_code=204) if ok else error(404, "unknown_note", "No such note.")
+        body = await json_body(request)
+        if body is None or not isinstance(body.get("reflection"), str):
+            return error(400, "bad_note", "Send {reflection}.")
+        saved = await run_in_threadpool(store.update_note, user["id"], note_id, body["reflection"])
+        return JSONResponse(saved) if saved else error(404, "unknown_note", "No such note.")
+
+    # ---------- ratings and reply preferences (7.9) ----------
+    async def preferences(request: Request) -> JSONResponse:
+        """One thumb (or its feedback window) on a stored reply -> the user's updated preferences."""
+        user, denied = signed_in(request)
+        if denied:
+            return denied
+        body = await json_body(request)
+        if body is None:
             return error(400, "bad_json", "The request body is not JSON.")
-        rating = body.get("rating") if isinstance(body, dict) else None
-        if rating not in ("up", "down"):
-            return error(400, "bad_rating", "rating must be \"up\" or \"down\".")
-        persona = deps.personas.get(str(body.get("persona_id") or ""))
-        if persona is None:
-            return error(404, "unknown_persona", "No such persona.")
-        reply = str(body.get("reply") or "")[:MAX_REPLY]
-        user_text = str(body.get("user_text") or "")[:MAX_TEXT]
-        if not reply.strip():
-            return error(400, "empty_reply", "The rated reply is empty.")
-        prefs = clean_prefs(body.get("prefs"))
+        rating = body.get("rating")
+        if rating not in ("up", "down", "none"):
+            return error(400, "bad_rating", "rating must be \"up\", \"down\" or \"none\".")
+        thread_id = str(body.get("thread_id") or "")
+        c = await run_in_threadpool(owned, user, thread_id)
+        if c is None:
+            return error(404, "unknown_thread", "No such conversation.")
+        found = exchange(await run_in_threadpool(thread_state, thread_id), str(body.get("message_id") or ""))
+        if found is None:
+            return error(404, "unknown_message", "No such reply in this conversation.")
+        user_text, reply_msg = found
+        reply = reply_msg.content[:MAX_REPLY]
+        await run_in_threadpool(store.set_rating, thread_id, reply_msg.id, None if rating == "none" else rating)
+        prefs = clean_prefs(user["prefs"])
+        if rating == "none":
+            return JSONResponse({"prefs": prefs, "source": "none"})
+        persona = deps.personas.get(c["persona_id"])
         # The feedback window (long-press on a filled thumb): tags are fixed steps; the note goes to the
         # model as data and only moves dials. Neither reaches the persona prompt (FR-37).
         feedback = body.get("feedback") if isinstance(body.get("feedback"), dict) else None
@@ -230,15 +426,17 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         changes, source = None, "rule"
         if deps.tune_prefs is not None and (feedback is None or text):
             try:
-                changes = await run_in_threadpool(deps.tune_prefs, rating, persona.name, user_text, reply, prefs,
-                                                  text)
+                changes = await run_in_threadpool(deps.tune_prefs, rating, persona.name if persona else "",
+                                                  user_text[:MAX_TEXT], reply, prefs, text)
                 source = "model"
             except Exception as e:
                 log.warning("preference update failed, using the offline rule: %s", type(e).__name__)
         if changes is None:
             changes = {} if feedback is not None else rule_changes(rating, reply)
             source = "tags" if feedback is not None else source
-        return JSONResponse({"prefs": apply_changes(prefs, merge_changes(tags, changes)), "source": source})
+        new = apply_changes(prefs, merge_changes(tags, changes))
+        await run_in_threadpool(store.set_prefs, user["id"], new)
+        return JSONResponse({"prefs": new, "source": source})
 
     async def purge(request: Request) -> JSONResponse:
         # Vercel Cron sends "Authorization: Bearer $CRON_SECRET".
@@ -253,6 +451,7 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         threads = await run_in_threadpool(stale_threads, checkpointer, hours)
         for thread_id in threads:
             await run_in_threadpool(checkpointer.delete_thread, thread_id)
+        await run_in_threadpool(store.forget_threads, threads)
         log.info("purged %d conversations older than %s hours", len(threads), hours)
         return JSONResponse({"deleted": len(threads)})
 
@@ -298,9 +497,15 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
                                  "Cache-Control": "no-store"})
 
     routes = [Route("/personas", personas),
-              Route("/threads", new_thread, methods=["POST"]),
+              Route("/auth/register", register, methods=["POST"]),
+              Route("/auth/login", login, methods=["POST"]),
+              Route("/me", me, methods=["GET", "PATCH", "DELETE"]),
+              Route("/threads", threads, methods=["GET", "POST"]),
+              Route("/threads/{thread_id}", thread, methods=["GET", "DELETE"]),
               Route("/threads/{thread_id}/messages", messages, methods=["POST"]),
               Route("/threads/{thread_id}/note", note, methods=["POST"]),
+              Route("/notes", notes, methods=["GET", "POST"]),
+              Route("/notes/{note_id}", one_note, methods=["PATCH", "DELETE"]),
               Route("/preferences", preferences, methods=["POST"]),
               Route("/internal/purge", purge),
               Route("/test/submissions", submit_test, methods=["POST"]),
