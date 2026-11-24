@@ -73,18 +73,26 @@ p { margin: 0; }
 .t28 { font-size: 28px; line-height: 36px; }
 
 /* ---------- Bottom navigation ---------- */
-.tabs { flex: none; background: var(--ink); display: flex; justify-content: center; gap: 4px; padding: 8px 8px calc(6px + env(safe-area-inset-bottom, 0px)); }
-.tab { flex: 1; max-width: 102px; min-width: 0; white-space: nowrap; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 2px 0; color: var(--paper); font-size: 11px; line-height: 14px; opacity: .72; }
-.tab[aria-current="page"] { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+/* A wooden plank (assets/plank.png, 64 x 22 px at 3x); icons only, larger. */
+.tabs { flex: none; position: relative; display: flex; justify-content: space-around; align-items: center; height: calc(66px + env(safe-area-inset-bottom, 0px));
+  padding: 0 14px env(safe-area-inset-bottom, 0px); background: url("assets/plank.png") 0 0 / 192px 66px repeat-x, #4a2f1a; image-rendering: pixelated; }
+.tabs::before, .tabs::after { content: ""; position: absolute; top: 9px; width: 6px; height: 6px; background: #3a2414; box-shadow: 0 33px 0 #3a2414, 1px 1px 0 #c79a62 inset; }
+.tabs::before { left: 6px; } .tabs::after { right: 6px; }
+.tab { width: 64px; height: 56px; display: grid; place-items: center; position: relative; opacity: .62; }
+.tab .ico { width: 34px; height: 34px; filter: drop-shadow(2px 2px 0 #3a2414); }
+.tab[aria-current="page"] { opacity: 1; }
+.tab[aria-current="page"]::after { content: ""; position: absolute; bottom: 4px; left: 50%; width: 6px; height: 6px; margin-left: -3px; background: var(--paper); box-shadow: 2px 2px 0 #3a2414; }
+.tab:active { transform: translate(1px, 1px); }
 
 /* ---------- 01 The Café ---------- */
-#home .body { align-items: center; gap: 8px; padding-left: 16px; padding-right: 16px; }
-.brand { position: relative; width: 300px; max-width: 100%; height: 30px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 8px; border: 1px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow);
-  background: repeating-linear-gradient(to bottom, var(--sage) 0 2px, #f4f3d4 2px 4px); font-size: 24px; line-height: 28px; }
-.hint { text-align: center; }
-.hint.flash { animation: flash .9s steps(2) 2; }
-.cafe { position: relative; width: 300px; max-width: 100%; aspect-ratio: 1179 / 2556; flex: none; border: 2px solid var(--ink); overflow: hidden; }
-.cafe > img.bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* The café panorama covers the screen; the pixel wordmark floats over the wall at the top. */
+.cafe { position: absolute; inset: 0; overflow: hidden; background: #b88a5e; }
+.pano { position: absolute; }
+.pano > img.bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.logo { position: absolute; z-index: 3; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 18px); margin: 0; display: flex; justify-content: center; pointer-events: none;
+  animation: bob 3.2s steps(2) infinite; }
+.logo img { width: 348px; height: 72px; image-rendering: pixelated; }
+@keyframes bob { 50% { transform: translateY(-3px); } }
 .actor { position: absolute; }
 .actor img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .seat { position: absolute; z-index: 2; min-width: 44px; min-height: 44px; }
@@ -378,11 +386,8 @@ html[lang="zh-CN"] .composer .rec .hint { font-size: 12px; line-height: 16px; le
     <div class="status" aria-hidden="true"><span>9:41</span><span>●&nbsp;&nbsp;▰</span></div>
     <div class="screens">
       <section class="screen" id="home" aria-label="The café">
-        <div class="body">
-          <div class="brand"><span data-icon="cup"></span>Philocafé</div>
-          <p class="hint t11 muted" id="hint" data-i18n="Tap a philosopher in the café to meet them.">Tap a philosopher in the café to meet them.</p>
-          <div class="cafe" id="cafe"><img class="bg px" src="assets/home_bg.png" alt=""></div>
-        </div>
+        <div class="cafe" id="cafe"><div class="pano" id="pano"><img class="bg px" src="assets/home_pano.png" alt=""></div>
+          <h1 class="logo"><img class="px" id="logo" src="assets/logo_philocafe.png" alt="Philocafé"></h1></div>
       </section>
       <section class="screen" id="meet" hidden></section>
       <section class="screen" id="chat" hidden></section>
@@ -392,16 +397,14 @@ html[lang="zh-CN"] .composer .rec .hint { font-size: 12px; line-height: 16px; le
       <section class="screen" id="settings" hidden></section>
     </div>
     <nav class="tabs" id="tabs" aria-label="Main">
-        <button class="tab" data-tab="home"><span data-icon="cup" data-color="paper"></span><span data-i18n="Café">Café</span></button>
-        <button class="tab" data-tab="chat"><span data-icon="chat" data-color="paper"></span><span data-i18n="Conversations">Conversations</span></button>
-        <button class="tab" data-tab="notes"><span data-icon="mark" data-color="paper"></span><span data-i18n="My notes">My notes</span></button>
-        <button class="tab" data-tab="settings"><span data-icon="gear" data-color="paper"></span><span data-i18n="Settings">Settings</span></button>
+        <button class="tab" data-tab="home" data-i18n-label="Café" aria-label="Café" title="Café"><span data-icon="cup" data-color="paper"></span></button>
+        <button class="tab" data-tab="chat" data-i18n-label="Conversations" aria-label="Conversations" title="Conversations"><span data-icon="chat" data-color="paper"></span></button>
+        <button class="tab" data-tab="notes" data-i18n-label="My notes" aria-label="My notes" title="My notes"><span data-icon="mark" data-color="paper"></span></button>
+        <button class="tab" data-tab="settings" data-i18n-label="Settings" aria-label="Settings" title="Settings"><span data-icon="gear" data-color="paper"></span></button>
     </nav>
     <div class="homebar" id="homebar" aria-hidden="true"></div>
   </div>
   <aside class="notes">
-    <h2>Philocafé</h2>
-    <p>Clickable prototype for 586, built from the Figma file. Tap a philosopher in the café, meet them, take a seat and talk. Save a thought to keep it in My notes.</p>
     <p>Jump to:</p>
     <ul>
       <li><button data-go="socrates">Meet Socrates</button></li>
@@ -803,15 +806,32 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
 });
 
 /* ---------- 01 Home ---------- */
-const cafe = $("#cafe");
-const HOME_W = 1179, HOME_H = 2556;
+// The panorama (assets/home_pano.png, tools/art/home_pano.py) covers the screen. The café of the sprites
+// sits inside it at (317, 432), so each sprite box moves by that much.
+const cafe = $("#cafe"), pano = $("#pano");
+const HOME_W = 1812, HOME_H = 3288, CAFE_AT = [317, 432];
+for (const id of ["socrates", "schopenhauer", "montaigne", "seneca", "epictetus"]) {
+  const box = DATA[PH[id].home].box;
+  if (!box._moved) { box[0] += CAFE_AT[0]; box[2] += CAFE_AT[0]; box[1] += CAFE_AT[1]; box[3] += CAFE_AT[1]; box._moved = true; }
+}
+// Cover the screen, philosophers kept in view; the wordmark is drawn at the panorama's own pixel size.
+function layoutHome() {
+  const W = cafe.clientWidth, H = cafe.clientHeight;
+  if (!W || !H) return;
+  const k = Math.max(W / HOME_W, H / HOME_H), w = HOME_W * k, h = HOME_H * k;
+  Object.assign(pano.style, { width: w + "px", height: h + "px", left: (W - w) / 2 + "px", top: (H - h) / 2 + "px" });
+  const px = Math.max(2, Math.min(12 * k, (W - 24) / 116));       // the logo is 116 cells wide
+  Object.assign($("#logo").style, { width: 116 * px + "px", height: 24 * px + "px" });
+}
+addEventListener("resize", layoutHome);
+new ResizeObserver(layoutHome).observe(cafe);
 ["socrates", "schopenhauer", "montaigne", "seneca", "epictetus"].forEach(id => {
   const a = actor(PH[id].home, HOME_W, HOME_H);
   const seat = el("button", "seat");
   seat.setAttribute("aria-label", t("Meet {name}", { name: PH[id].name }));
   seat.style.cssText = a.style.cssText;
   seat.onclick = () => openMeet(id);
-  cafe.append(seat, a);
+  pano.append(seat, a);
 });
 
 /* ---------- 02 Meet ---------- */
@@ -2415,6 +2435,7 @@ function openPause(resources) {
 
 paintIcons();
 document.querySelectorAll("[data-i18n]").forEach(e => { e.innerHTML = t(e.dataset.i18n); });
+document.querySelectorAll("[data-i18n-label]").forEach(e => { e.setAttribute("aria-label", t(e.dataset.i18nLabel)); e.title = t(e.dataset.i18nLabel); });
 document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { pauseScene(); openMeet(b.dataset.go); });
 $("#demoDistress").onclick = () => distress("socrates", "I feel completely hopeless, and I don’t feel safe with myself.");
 show("home");
