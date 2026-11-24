@@ -1,0 +1,53 @@
+{
+  "grid": [
+    143,
+    256
+  ],
+  "patch": {
+    "x": 60,
+    "y": 53,
+    "w": 22,
+    "h": 18
+  },
+  "moods": [
+    "attentive",
+    "curious",
+    "amused",
+    "skeptical",
+    "pondering",
+    "pleased"
+  ],
+  "frames": [
+    "open",
+    "half",
+    "closed",
+    "talk1",
+    "talk2"
+  ],
+  "anchor": {
+    "face": [
+      70,
+      62
+    ],
+    "head": [
+      56,
+      40,
+      85,
+      77
+    ]
+  },
+  "source": "schopenhauer_seated_gen.jpg",
+  "palette": 48,
+  "timing_ms": {
+    "half": 55,
+    "closed": 85,
+    "blink_every": [
+      2800,
+      6500
+    ],
+    "talk": [
+      90,
+      150
+    ]
+  }
+}

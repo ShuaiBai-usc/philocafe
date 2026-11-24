@@ -728,7 +728,7 @@ function actor(key, W, H) {
   const box = el("div", "actor px");
   Object.assign(box.style, { left: x0 / W * 100 + "%", top: y0 / H * 100 + "%", width: (x1 - x0) / W * 100 + "%", height: (y1 - y0) / H * 100 + "%" });
   const img = el("img"); img.alt = ""; img.src = A + d.frames[d.seq[0][0]];
-  if (d.flip) img.style.transform = "scaleX(-1)";   // face the table on the seat's left
+  if (d.flip) img.style.transform = "scaleX(-1)";   // the table is on the seat's left
   box.append(img);
   let i = 0, t = null, alive = true;
   const step = () => {
@@ -806,14 +806,16 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
 });
 
 /* ---------- 01 Home ---------- */
-// The panorama (assets/home_pano.png, tools/art/home_pano.py) covers the screen. The café of the sprites
-// sits inside it at (317, 432), so each sprite box moves by that much.
+// The café (assets/home_pano.png, tools/art/home_pano.py) covers the screen. Each philosopher sits in his
+// own nook, furnished like his chat scene; HOME_SEATS puts the team's sprites on those armchairs
+// (x0 = 10 mod 12, 11 when flipped, y0 = 0 mod 12: the sprites' 12 px grid on the café's).
 const cafe = $("#cafe"), pano = $("#pano");
-const HOME_W = 1812, HOME_H = 3288, CAFE_AT = [317, 432];
-for (const id of ["socrates", "schopenhauer", "montaigne", "seneca", "epictetus"]) {
-  const box = DATA[PH[id].home].box;
-  if (!box._moved) { box[0] += CAFE_AT[0]; box[2] += CAFE_AT[0]; box[1] += CAFE_AT[1]; box[3] += CAFE_AT[1]; box._moved = true; }
-}
+const HOME_W = 1152, HOME_H = 2184;
+const HOME_SEATS = {
+  socrates: [214, 576, 589, 948], montaigne: [766, 576, 1141, 948], seneca: [178, 1068, 553, 1440],
+  schopenhauer: [623, 1068, 998, 1440, "flip"], epictetus: [430, 1572, 865, 1944]
+};
+for (const [id, [x0, y0, x1, y1, flip]] of Object.entries(HOME_SEATS)) Object.assign(DATA[PH[id].home], { box: [x0, y0, x1, y1], flip: !!flip });
 // Cover the screen, philosophers kept in view; the wordmark is drawn at the panorama's own pixel size.
 function layoutHome() {
   const W = cafe.clientWidth, H = cafe.clientHeight;
@@ -1118,10 +1120,10 @@ function debugShow(ev) {
   pre.textContent = [pre.dataset.safety, pre.dataset.trace].filter(Boolean).join("\n");
 }
 
-/* ---------- Full-screen scene (kbtest layout; Socrates first) ---------- */
+/* ---------- Full-screen scene (kbtest layout) ---------- */
 // A philosopher with full-screen art sits in a scene that covers the chat screen. The face is a
 // small patch drawn over the scene: blinks, talking, and moods (7.5) that change behind a blink.
-const FULL = { socrates: A + "personas/socrates/full/" };
+const FULL = Object.fromEntries(["socrates", "montaigne", "schopenhauer", "seneca", "epictetus"].map(id => [id, A + `personas/${id}/full/`]));
 const FULL_MOODS = { wry: "amused", grave: "pondering" };      // labels the art has no face for
 let stage = null;                                             // the open scene, or null
 function fullScene(id) {

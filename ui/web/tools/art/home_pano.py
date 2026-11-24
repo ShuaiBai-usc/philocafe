@@ -1,71 +1,117 @@
-"""The café panorama for the full-screen home (assets/home_pano.png).
+"""The café for the full-screen home (assets/home_pano.png, 1152 x 2184).
 
-sources/home_canvas.png puts the café (assets/home_bg.png) on a 9:16 canvas with magenta margins; an
-ElevenLabs generation (Nano Banana 2, outpainting, sample 3 of 4) filled the margins: sources/home_pano_gen.jpg.
-This script finds where the café landed in that picture (registration below), reads the generated margins
-back onto the café's own 12 px grid, snaps their colours to the café's palette, and pastes the original
-café over the middle unchanged, so the philosophers' sprites keep their places (offset 317, 432).
+An ElevenLabs generation (Nano Banana 2, sample 4 of 4; references: the old café and the strip of the five
+chat scenes, sources/nooks_strip.png) drew an empty café, flat front view in the old café's style, with one
+nook per philosopher furnished like his chat scene: sources/home_cafe_gen.jpg. This script reads it onto a
+96-cell grid (8 source px per cell), reduces it to 44 colours, and draws each cell 12 px wide, the grid of
+the team's sprites, so a sprite fits an armchair.
 
-    .venv/bin/python ui/web/tools/art/home_pano.py
+Then a few edits so the sprites' props land on something (a sprite's resting cup is at box x 314-373,
+y 120-167, so a surface belongs on row y0/12 + 14):
+    Socrates       the generated side table and cup go; a taller table stands under his cup
+    Schopenhauer   a side table at his left (his sprite is flipped), in front of the fern
+    Epictetus      his sprite brings its own walking stick, so the generated one goes; his stool is taller,
+                   with the clay lamp beside his cup
+and ten rows of plain wall go into the top band, so the wordmark has room under the status bar.
+
+    python3 ui/web/tools/art/home_pano.py
+
+Sprite boxes (template.html HOME_SEATS) are on this picture; x0 = 10 mod 12 (11 when flipped) and
+y0 = 0 mod 12 keep the sprites on the same grid.
 """
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
+
 HERE = Path(__file__).resolve().parent
 WEB = HERE.parents[1]
-gen = np.asarray(Image.open(HERE / 'sources/home_pano_gen.jpg').convert('RGB')).astype(float)
-orig_im = Image.open(WEB / 'assets/home_bg.png').convert('RGB')
-orig = np.asarray(orig_im).astype(int).copy()
-# the original's top six rows are a darker band where its picture ended; on the taller wall it would read
-# as a stripe, so they take the plain wall from just below (stripes and the lamp cord line up)
-orig[0:144] = orig[144:288]
-SX, SY, GX, GY = 0.42, 0.4175, 137, 182          # where the original sits in the generated picture
-OX, OY = 336, 432                                 # where it sits on the canvas
-X0, X1, Y0, Y1 = 19, 1831, 0, 3288                # final picture on the canvas (12 px cells, original grid)
-C = 12
-nx, ny = (X1 - X0) // C, (Y1 - Y0) // C
-cells = np.zeros((ny, nx, 3))
-for j in range(ny):
-    for i in range(nx):
-        cx0, cy0 = X0 + i * C, Y0 + j * C
-        gx0 = GX + (cx0 + 3 - OX) * SX; gx1 = GX + (cx0 + 9 - OX) * SX
-        gy0 = GY + (cy0 + 3 - OY) * SY; gy1 = GY + (cy0 + 9 - OY) * SY
-        xa, xb = int(np.floor(gx0)), max(int(np.ceil(gx1)), int(np.floor(gx0)) + 1)
-        ya, yb = int(np.floor(gy0)), max(int(np.ceil(gy1)), int(np.floor(gy0)) + 1)
-        xa, xb = np.clip([xa, xb], 0, gen.shape[1]); ya, yb = np.clip([ya, yb], 0, gen.shape[0])
-        if xb <= xa: xa = max(0, xb - 1)
-        if yb <= ya: ya = max(0, yb - 1)
-        cells[j, i] = np.median(gen[ya:yb, xa:xb].reshape(-1, 3), axis=0)
-# palette: the original's colours; a generated colour close to one snaps to it, others are reduced by k-means
-pal = np.unique(orig.reshape(-1, 3), axis=0).astype(float)
-flat = cells.reshape(-1, 3)
-d = ((flat[:, None, :] - pal[None]) ** 2).sum(2)
-near = d.argmin(1); nd = np.sqrt(d.min(1))
-out = flat.copy()
-snap = nd < 22
-out[snap] = pal[near[snap]]
-rest = flat[~snap]
-if len(rest):
-    k = min(16, len(rest))
-    rng = np.random.default_rng(0); cen = rest[rng.choice(len(rest), k, replace=False)]
-    for _ in range(30):
-        lab = ((rest[:, None] - cen[None]) ** 2).sum(2).argmin(1)
-        for c in range(k):
-            if (lab == c).any(): cen[c] = rest[lab == c].mean(0)
-    out[~snap] = np.round(cen[lab])
-print('snapped', snap.mean())
-cells = out.reshape(ny, nx, 3).astype(np.uint8)
-img = Image.fromarray(cells).resize((nx * C, ny * C), Image.NEAREST)
-full = np.asarray(img).copy()
-# the original café, exactly, with its two cut edge columns carried across their whole cells
-ox, oy = OX - X0, OY - Y0
-full[oy:oy + 2556, ox:ox + 1179] = orig
-left_cell = ox - (ox % C) if (ox % C) else ox          # cell that starts before the original
-for y in range(oy, oy + 2556):
-    full[y, left_cell:ox] = orig[y - oy, 0]
-right_end = ox + 1179; rc_end = right_end + (C - right_end % C) % C
-for y in range(oy, oy + 2556):
-    full[y, right_end:rc_end] = orig[y - oy, 1178]
-Image.fromarray(full).save(WEB / 'assets/home_pano.png', optimize=True)
-print(full.shape, 'offset of the original:', ox, oy)
+G, C, K = 96, 12, 44
+
+src = np.asarray(Image.open(HERE / "sources/home_cafe_gen.jpg").convert("RGB")).astype(float)
+cell = src.shape[1] / G
+NY = int(round(src.shape[0] / cell))
+cells = np.zeros((NY, G, 3))
+for j in range(NY):
+    for i in range(G):
+        xa, xb = int(i * cell + cell * .25), int(i * cell + cell * .75) + 1
+        ya, yb = int(j * cell + cell * .25), min(int(j * cell + cell * .75) + 1, src.shape[0])
+        cells[j, i] = np.median(src[ya:yb, xa:xb].reshape(-1, 3), 0)
+
+X = cells.reshape(-1, 3)
+rng = np.random.default_rng(2)
+cent = [X[rng.integers(len(X))]]
+for _ in range(1, K):                                   # k-means++ seeding, then Lloyd
+    d = np.min(((X[:, None] - np.array(cent)[None]) ** 2).sum(2), 1)
+    cent.append(X[rng.choice(len(X), p=d / d.sum())])
+cent = np.array(cent)
+for _ in range(30):
+    lab = ((X[:, None] - cent[None]) ** 2).sum(2).argmin(1)
+    for t in range(K):
+        if (lab == t).any():
+            cent[t] = X[lab == t].mean(0)
+a = cent[lab].reshape(NY, G, 3).round().astype(np.uint8)
+pal = np.unique(a.reshape(-1, 3), axis=0)
+
+
+def snap(c):
+    return tuple(pal[((pal.astype(int) - np.array(c)) ** 2).sum(1).argmin()])
+
+
+TOP, TOP2, EDGE, LEG, LEGL, DEEP = map(snap, [(150, 112, 76), (128, 96, 64), (100, 72, 46), (92, 67, 43), (112, 82, 54), (70, 50, 32)])
+CLAY, CLAY2, FLAME, GLOW = map(snap, [(176, 112, 70), (140, 86, 52), (246, 214, 120), (255, 240, 190)])
+
+
+def erase(x0, x1, y0, y1, dx):
+    """cells x0..x1, y0..y1 take the cells dx columns over (floor and wall run in horizontal bands)"""
+    a[y0:y1 + 1, x0:x1 + 1] = a[y0:y1 + 1, x0 + dx:x1 + 1 + dx].copy()
+
+
+def shadow(x0, x1, y):
+    for x in range(x0, x1 + 1):
+        a[y, x] = snap(tuple(int(v * .82) for v in a[y, x]))
+
+
+def table(cx, top, floor):
+    """round pedestal side table: surface on row `top` (cells cx-4..cx+4), feet on row `floor`"""
+    for x in range(cx - 4, cx + 5): a[top, x] = TOP
+    for x in range(cx - 5, cx + 6): a[top + 1, x] = TOP2
+    for x in range(cx - 4, cx + 5): a[top + 2, x] = EDGE
+    for y in range(top + 3, floor - 1):
+        a[y, cx] = LEGL; a[y, cx + 1] = LEG
+    for x in range(cx - 1, cx + 3): a[floor - 2, x] = LEG
+    for x in (cx - 2, cx - 1, cx + 2, cx + 3): a[floor - 1, x] = LEG
+    for x in (cx - 3, cx - 2, cx + 3, cx + 4): a[floor, x] = DEEP
+    shadow(cx - 3, cx + 4, floor + 1)
+
+
+def stool(x0, x1, top, floor):
+    for x in range(x0, x1 + 1): a[top, x] = TOP
+    for x in range(x0, x1 + 1): a[top + 1, x] = EDGE
+    for y in range(top + 2, floor + 1):
+        a[y, x0 + 1] = LEGL; a[y, x1 - 1] = LEG
+    for x in range(x0 + 1, x1): a[(top + floor) // 2 + 2, x] = LEG
+    for y in range(top + 2, floor - 1): a[y, (x0 + x1) // 2] = DEEP if y > top + 3 else EDGE
+    shadow(x0, x1, floor + 1)
+
+
+# Socrates (box y0 = row 38 before the wall rows go in): cup on cells 44-48, rows 48-51
+erase(35, 48, 54, 70, 13)
+erase(37, 41, 51, 53, 13)
+table(46, 52, 68)
+# Schopenhauer (row 79): cup on cells 52-56, rows 89-92
+table(54, 93, 109)
+# Epictetus (row 121): cup on cells 67-71, rows 131-134
+erase(32, 37, 129, 153, -6)
+erase(61, 70, 134, 153, 9)
+stool(61, 72, 135, 151)
+for x in range(62, 66): a[134, x] = CLAY2
+for x in range(62, 65): a[133, x] = CLAY
+a[133, 65] = CLAY2; a[132, 63] = CLAY2
+a[132, 62] = FLAME; a[131, 62] = GLOW
+# ten rows of plain wall in the top band
+a = np.concatenate([a[:12], a[8:18], a[12:]])
+
+out = Image.fromarray(a).resize((a.shape[1] * C, a.shape[0] * C), Image.NEAREST)
+out.save(WEB / "assets/home_pano.png", optimize=True)
+print("home_pano.png", out.size, len(np.unique(a.reshape(-1, 3), axis=0)), "colours")
