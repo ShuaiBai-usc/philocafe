@@ -158,8 +158,8 @@ p { margin: 0; }
 .toast { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -6px); background: var(--ink); color: var(--paper); font-size: 13px; padding: 6px 10px; white-space: nowrap; animation: popin .2s steps(3); }
 
 .dock { flex: none; padding: 0 var(--pad-r) calc(12px + env(safe-area-inset-bottom, 0px)) var(--pad-l); position: relative; }
-/* Composer (7.6): one field and one action button: the mic while the field is empty (hold to talk),
-   the send arrow once there is text. */
+/* Composer (7.6): one field and one action button: the mic while the field is empty (tap to talk,
+   tap again to send; or hold and let go), the send arrow once there is text. */
 .composer { background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 8px; display: flex; gap: 8px; align-items: flex-end; position: relative; }
 .composer textarea { flex: 1; min-width: 0; box-sizing: border-box; height: 42px; max-height: 108px; resize: none; overflow-y: auto; border: 1px solid var(--ink); background: var(--paper);
   padding: 9px 10px; font: 16px/22px var(--f-pixel); color: var(--ink); border-radius: 0; display: block; }
@@ -1095,7 +1095,7 @@ function wireComposer(dock) {
     const mic = !msg.value.trim() && voiceOn() && canRecord() && !micDenied;
     btn.dataset.mode = mic ? "mic" : "send";
     btn.type = mic ? "button" : "submit";
-    btn.setAttribute("aria-label", mic ? "Hold to talk" : "Send");
+    btn.setAttribute("aria-label", mic ? "Talk" : "Send");
     btn.innerHTML = icon(mic ? "mic" : "send", "ink", 22);
   };
   form.onsubmit = e => {
@@ -1108,9 +1108,22 @@ function wireComposer(dock) {
   };
   msg.addEventListener("input", () => { grow(); mode(); });
   msg.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
-  // Push-to-talk: hold the mic, speak, let go; the transcript lands in the field to check before sending.
-  btn.addEventListener("pointerdown", e => { if (btn.dataset.mode === "mic" && !btn.disabled) { e.preventDefault(); startRecording(dock); } });
-  ["pointerup", "pointercancel", "pointerleave"].forEach(ev => btn.addEventListener(ev, () => stopRecording(dock)));
+  // Talk: tap the mic, speak, tap again to send; or hold it while speaking and let go. What was
+  // heard is sent as the message (its bubble shows the words), and the mic is back for the next one.
+  let press = 0;
+  btn.addEventListener("pointerdown", e => {
+    if (rec) { e.preventDefault(); press = 0; return stopRecording(dock); }      // second tap: done
+    if (btn.dataset.mode !== "mic" || btn.disabled) return;
+    e.preventDefault(); unlockAudio(); stopSpeaking();
+    press = Date.now(); startRecording(dock);
+  });
+  btn.addEventListener("pointerup", () => {
+    if (!rec || !press) return;
+    if (Date.now() - press > 450) stopRecording(dock);                           // held: letting go sends
+    else { rec.tap = true; $(".hint", dock).textContent = "tap to send"; btn.innerHTML = icon("send", "ink", 22); }
+    press = 0;
+  });
+  ["pointercancel", "pointerleave"].forEach(ev => btn.addEventListener(ev, () => { if (rec && press) { press = 0; stopRecording(dock); } }));
   btn.addEventListener("contextmenu", e => e.preventDefault());
   dock._mode = mode;
   mode();
@@ -1154,7 +1167,8 @@ async function stopRecording(dock) {
   r.recorder.stop(); await done;
   r.stream.getTracks().forEach(t => t.stop());
   form.classList.remove("recording");
-  if (Date.now() - r.started < 600) return toast("Hold the mic while you speak");
+  refreshComposer();
+  if (Date.now() - r.started < 600) return toast("That was too short. Tap the mic and speak.");
   const blob = new Blob(r.chunks, { type: r.recorder.mimeType || "audio/webm" });
   form.classList.add("transcribing");
   $(".what", dock).textContent = "Writing it down…"; $(".hint", dock).textContent = "";
@@ -1163,8 +1177,8 @@ async function stopRecording(dock) {
     const resp = await fetch(`threads/${curThread}/transcribe`, { method: "POST", headers: backend.headers({ "Content-Type": blob.type.split(";")[0] }), body: blob });
     if (!resp.ok) throw new Error(resp.status);
     const { text } = await resp.json();
-    form.classList.remove("transcribing");             // the field must be visible to size itself
-    if (text) { msg.value = (msg.value ? msg.value + " " : "") + text; msg.dispatchEvent(new Event("input")); msg.focus(); }
+    form.classList.remove("transcribing");
+    if (text) send(text);
     else toast("I didn’t catch that. Try again?");
   } catch { toast("Couldn’t turn that into text just now"); }
   form.classList.remove("transcribing");
