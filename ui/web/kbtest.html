@@ -24,7 +24,7 @@ body.fix #app { position:fixed; inset:0; height:auto; }
 #think { position:absolute; max-width:180px; padding:5px 8px; background:var(--paper); border:2px dashed var(--ink); border-radius:12px; font-size:13px; line-height:1.3; visibility:hidden; }
 /* No smooth fades anywhere: things appear and leave by a pixel dissolve (ordered dither, 4px blocks; dissolve() below). */
 #back { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:12px; width:44px; height:44px; border:2px solid var(--ink); background:var(--paper); color:var(--ink); font:20px inherit; box-shadow:2px 3px 0 rgba(0,0,0,.25); z-index:5; }
-#chat { position:absolute; left:10px; right:10px; top:var(--chat-top); bottom:calc(var(--kb) + var(--pad-b) + var(--composer) + 8px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-top:80px; transition:top var(--dur) cubic-bezier(.2,.8,.2,1), bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
+#chat { position:absolute; left:10px; right:10px; top:var(--chat-top); bottom:calc(var(--kb) + var(--pad-b) + var(--composer) + 8px); overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-top:52px; transition:top var(--dur) cubic-bezier(.2,.8,.2,1), bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
 #chat .sp { margin-top:auto; }
 .b { max-width:82%; padding:8px 11px; background:var(--paper); border:2px solid var(--ink); box-shadow:2px 3px 0 rgba(0,0,0,.25); font-size:16px; line-height:1.4; }
 .b.me { align-self:flex-end; background:#e6efd7; }
@@ -212,7 +212,7 @@ function dissolve(el, show, ms = 280, done) {
 // block of the conversation has a fixed random threshold; the higher it sits in the band, the more
 // likely it is hidden. So a bubble crumbles block by block as it scrolls up into the band and fills
 // back in as it scrolls down, and nothing in the band stands still while the chat moves.
-const BAND_ROWS = 20, NOISE_ROWS = 256;
+const BAND_ROWS = 13, NOISE_ROWS = 256;   // 52px
 let bandCols = 0, bandT = null, bandRaf = 0;
 function bandSetup() {
   bandCols = Math.ceil((chat.clientWidth + 8) / BLOCK);
