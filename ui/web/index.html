@@ -886,7 +886,7 @@ function openMeet(id) {
 new ResizeObserver(() => { if (screen === "meet") placeBust($("#meet")); }).observe($("#meet"));
 
 // From the bust to the conversation: the chat screen opens over Meet showing only the bust's window,
-// and the rest of it dissolves in block by block, spreading out from the bust (each 24px block's turn is
+// and the rest of it dissolves in block by block, spreading out from the bust (each 3px block's turn is
 // its distance from the bust plus a little noise, as in `dissolve`). The scene is drawn first, so the
 // head never jumps or flashes.
 async function revealChat(from) {
@@ -895,7 +895,7 @@ async function revealChat(from) {
   chat.style.visibility = "hidden";
   meet.hidden = false;
   await Promise.race([stage.ready, new Promise(r => setTimeout(r, 900))]);
-  const c = chat.getBoundingClientRect(), Bk = 24;
+  const c = chat.getBoundingClientRect(), Bk = 3;
   const cols = Math.ceil(c.width / Bk), rows = Math.ceil(c.height / Bk);
   const x0 = from.left - c.left, y0 = from.top - c.top, x1 = from.right - c.left, y1 = from.bottom - c.top;
   const far = Math.hypot(Math.max(x0, c.width - x1), Math.max(y0, c.height - y1)) || 1;
