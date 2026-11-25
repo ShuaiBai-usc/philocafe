@@ -807,16 +807,15 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
 });
 
 /* ---------- 01 Home ---------- */
-// The café (assets/home/, tools/art/home_scene.py) covers the screen: one flat, front-view picture with
-// each philosopher in his own nook, drawn in the chat scenes' style. Each one is on his own layer over
-// his empty armchair, so he breathes, blinks and now and then nods without anything behind him moving;
-// the room has its own motion (home.json "ambient": leaves, the cat and the poodle, two small flames)
-// and loose pixels (dust under the lamps, steam off Socrates' cup). A tap on a philosopher opens Meet.
+// The café (assets/home/, tools/art/home_scene.py) covers the screen: one flat, front-view picture with an
+// armchair in each philosopher's nook. The team's sprites sit in those armchairs, their motions fitted to
+// the room: the cup rests on each nook's own table, desk or stool, and Schopenhauer, who has none, keeps
+// it in his hands. The room has its own motion (home.json "ambient": leaves, the cat and the poodle, two
+// small flames) and dust under the lamps. A tap on a philosopher opens Meet.
 const cafe = $("#cafe"), pano = $("#pano"), HA = "assets/home/";
-let HOME_W = 143, HOME_H = 266;
-const home = { meta: null, cafe: null, people: null, amb: null, st: {}, els: [], motes: [], puffs: [] };
+let HOME_W = 96, HOME_H = 182;
+const home = { meta: null, cafe: null, img: {}, st: {}, amb: null, els: [], motes: [], petAt: 0 };
 const homeCv = el("canvas", "bg px"); homeCv.setAttribute("aria-hidden", "true");
-pano.querySelector("img.bg")?.remove();
 pano.prepend(homeCv);
 const hg = homeCv.getContext("2d");
 // Cover the screen (a little more of the floor than the wall is cut when it must be); the wordmark is
@@ -839,32 +838,33 @@ function drawHome() {
   const m = home.meta;
   if (!m || !home.cafe) return;
   hg.drawImage(home.cafe, 0, 0);
-  if (home.people) for (const [id, p] of Object.entries(m.people)) {
-    const s = home.st[id], col = s.nod ? 1 : s.blink ? (s.inn ? 3 : 2) : s.inn ? 0 : -1;
-    if (col >= 0) hg.drawImage(home.people, col * p.w, p.sy, p.w, p.h, p.x, p.y, p.w, p.h);
+  const amb = front => {
+    if (home.amb) for (const e of home.els) {
+      if (!!e.front !== front) continue;
+      const f = e.mode === "once" ? (e.playing ? e.seq[e.i] : 0) : e.mode === "flicker" ? e.f : e.seq[e.i];
+      if (f || e.front) hg.drawImage(home.amb, f * e.w, e.sy, e.w, e.h, e.x, e.y, e.w, e.h);
+    }
+  };
+  amb(false);
+  for (const [id, p] of Object.entries(m.people)) {
+    const img = home.img[id], s = home.st[id];
+    if (img) hg.drawImage(img, p.seq[s.i][0] * p.w, 0, p.w, p.h, p.x, p.y, p.w, p.h);
   }
-  if (home.amb) for (const e of home.els) {
-    const f = e.mode === "once" ? (e.playing ? e.seq[e.i] : 0) : e.mode === "flicker" ? e.f : e.seq[e.i];
-    if (f) hg.drawImage(home.amb, f * e.w, e.sy, e.w, e.h, e.x, e.y, e.w, e.h);
-  }
+  amb(true);
   for (const d of home.motes) {
     hg.globalAlpha = d.a * (0.6 + 0.4 * Math.sin(d.t)); hg.fillStyle = "#fffdf2"; hg.fillRect(Math.round(d.x), Math.round(d.y), 1, 1);
   }
-  for (const q of home.puffs) { hg.globalAlpha = q.a; hg.fillStyle = "#f6f1e8"; hg.fillRect(Math.round(q.x), Math.round(q.y), 1, 1); }
   hg.globalAlpha = 1;
 }
 function homeTick(now) {                                            // 12 times a second while the café shows
-  const m = home.meta, T = m.timing_ms, rnd = ([a, b]) => a + Math.random() * (b - a);
-  for (const [id, s] of Object.entries(home.st)) {
-    if (now >= s.breathAt) { s.inn = !s.inn; s.breathAt = now + rnd(T.breath); }
-    if (s.blink && now >= s.blinkEnd) s.blink = false;
-    if (now >= s.blinkAt) { s.blink = true; s.blinkEnd = now + T.blink; s.blinkAt = now + rnd(T.blink_every); }
-    if (s.nod && now >= s.nodEnd) s.nod = false;
-    if (now >= s.nodAt) { s.nod = true; s.nodEnd = now + T.nod; s.nodAt = now + rnd(T.nod_every); }
+  const m = home.meta, rnd = ([a, b]) => a + Math.random() * (b - a);
+  for (const [id, p] of Object.entries(m.people)) {                 // each sprite's own timeline
+    const s = home.st[id];
+    if (now >= s.next) { s.i = (s.i + 1) % p.seq.length; s.next = now + p.seq[s.i][1]; }
   }
   if (now >= home.petAt) {                                          // the poodle perks up and wags now and then
     for (const e of home.els) if (e.mode === "once") { e.playing = true; e.i = 0; e.next = now + e.ms[0]; }
-    home.petAt = now + rnd(T.pet_every);
+    home.petAt = now + rnd(m.timing_ms.pet_every);
   }
   for (const e of home.els) {
     if (now < e.next) continue;
@@ -875,19 +875,13 @@ function homeTick(now) {                                            // 12 times 
     } else { e.i = (e.i + 1) % e.seq.length; e.next = now + rnd(e.ms); }
   }
   for (const D of m.particles.dust) {
-    const mine = home.motes.filter(d => d.src === D);
-    for (let n = mine.length; n < 6; n++) {
+    for (let n = home.motes.filter(d => d.src === D).length; n < 4; n++) {
       const k = Math.random();
-      home.motes.push({ src: D, x: D.x + (Math.random() - .5) * D.spread * (.3 + k), y: D.y + k * D.depth, vx: (Math.random() - .5) * .05,
-                        vy: .012 + Math.random() * .025, a: .5 + Math.random() * .4, t: Math.random() * 6, life: 120 + Math.random() * 200 });
+      home.motes.push({ src: D, x: D.x + (Math.random() - .5) * D.spread * (.3 + k), y: D.y + k * D.depth, vx: (Math.random() - .5) * .04,
+                        vy: .01 + Math.random() * .02, a: .5 + Math.random() * .4, t: Math.random() * 6, life: 120 + Math.random() * 200 });
     }
   }
-  home.motes = home.motes.filter(d => (d.x += d.vx + Math.sin(d.t) * .02, d.y += d.vy, d.t += .15, --d.life > 0 && d.y < d.src.y + d.src.depth + 4));
-  const S = m.particles.steam;
-  if (S) {
-    if (Math.random() < .18) home.puffs.push({ x: S[0] + Math.round((Math.random() - .5) * 2), y: S[1], a: .5, t: Math.random() * 6 });
-    home.puffs = home.puffs.filter(q => (q.y -= .1, q.x += Math.sin(q.t += .3) * .07, q.a -= .02, q.a > 0));
-  }
+  home.motes = home.motes.filter(d => (d.x += d.vx + Math.sin(d.t) * .015, d.y += d.vy, d.t += .15, --d.life > 0 && d.y < d.src.y + d.src.depth + 3));
   drawHome();
 }
 (async () => {
@@ -895,25 +889,26 @@ function homeTick(now) {                                            // 12 times 
   home.meta = await (await fetch(HA + "home.json")).json();
   [HOME_W, HOME_H] = home.meta.grid;
   homeCv.width = HOME_W; homeCv.height = HOME_H;
+  const ids = Object.keys(home.meta.people);
   home.cafe = await load("cafe.png");
-  const now = performance.now(), T = home.meta.timing_ms, rnd = ([a, b]) => a + Math.random() * (b - a);
-  for (const id of Object.keys(home.meta.people))
-    home.st[id] = { inn: Math.random() < .5, blink: false, nod: false, breathAt: now + rnd(T.breath), blinkAt: now + rnd(T.blink_every), nodAt: now + rnd(T.nod_every) };
-  home.els = home.meta.ambient.map(e => ({ ...e, i: 0, f: 0, playing: false, next: now + rnd(e.ms[1] ? e.ms : [e.ms[0], e.ms[0]]) }));
-  home.petAt = now + rnd(T.pet_every);
-  for (const [id, p] of Object.entries(home.meta.people)) {
+  (await Promise.all(ids.map(id => load(id + ".png")))).forEach((img, n) => { home.img[ids[n]] = img; });
+  const now = performance.now(), rnd = ([a, b]) => a + Math.random() * (b - a);
+  for (const [id, p] of Object.entries(home.meta.people)) {         // each starts somewhere in his own loop
+    const i = Math.floor(Math.random() * p.seq.length);
+    home.st[id] = { i: reduce ? 0 : i, next: now + rnd([0, p.seq[i][1]]) };
     const seat = el("button", "seat");
     seat.dataset.box = JSON.stringify(p.tap);
     seat.setAttribute("aria-label", t("Meet {name}", { name: PH[id].name }));
     seat.onclick = () => openMeet(id);
     pano.append(seat);
   }
+  home.els = home.meta.ambient.map(e => ({ ...e, i: 0, f: 0, playing: false, next: now + rnd(e.ms[1] ? e.ms : [e.ms[0], e.ms[0]]) }));
+  home.petAt = now + rnd(home.meta.timing_ms.pet_every);
+  home.amb = await load("ambient.png").catch(() => null);
   layoutHome(); drawHome();
   if (reduce) return;
-  [home.people, home.amb] = await Promise.all([load("people.png"), load("ambient.png")]);
   setInterval(() => { if (!document.hidden && screen === "home") homeTick(performance.now()); }, 83);
 })().catch(() => {});
-
 
 /* ---------- 02 Meet ---------- */
 function openMeet(id) {
