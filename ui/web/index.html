@@ -12,6 +12,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500&family=Silkscreen&display=swap">
 <style>
+/* Zpix (SolidZORO): pixel CJK glyphs. Free for education and personal projects; a commercial product needs
+   a paid license, and the font may not be modified, subset or converted (assets/fonts/README.md). The
+   unicode-range means the browser fetches it only when Chinese or Japanese text is on screen. */
+@font-face { font-family: "Zpix"; src: url("assets/fonts/zpix.ttf") format("truetype"); font-display: swap;
+  unicode-range: U+2E80-2FFF, U+3000-303F, U+3040-30FF, U+3100-312F, U+31A0-31FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F, U+FF00-FFEF; }
 /* Tokens and sizes follow the Figma file "Philocafe · Mobile App UI". */
 :root {
   --paper: #fffae0;      /* page */
@@ -21,11 +26,12 @@
   --sage: #e9edc9;       /* user bubble, title bars */
   --clay: #d4aa73;       /* primary button, thin lines */
   --shadow: #cca370;     /* 3px 4px drop shadows */
+  --rust: #8c524a;       /* destructive action: low-saturation dark red */
   --table: #2f261c;      /* desktop surround */
-  --f-display: "Pixelify Sans", "Courier New", monospace;   /* headings: pixel face like the rest of the app */
-  --f-pixel: "Pixelify Sans", "Courier New", monospace;
-  --f-label: "Silkscreen", "Courier New", monospace;
-  --f-mono: "Pixelify Sans", "Courier New", monospace;
+  --f-display: "Pixelify Sans", "Zpix", "Courier New", monospace;   /* headings: pixel face like the rest of the app */
+  --f-pixel: "Pixelify Sans", "Zpix", "Courier New", monospace;
+  --f-label: "Silkscreen", "Zpix", "Courier New", monospace;
+  --f-mono: "Pixelify Sans", "Zpix", "Courier New", monospace;
   --pad-l: max(18px, env(safe-area-inset-left, 0px));
   --pad-r: max(18px, env(safe-area-inset-right, 0px));
   color-scheme: light;
@@ -67,37 +73,61 @@ p { margin: 0; }
 .t28 { font-size: 28px; line-height: 36px; }
 
 /* ---------- Bottom navigation ---------- */
-.tabs { flex: none; background: var(--ink); display: flex; justify-content: center; gap: 18px; padding: 8px 24px calc(6px + env(safe-area-inset-bottom, 0px)); }
-.tab { width: 102px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 2px 0; color: var(--paper); font-size: 11px; line-height: 14px; opacity: .72; }
-.tab[aria-current="page"] { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+/* A wooden plank (assets/plank.png, 64 x 22 px at 3x); icons only, larger. */
+.tabs { flex: none; position: relative; display: flex; justify-content: space-around; align-items: center; height: calc(66px + env(safe-area-inset-bottom, 0px));
+  padding: 0 14px env(safe-area-inset-bottom, 0px); background: url("assets/plank.png") 0 0 / 192px 66px repeat-x, #4a2f1a; image-rendering: pixelated; }
+.tabs::before, .tabs::after { content: ""; position: absolute; top: 9px; width: 6px; height: 6px; background: #3a2414; box-shadow: 0 33px 0 #3a2414, 1px 1px 0 #c79a62 inset; }
+.tabs::before { left: 6px; } .tabs::after { right: 6px; }
+.tab { width: 64px; height: 56px; display: grid; place-items: center; position: relative; opacity: .62; }
+.tab .ico { width: 34px; height: 34px; filter: drop-shadow(2px 2px 0 #3a2414); }
+.tab[aria-current="page"] { opacity: 1; }
+.tab:active { transform: translate(1px, 1px); }
 
 /* ---------- 01 The Café ---------- */
-#home .body { align-items: center; gap: 8px; padding-left: 16px; padding-right: 16px; }
-.brand { position: relative; width: 300px; max-width: 100%; height: 30px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 8px; border: 1px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow);
-  background: repeating-linear-gradient(to bottom, var(--sage) 0 2px, #f4f3d4 2px 4px); font-size: 24px; line-height: 28px; }
-.hint { text-align: center; }
-.hint.flash { animation: flash .9s steps(2) 2; }
-.cafe { position: relative; width: 300px; max-width: 100%; aspect-ratio: 1179 / 2556; flex: none; border: 2px solid var(--ink); overflow: hidden; }
-.cafe > img.bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* The team's café covers the screen; the pixel wordmark floats over the wall at the top. */
+.cafe { position: absolute; inset: 0; overflow: hidden; background: #b88a5e; }
+.pano { position: absolute; }
+.pano > img.bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.logo { position: absolute; z-index: 3; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 18px); margin: 0; display: flex; justify-content: center; pointer-events: none;
+  animation: bob 3.2s steps(2) infinite; }
+.logo img { width: 348px; height: 72px; image-rendering: pixelated; }
+@keyframes bob { 50% { transform: translateY(-3px); } }
 .actor { position: absolute; }
 .actor img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .seat { position: absolute; z-index: 2; min-width: 44px; min-height: 44px; }
 
 /* ---------- 02 Meet ---------- */
 #meet .body { gap: 16px; }
-.backlink { display: flex; gap: 8px; align-items: center; align-self: flex-start; font-size: 16px; line-height: 21px; min-height: 32px; }
+/* Meet's header is the chat's: back, name, and the read-aloud switch where the chat has it. */
+.meethead { position: absolute; top: 0; left: 0; right: 0; z-index: 3; display: flex; align-items: center; gap: 8px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 0; }
+.meethead .back { margin-left: -6px; }
+.meethead h1 { margin: 0; font: 500 20px/44px var(--f-display); }
+.meethead .tools { margin-top: 0; align-self: center; }
+#meet .tag { text-align: center; text-wrap: balance; }
+#meet .foot { padding: 0 10px max(env(safe-area-inset-bottom, 0px), 10px); }
+#meet .primary { height: 62px; box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+.meethead .ico { filter: drop-shadow(1px 0 0 var(--paper)) drop-shadow(-1px 0 0 var(--paper)) drop-shadow(0 1px 0 var(--paper)) drop-shadow(0 -1px 0 var(--paper)); }
+#meet .body { padding-top: 0; }
+/* The bust: a window onto his chat scene, where his head will be when the conversation opens. */
+.bust { position: relative; flex: none; align-self: flex-start; overflow: hidden; visibility: hidden; width: 204px; height: 230px;
+  outline: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); background: #8a6440; }
+.bust img { position: absolute; max-width: none; image-rendering: pixelated; }
 .portrait { width: 204px; height: 230px; flex: none; align-self: center; border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); object-fit: cover; }
 .intro { display: flex; flex-direction: column; gap: 3px; }
 .foot { flex: none; padding: 10px max(24px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px)); }
 
 /* ---------- 03 / 04 Conversation ---------- */
 .convhead { display: flex; align-items: center; gap: 12px; padding: 12px var(--pad-r) 0 var(--pad-l); flex: none; }
-.back { width: 32px; height: 44px; display: grid; place-items: center; flex: none; }
+.back { width: 40px; height: 44px; display: grid; place-items: center; flex: none; margin-left: -8px; }
 .mono { width: 52px; height: 52px; border: 1px solid var(--clay); flex: none; }
-.convhead h1 { margin: 0; font: 400 20px/1.3 var(--f-display); }
-.convhead .sub { font: 11px/1.4 var(--f-mono); color: var(--muted); white-space: nowrap; }
-.mode { margin-left: auto; align-self: flex-start; margin-top: 6px; font: 9px var(--f-label); letter-spacing: .08em; border: 2px solid var(--muted); color: var(--muted); padding: 1px 4px; }
-.mode.live { border-color: #6f8a55; color: #55703d; }
+.convhead h1 { margin: 0; font: 500 20px/1.3 var(--f-display); }
+.convhead > div { min-width: 0; }
+.convhead .sub { font: 11px/1.4 var(--f-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Chat bar tools: copy the chat, read replies aloud on/off (FR-09); bare icons, no frames. */
+.tools { margin-left: auto; align-self: flex-start; display: flex; gap: 2px; margin-top: 4px; }
+.tool { width: 40px; height: 40px; display: grid; place-items: center; }
+.tool:active { transform: translate(1px, 1px); }
 
 .scene-wrap { margin: 12px var(--pad-r) 0 var(--pad-l); border: 2px solid var(--ink); position: relative; overflow: hidden; flex: none; aspect-ratio: 354 / 164; transition: aspect-ratio .5s ease; }
 #chat.convo .scene-wrap { aspect-ratio: 354 / 110; }
@@ -114,6 +144,12 @@ p { margin: 0; }
 .say.typing::after { content: "▌"; position: static; animation: none; }
 .label { font: 8px/10px var(--f-label); letter-spacing: .1em; text-transform: uppercase; }
 .chips { display: flex; flex-direction: column; gap: 9px; }
+/* Suggested next messages (7.9, FR-46): under the latest reply, tap to send. */
+.nexts { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0 58px; }
+#chat.convo .nexts { margin-top: -6px; }
+.nexts button { text-align: left; background: var(--white); border: 1.5px solid var(--ink); box-shadow: 2px 2px 0 var(--shadow); padding: 6px 10px; font-size: 14px; line-height: 18px; color: var(--ink); }
+.nexts button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
+.chip .ico, .cempty .ico { display: inline-block; vertical-align: -3px; margin-right: 6px; }
 .chip { text-align: left; background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 8px 12px; font-size: 16px; line-height: 21px; white-space: pre-wrap; }
 
 .row { display: flex; gap: 16px; align-items: flex-start; position: relative; }
@@ -130,18 +166,107 @@ p { margin: 0; }
 .dots i { width: 7px; height: 7px; background: var(--ink); animation: hop .9s steps(2) infinite; }
 .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
 
-.tools { flex: none; display: flex; gap: 20px; padding: 0 var(--pad-r) 12px var(--pad-l); font: 10px/13px var(--f-label); letter-spacing: .06em; text-transform: uppercase; }
-.tools button { padding: 6px 0; text-transform: uppercase; }
-.tools button:disabled { opacity: .45; cursor: default; }
+/* Reply actions (7.9): small pixel icons under each persona reply */
+.acts { display: flex; gap: 2px; margin: -8px 0 0 58px; }
+#chat.convo .acts { margin-top: -12px; }
+.acts button { width: 30px; height: 30px; display: grid; place-items: center; }
+.acts button:focus-visible { outline: 2px dashed var(--clay); outline-offset: -2px; }
+.acts button:disabled { opacity: .4; cursor: default; }
+.acts:not(.latest) .regen { display: none; }     /* only the last turn can be asked again */
+.acts button { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.feedback { text-align: left; }
+.feedback .inner { padding: 14px 18px 16px; gap: 10px; }
+.feedback .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.feedback .tag { border: 2px solid var(--ink); background: var(--paper); padding: 6px 10px; font-size: 14px; line-height: 18px; }
+.feedback .tag[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.feedback textarea { width: 100%; min-height: 72px; resize: vertical; border: 1px solid var(--clay); background: var(--paper); padding: 8px 10px; font-size: 16px; line-height: 21px; }
+.feedback textarea::placeholder { color: var(--muted); }
+.feedback .btn.go { background: var(--clay); }
+.menu { position: absolute; right: var(--pad-r); top: 58px; z-index: 15; width: 230px; animation: popin .2s steps(3); }
+.menu .inner { padding: 6px 0 8px; gap: 0; }
+.menu button { display: block; width: 100%; text-align: left; padding: 9px 14px; font-size: 15px; line-height: 20px; }
+.menu button:hover, .menu button:focus-visible { background: var(--sage); }
+.menu .style { padding: 8px 14px 4px; border-top: 1px dashed var(--clay); margin-top: 4px; }
 .toast { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -6px); background: var(--ink); color: var(--paper); font-size: 13px; padding: 6px 10px; white-space: nowrap; animation: popin .2s steps(3); }
 
 .dock { flex: none; padding: 0 var(--pad-r) calc(12px + env(safe-area-inset-bottom, 0px)) var(--pad-l); position: relative; }
-.composer { height: 62px; background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 8px; display: flex; gap: 9px; align-items: center; }
-.composer input { flex: 1; min-width: 0; height: 40px; border: 1px solid var(--ink); background: var(--paper); padding: 0 10px; font: 16px var(--f-pixel); color: var(--ink); border-radius: 0; }
-.composer input::placeholder { color: var(--ink); opacity: .55; }
-.composer .send { width: 36px; height: 40px; border: 2px solid var(--ink); background: var(--sage); font-size: 18px; flex: none; }
-.composer .send:disabled, .composer input:disabled { opacity: .5; cursor: default; }
+/* Composer (7.6): one field and one action button: the mic while the field is empty (tap to talk,
+   tap again to send; or hold and let go), the send arrow once there is text. */
+.composer { background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 8px; display: flex; gap: 8px; align-items: flex-end; position: relative; }
+.composer textarea { flex: 1; min-width: 0; box-sizing: border-box; height: 42px; max-height: 64px; resize: none; overflow-y: auto; border: 1px solid var(--ink); background: var(--paper);
+  padding: 9px 10px; font: 16px/22px var(--f-pixel); color: var(--ink); border-radius: 0; display: block; }
+.composer textarea::placeholder { color: var(--ink); opacity: .55; }
+.composer .send { width: 42px; height: 42px; border: 2px solid var(--ink); background: var(--clay); flex: none; display: grid; place-items: center;
+  -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; touch-action: none; }
+.composer .send:disabled, .composer textarea:disabled { opacity: .5; cursor: default; }
+.composer.recording .send { background: var(--rust); }
+.composer .rec { flex: 1; min-width: 0; height: 42px; box-sizing: border-box; display: none; align-items: center; gap: 10px; padding: 0 10px; border: 1px dashed var(--rust); background: var(--paper); font-size: 15px; white-space: nowrap; overflow: hidden; }
+.composer.recording textarea, .composer.transcribing textarea { display: none; }
+.composer.recording .rec, .composer.transcribing .rec { display: flex; }
+.composer .rec .dot { width: 10px; height: 10px; background: var(--rust); flex: none; animation: blink 1s steps(1) infinite; }
+.composer.transcribing .rec .dot { background: var(--muted); }
+.composer .rec .hint { margin-left: auto; color: var(--muted); font-size: 12px; }
+.composer .rec .what { flex: none; }
+.composer .rec .hint { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .dock .note { text-align: center; margin-top: 8px; }
+
+/* ---------- Full-screen scene chat (kbtest layout; Socrates first) ----------
+   The scene covers the screen and the philosopher sits in it; the conversation floats over the lower
+   half, the composer sits on the keyboard. When the keyboard opens the scene lifts so his face stays
+   just under the buttons. Bubbles arrive and leave by a pixel dissolve, never a fade. */
+body.fixed { position: fixed; inset: 0; overscroll-behavior: none; }
+#chat.full { --kb: 0px; --lift: 0px; --chat-top: 50%; --dock-h: 74px; --dur: 260ms; --pad-b: max(env(safe-area-inset-bottom, 0px), 10px);
+  background: #8a6440; overflow: hidden; }
+#chat.full.kb { --pad-b: 8px; }
+#chat.full.snap .scroll, #chat.full.snap .dock, #chat.full.snap .scene-full { transition: none; }
+.scene-full { position: absolute; left: 0; top: 0; width: 100%; height: 100%; will-change: transform;
+  transform: translateY(calc(-1 * var(--lift))); transition: transform var(--dur) cubic-bezier(.2,.8,.2,1); }
+.scene-full canvas { position: absolute; image-rendering: pixelated; image-rendering: crisp-edges; }
+/* Thought bubble (7.8): his thinking over his head while the reply is on its way; beside it when the keyboard is up. */
+.think { position: absolute; z-index: 2; left: 0; top: 0; padding-bottom: 20px; visibility: hidden; pointer-events: none; --tx: 50%; }
+.think .cloud { background: var(--paper); border: 2px solid var(--ink); border-radius: 12px; box-shadow: 2px 3px 0 rgba(0,0,0,.25);
+  padding: 6px 10px; font-size: 14px; line-height: 18px; color: var(--ink); overflow-wrap: anywhere; }
+.think .cloud .dots { padding: 3px 2px; }
+.think > i { position: absolute; background: var(--paper); border: 2px solid var(--ink); box-shadow: 1px 2px 0 rgba(0,0,0,.2); }
+.think > .d1 { width: 10px; height: 10px; left: calc(var(--tx) - 5px); bottom: 7px; }
+.think > .d2 { width: 6px; height: 6px; left: calc(var(--tx) - 9px); bottom: 0; }
+.think.side { padding: 0 0 0 22px; }
+.think.side > .d1 { left: 9px; top: 12px; bottom: auto; }
+.think.side > .d2 { left: 0; top: 24px; bottom: auto; }
+@media (prefers-reduced-motion: reduce) { #chat.full { --dur: 0ms; } }
+
+#chat.full .convhead { position: absolute; top: 0; left: 0; right: 0; z-index: 6; padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 0;
+  align-items: flex-start; gap: 8px; pointer-events: none; }
+#chat.full .convhead > * { pointer-events: auto; }
+#chat.full .convhead .mono, #chat.full .convhead .sub { display: none; }
+/* Over the scene: bare icons and name, bold, with a one-pixel paper outline so they read on dark wood too. */
+#chat.full .convhead { align-items: center; }
+#chat.full .back { margin-left: -6px; }
+#chat.full .convhead h1 { font: 500 20px/44px var(--f-display);
+  text-shadow: 1px 0 var(--paper), -1px 0 var(--paper), 0 1px var(--paper), 0 -1px var(--paper); }
+#chat.full .convhead .ico { filter: drop-shadow(1px 0 0 var(--paper)) drop-shadow(-1px 0 0 var(--paper)) drop-shadow(0 1px 0 var(--paper)) drop-shadow(0 -1px 0 var(--paper)); }
+#chat.full .tools { margin-top: 0; align-self: center; }
+
+#chat.full .scroll { position: absolute; left: 0; right: 0; top: var(--chat-top); bottom: calc(var(--kb) + var(--dock-h)); padding: 52px 10px 10px; gap: 10px;
+  transition: top var(--dur) cubic-bezier(.2,.8,.2,1), bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
+#chat.full .scroll > :first-child { margin-top: auto; }
+#chat.full .row .ava, #chat.full .row .tail { display: none; }
+#chat.full .row.them { padding-right: 36px; }
+#chat.full .row.me { padding-left: 36px; }
+#chat.full .row.pending { display: none; }      /* his reply bubble appears with its first words; the thought bubble covers the wait (7.8) */
+#chat.full .bubble { max-width: 100%; box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+#chat.full .acts { align-self: flex-start; margin: -4px 0 0; background: var(--paper); border: 2px solid var(--ink); box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+#chat.full .nexts { margin: -2px 0 0; }
+#chat.full .nexts button { box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+#chat.full .label { align-self: flex-start; background: var(--paper); border: 2px solid var(--ink); padding: 3px 6px; }
+#chat.full .chip { box-shadow: 2px 3px 0 rgba(0,0,0,.25); padding: 7px 11px; font-size: 15px; line-height: 20px; }
+#chat.full .chips { gap: 8px; }
+#chat.full .netnote { align-self: center; background: var(--paper); border: 2px solid var(--ink); padding: 4px 8px; }
+#chat.full .sysnote { box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+#chat.full .dock { position: absolute; left: 0; right: 0; bottom: var(--kb); z-index: 4; padding: 0 10px var(--pad-b);
+  transition: bottom var(--dur) cubic-bezier(.2,.8,.2,1); }
+#chat.full .composer { box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
+#chat.full .comeback { background: var(--paper); border: 2px solid var(--ink); padding: 8px; margin-bottom: 8px; }
 
 /* 07 distress state */
 .syscheck { text-align: center; }
@@ -155,14 +280,13 @@ p { margin: 0; }
 .pop { width: 100%; max-width: 342px; animation: popin .25s steps(4); }
 .pop .titlebar { display: flex; align-items: center; gap: 6px; }
 .pop .titlebar img { width: 14px; height: 14px; }
-.pop .x { margin-left: auto; width: 20px; height: 20px; margin-top: -3px; border: 2px solid var(--ink); background: var(--paper); font: 12px/14px var(--f-label); }
+.pop .x { width: 28px; height: 28px; margin: -3px -8px 0 auto; display: grid; place-items: center; font: 18px/1 var(--f-label); color: var(--ink); }
 .pop-body { padding: 18px 16px 16px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; font-size: 15px; line-height: 1.5; }
 .pop-body img { width: 64px; }
 .btns { display: flex; gap: 12px; width: 100%; margin-top: 4px; }
 .btn { flex: 1; border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 10px 0; font: 13px var(--f-label); letter-spacing: .14em; background: var(--paper); }
 .btn.go { background: var(--sage); }
 .source .inner { padding: 14px 24px 16px; gap: 8px; }
-.source .close { align-self: flex-start; font-size: 16px; line-height: 21px; padding: 4px 0; }
 
 /* ---------- 05 My Notes ---------- */
 .filters { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -170,11 +294,70 @@ p { margin: 0; }
 .pill[aria-pressed="true"] { background: var(--sage); }
 .note-card { text-align: left; width: 100%; }
 .note-card .inner { padding: 12px 22px 14px; }
-.note-card.sel { outline: 2px dashed var(--ink); outline-offset: 3px; }
+.note-card .meta { margin-top: 2px; }
+.note-card.example .titlebar { font-style: italic; }
 .notehead { display: flex; gap: 8px; align-items: center; }
-.reflect textarea { width: 100%; min-height: 84px; resize: vertical; cursor: text; border: 1px solid var(--clay); background: var(--paper); padding: 8px 10px; font-size: 16px; line-height: 21px; }
-.reflect textarea::placeholder { color: var(--muted); }
+/* The note window is capped to the screen area above the tab bar: a definite grid row lets
+   max-height resolve, and the bottom padding leaves room for the 4px drop shadow. */
+.veil.notesveil { grid-template-rows: minmax(0, 1fr); padding: 12px 24px 8px; }
+.notepop { max-height: 100%; overflow-y: auto; text-align: left; }
+.notepop .inner { padding: 14px 20px 18px; gap: 10px; }
+.notepop .t11 + .t28 { margin-top: -2px; }
+.notepop hr { border: 0; border-top: 1px dashed var(--clay); margin: 4px 0; width: 100%; }
+.notepop .label { margin-top: 2px; }
+.excerpt { display: flex; flex-direction: column; gap: 8px; }
+.excerpt .line { border: 2px solid var(--ink); padding: 8px 10px; background: var(--paper); }
+.excerpt .line.me { background: var(--sage); margin-left: 28px; }
+.excerpt .line.them { margin-right: 28px; }
+.excerpt .who { font: 8px/10px var(--f-label); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.excerpt .cites { margin-top: 8px; border-top: 1px dashed var(--clay); }
+.excerpt .cite { padding: 8px 0 2px; }
+.notepop .btn.del { background: var(--rust); color: var(--paper); }
+.notepop .btn.done { background: var(--clay); color: var(--ink); }
+.notepop textarea { width: 100%; min-height: 84px; resize: vertical; cursor: text; border: 1px solid var(--clay); background: var(--paper); padding: 8px 10px; font-size: 16px; line-height: 21px; }
+.notepop textarea::placeholder { color: var(--muted); }
 .empty { padding: 18px; text-align: center; }
+
+/* ---------- Conversations (7.10): one section per philosopher, a card per conversation ---------- */
+.csec { display: flex; flex-direction: column; gap: 10px; }
+.csec-head { display: flex; align-items: center; gap: 10px; }
+.csec-head img { width: 34px; height: 34px; border: 2px solid var(--ink); }
+.csec-head h2 { margin: 0; font: 400 20px/1.2 var(--f-display); flex: 1; }
+.csec-head .newc { font-size: 13px; line-height: 16px; padding: 6px 8px; border: 2px solid var(--ink); background: var(--paper); box-shadow: 2px 3px 0 var(--shadow); }
+.ccard { text-align: left; width: 100%; }
+.ccard .titlebar { display: flex; align-items: center; }
+.ccard .titlebar .when { flex: 1; min-width: 0; }
+.ccard .x { width: 28px; height: 28px; margin: -3px -8px 0 0; font: 18px/1 var(--f-label); color: var(--ink); flex: none; display: grid; place-items: center; }
+.ccard .ctitle { font-size: 17px; line-height: 22px; }
+.ccard .inner { padding: 10px 16px 12px; gap: 4px; }
+.ccard .last { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* Take a seat (02): earlier conversations with this philosopher, or a new one */
+.pop.seat { display: flex; flex-direction: column; max-height: 100%; }
+.seat-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.seat-body .past { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; min-height: 0; max-height: 52vh; padding: 2px 6px 6px 2px; margin: 0 -6px 0 -2px; }
+.seat-body .btn { flex: none; width: 100%; }
+.cempty { border: 2px dashed var(--clay); padding: 12px 14px; text-align: left; width: 100%; color: var(--muted); }
+.btn.danger { background: var(--rust); color: var(--paper); }
+.danger-text { color: var(--rust); }
+/* Chinese (Settings → 中文): Zpix is drawn on a 12 px grid, so nothing goes below 12 px and the tiny
+   uppercase labels lose their letter spacing. */
+html[lang="zh-CN"] .label, html[lang="zh-CN"] .t11, html[lang="zh-CN"] .tab, html[lang="zh-CN"] .titlebar,
+html[lang="zh-CN"] .composer .rec .hint { font-size: 12px; line-height: 16px; letter-spacing: 0; }
+/* ---------- Settings ---------- */
+#settings .inner { gap: 12px; }
+.seg { display: flex; border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); }
+.seg button { flex: 1; height: 44px; font-size: 16px; background: var(--paper); }
+.seg button + button { border-left: 2px solid var(--ink); }
+.seg button[aria-checked="true"] { background: var(--ink); color: var(--paper); }
+.setrow { display: flex; flex-direction: column; gap: 6px; }
+.setrow .btn { flex: none; width: 100%; }
+.account .switch { text-decoration: underline; color: var(--ink); }
+.account .err { color: var(--rust); }
+.account .pw { position: relative; display: block; width: 100%; margin-top: -4px; }
+.account .pw input { color: transparent; caret-color: var(--ink); font-family: "Courier New", ui-monospace, monospace; letter-spacing: 2px; }
+.account .pw input::placeholder { color: var(--ink); opacity: .55; font-family: var(--f-pixel); letter-spacing: 0; }
+.account .pw .mask { position: absolute; left: 11px; top: 0; height: 40px; line-height: 40px; font: 16px/40px "Courier New", ui-monospace, monospace;
+  letter-spacing: 2px; color: var(--ink); pointer-events: none; white-space: pre; overflow: hidden; right: 10px; text-align: left; }
 
 /* ---------- 06 Pause ---------- */
 #pause .rest { width: 100%; height: 160px; object-fit: cover; flex: none; }
@@ -217,27 +400,25 @@ p { margin: 0; }
     <div class="status" aria-hidden="true"><span>9:41</span><span>●&nbsp;&nbsp;▰</span></div>
     <div class="screens">
       <section class="screen" id="home" aria-label="The café">
-        <div class="body">
-          <div class="brand"><span data-icon="cup"></span>Philocafé</div>
-          <p class="hint t11 muted" id="hint">Tap a philosopher in the café to meet them.</p>
-          <div class="cafe" id="cafe"><img class="bg px" src="assets/home_bg.png" alt=""></div>
-        </div>
+        <div class="cafe" id="cafe"><div class="pano" id="pano"><img class="bg px" src="assets/home_bg.png" alt=""></div>
+          <h1 class="logo"><img class="px" id="logo" src="assets/logo_philocafe.png" alt="Philocafé"></h1></div>
       </section>
       <section class="screen" id="meet" hidden></section>
       <section class="screen" id="chat" hidden></section>
       <section class="screen" id="notes" hidden></section>
+      <section class="screen" id="convos" hidden></section>
       <section class="screen" id="pause" hidden></section>
+      <section class="screen" id="settings" hidden></section>
     </div>
     <nav class="tabs" id="tabs" aria-label="Main">
-        <button class="tab" data-tab="home"><span data-icon="cup" data-color="paper"></span>Café</button>
-        <button class="tab" data-tab="chat"><span data-icon="chat" data-color="paper"></span>Conversation</button>
-        <button class="tab" data-tab="notes"><span data-icon="mark" data-color="paper"></span>My notes</button>
+        <button class="tab" data-tab="home" data-i18n-label="Café" aria-label="Café" title="Café"><span data-icon="cup" data-color="paper"></span></button>
+        <button class="tab" data-tab="chat" data-i18n-label="Conversations" aria-label="Conversations" title="Conversations"><span data-icon="chat" data-color="paper"></span></button>
+        <button class="tab" data-tab="notes" data-i18n-label="My notes" aria-label="My notes" title="My notes"><span data-icon="mark" data-color="paper"></span></button>
+        <button class="tab" data-tab="settings" data-i18n-label="Settings" aria-label="Settings" title="Settings"><span data-icon="gear" data-color="paper"></span></button>
     </nav>
     <div class="homebar" id="homebar" aria-hidden="true"></div>
   </div>
   <aside class="notes">
-    <h2>Philocafé</h2>
-    <p>Clickable prototype for 586, built from the Figma file. Tap a philosopher in the café, meet them, take a seat and talk. Save a thought to keep it in My notes.</p>
     <p>Jump to:</p>
     <ul>
       <li><button data-go="socrates">Meet Socrates</button></li>
@@ -340,6 +521,177 @@ const PH = {
   }
 };
 
+/* ---------- Language (Settings): English or 中文 ---------- */
+// The café's own words follow this setting; the philosophers answer in whatever language the user writes.
+// Changing it reloads the page. Chinese text uses the Zpix pixel font (assets/fonts, free for education use).
+const LANG = (() => { try { return localStorage.getItem("philocafe.lang") === "zh" ? "zh" : "en"; } catch { return "en"; } })();
+const ZH = {
+  // café, meet, take a seat
+  "Café": "咖啡馆", "Conversations": "对话", "My notes": "我的笔记", "Settings": "设置",
+  "Tap a philosopher in the café to meet them.": "点一位咖啡馆里的哲学家，认识一下。",
+  "Meet {name}": "认识{name}", "The café": "咖啡馆", "Pixel portrait of {name}": "{name}的像素肖像",
+  "A conversation with me": "和我聊聊", "Inspired by": "灵感来源", "An AI interpretation, not the historical person.": "AI 演绎，并非历史人物本人。",
+  "Take a seat with {name}": "和{name}坐下聊聊", "Coming at the final": "期末开放", "{name} joins the café at the final showcase.": "{name}将在期末展示时加入咖啡馆。",
+  "Your table with {name}": "你和{name}的桌子", "Pick up where you left off, or start a new conversation.": "接着上次聊，或者开始新的对话。",
+  "NEW CONVERSATION": "新对话", "Close": "关闭",
+  // entrance and account
+  "Café entrance": "咖啡馆入口", "This café is open to our class. Please enter the access code.": "这家咖啡馆只对我们班开放，请输入访问码。",
+  "Access code": "访问码", "ENTER": "进入", "That code didn’t open the café. Please try again.": "这个访问码打不开咖啡馆，请再试一次。",
+  "That code no longer opens the café.": "这个访问码已经失效了。", "Please sign in again.": "请重新登录。",
+  "Your café card": "你的咖啡馆卡片", "Sign in to keep your conversations and notes.": "登录后可以保存你的对话和笔记。",
+  "Nickname": "昵称", "Passcode": "密码", "SIGN IN": "登录", "CREATE": "创建", "New here? Create a card": "第一次来？创建一张卡片",
+  "Have a card? Sign in": "已有卡片？登录",
+  "Pick a nickname and a passcode of six or more characters. There is no way to recover a forgotten passcode.": "起一个昵称，设一个至少六位的密码。忘记密码后无法找回。",
+  "Welcome, {name}": "欢迎，{name}", "That didn’t work. Please try again.": "没有成功，请再试一次。", "You’re signed out.": "你已退出登录。",
+  "Delete your café card?": "删除你的咖啡馆卡片？",
+  "This deletes your account with every conversation, note and preference. It can’t be undone.": "这会删除你的账号，以及所有对话、笔记和偏好，无法恢复。",
+  "DELETE": "删除", "CANCEL": "取消", "Couldn’t delete just now": "暂时删不掉，请稍后再试",
+  // settings
+  "Language": "语言", "Changes the café’s words. Philosophers answer in whatever language you write in.": "切换咖啡馆界面的文字。哲学家会用你写的语言回答。",
+  "Signed in as {name}": "已登录：{name}", "SIGN OUT": "退出登录",
+  "Leaves this device. Your conversations and notes stay, and come back when you sign in again.": "只是在这台设备上退出。你的对话和笔记都还在，重新登录就能看到。",
+  "DELETE MY CAFÉ CARD": "删除我的咖啡馆卡片",
+  "Deletes your account and every conversation, note and preference, for good.": "永久删除你的账号，以及所有对话、笔记和偏好。",
+  "Not signed in.": "还没有登录。", "Accounts need the PhiloCafé server; this demo keeps everything on this device.": "账号需要连接 PhiloCafé 服务器；这个演示版只把内容存在这台设备上。",
+  // chat
+  "Back to the café": "回到咖啡馆", "Copy chat": "复制对话", "A table for your thoughts": "一张安放思绪的桌子",
+  "Reading replies aloud: on": "朗读回复：开", "Reading replies aloud: off": "朗读回复：关",
+  "Replies will be read aloud": "回复会被朗读出来", "Reading aloud is off": "朗读已关闭",
+  "Try a conversation starter": "试试这些开场白", "Share a thought...": "说说你的想法……", "Your message": "你的消息",
+  "Listening 0:00": "正在听 0:00", "Listening {time}": "正在听 {time}", "release": "松开发送", "tap to send": "点按发送", "Talk": "说话", "Send": "发送",
+  "Writing it down…": "正在转写……", "The microphone is off. You can still type.": "麦克风没有打开，你仍然可以打字。",
+  "That was too short. Tap the mic and speak.": "太短了，点一下麦克风再说。", "I didn’t catch that. Try again?": "没听清，再试一次？",
+  "Couldn’t turn that into text just now": "暂时没法转成文字",
+  "No conversation yet": "还没有对话", "Tap a philosopher in the café<br>and take a seat to start talking.": "在咖啡馆里点一位哲学家，<br>坐下来就可以开始聊天。",
+  "Things you might say next": "你接下来可能想说", "The café could not answer just now. Please try again.": "咖啡馆暂时没能回答，请再试一次。",
+  // reply actions
+  "Reply actions": "回复操作", "Save to My notes": "存入我的笔记", "Remove from My notes": "从我的笔记中移除", "Copy": "复制",
+  "From the source": "原文出处", "Good reply": "好回复", "Bad reply": "不好的回复", "Regenerate": "重新生成", "Read aloud": "朗读", "Stop reading": "停止朗读",
+  "Removed from My notes": "已从我的笔记中移除", "Couldn’t save just now": "暂时保存不了", "Saved to My notes": "已存入我的笔记",
+  "Copied": "已复制", "Couldn’t copy. Press and hold the reply to copy it.": "复制失败，长按回复可以复制。",
+  "What worked?": "哪里好？", "What missed?": "哪里不好？", "{name} will keep this in mind for the next replies.": "{name}会在之后的回复里记住这一点。",
+  "Anything else? (optional)": "还有别的吗？（选填）", "Your feedback": "你的反馈", "SEND": "发送", "Thanks, noted": "谢谢，记下了",
+  "Couldn’t regenerate just now": "暂时没法重新生成", "Feedback": "反馈",
+  "Too long": "太长", "Too short": "太短", "Too technical": "太专业", "Too many questions": "问题太多", "Too many quotes": "引用太多",
+  "Nice and short": "简短刚好", "Nicely detailed": "细致", "Clear, everyday words": "用词清楚日常", "Good questions": "问得好", "Liked the quotes": "喜欢这些引用",
+  "Full passage": "完整段落", "Read it in the source ↗": "去原文阅读 ↗", "Say something first": "先说点什么吧", "Chat copied": "对话已复制",
+  "Couldn’t copy. Press and hold each message to copy it.": "复制失败，长按每条消息可以复制。",
+  // support mode (FR-32) and the pause
+  "A moment of care": "关心一下你",
+  "This conversation is paused, and {name} is waiting nearby. You can tell me how you are. When you feel ready, tap the button below.": "这段对话暂停了，{name}就在旁边等你。你可以告诉我你现在怎么样。准备好了，就点下面的按钮。",
+  "Say how you are…": "说说你现在怎么样……", "I’m ready to talk with {name} again": "我准备好再和{name}聊了",
+  "Before {name} comes back, how are you feeling right now?": "在{name}回来之前，你现在感觉怎么样？",
+  "I’m safe right now, and I’d like to keep talking with {name}.": "我现在是安全的，想继续和{name}聊。", "I’m still having a hard time.": "我还是很难受。",
+  "Thank you for telling me. {name} will wait a little longer. If you might be in danger, please reach out to someone who can help right away. Whenever you’re ready, you can try again.": "谢谢你告诉我。{name}会再等一会儿。如果你可能有危险，请马上联系能帮助你的人。等你准备好了，随时可以再试。",
+  "I’m glad you’re here. Let’s go on gently, at your own pace. Where would you like to begin?": "很高兴你在这里。我们慢慢来，按你的节奏。你想从哪里开始？",
+  "I’m still here with you, and {name} is staying aside for now. When you feel ready, tap the button below. If you might be in danger, please reach out to someone who can help right away.": "我还在这里陪着你，{name}暂时在一旁。准备好了就点下面的按钮。如果你可能有危险，请马上联系能帮助你的人。",
+  "SAFETY CHECK": "安全检查", "PROTOTYPE · SIMULATED SYSTEM CHECK": "原型 · 模拟系统检查", "YOU · AT THIS TABLE": "你 · 在这张桌子",
+  "Let’s take a moment.": "我们先停一下。", "You deserve support with what you’re carrying. We’re pausing this conversation to make room for that.": "你正承受的事情值得被支持。我们先暂停这段对话，为此留出空间。",
+  "What’s on your mind?": "你在想什么？", "AI interpretation": "AI 演绎", "AI interpretation · Demo conversation": "AI 演绎 · 演示对话", "On finding your own pace": "关于找到自己的节奏",
+  "The café, quiet and at rest": "安静休息中的咖啡馆", "Let’s pause the café<br>for a moment.": "让咖啡馆<br>先暂停一下。",
+  "Some thoughts need a real person alongside you. Take your time, and reach out to someone you trust.": "有些心事需要真实的人陪在身边。慢慢来，去联系你信任的人。",
+  "Local support": "本地支持", "Find a crisis or support service in your area.": "找一找你所在地区的危机或支持服务。",
+  "Campus or community counseling": "校园或社区心理咨询", "Arrange time to talk with a counselor.": "约个时间和咨询师聊聊。",
+  "Someone you trust": "你信任的人", "A friend, family member, or mentor.": "朋友、家人或导师。", "Return to the café": "回到咖啡馆",
+  "Support options shown for prototype review.": "以上支持选项仅供原型评审展示。",
+  // notes
+  "Your pocket<br>of perspectives.": "你的<br>口袋视角。", "Small thoughts worth keeping.": "值得留下的小想法。", "Filter notes": "筛选笔记",
+  "All notes · {n}": "全部笔记 · {n}", "No saved thoughts yet. Tap “Save thought” during a conversation.": "还没有保存的想法。对话时点书签图标就能保存。",
+  "Example": "示例", "Saved thought": "保存的想法", "LEAVES ONCE YOU SAVE YOUR OWN": "保存你自己的笔记后会消失", "SAVED FROM YOUR CONVERSATION": "来自你的对话",
+  "Return to the conversation": "回到对话", "From your conversation": "来自你的对话", "You": "你",
+  "This note was saved before the café kept the conversation with it.": "这条笔记保存于咖啡馆开始一并保存对话之前。",
+  "Your reflection": "你的反思", "What does this question bring up for you?": "这个问题让你想到了什么？", "DONE": "完成",
+  "From your talk about “{text}”.": "来自你关于“{text}”的谈话。", "A thought to revisit later.": "一个值得以后再想想的念头。",
+  "Delete this note?": "删除这条笔记？",
+  // conversations
+  "Your conversations": "你的对话", "Pick up where you left off, or start fresh.": "接着上次聊，或者重新开始。",
+  "Sign in to keep your conversations.": "登录后可以保存你的对话。",
+  "Saved conversations need the PhiloCafé server; this demo keeps only the one open now.": "保存对话需要连接 PhiloCafé 服务器；这个演示版只保留当前这一段。",
+  "Back to {name}": "回到{name}", "Sign in": "登录", "Loading…": "加载中……", "The café could not load your conversations just now.": "咖啡馆暂时没能加载你的对话。",
+  "+ New": "+ 新对话", "Delete this conversation": "删除这段对话", "No conversations with {name} yet. Take a seat": "还没有和{name}的对话。坐下聊聊",
+  "Delete this conversation?": "删除这段对话？", "“{title}” with {name} will be gone for good. Notes you saved from it stay.": "和{name}的“{title}”将被永久删除。从中保存的笔记会保留。",
+  "just now": "刚刚", "{n} min ago": "{n} 分钟前", "{n} h ago": "{n} 小时前"
+};
+const t = (s, v) => {
+  let r = LANG === "zh" && ZH[s] != null ? ZH[s] : s;
+  if (v) r = r.replace(/\{(\w+)\}/g, (m, k) => v[k] ?? m);
+  return r;
+};
+const LOCALE = LANG === "zh" ? "zh-CN" : "en-US";
+// The philosophers' café words in Chinese: names, introductions, greetings, starters and the demo's scripted lines.
+const PH_ZH = {
+  socrates: {
+    name: "苏格拉底", tagline: "让我们追问那些看似理所当然的事。",
+    about: "我们会放慢脚步，检验你的假设，一个问题接一个问题地探索什么对你真正重要。",
+    inspired: "柏拉图的对话录与苏格拉底式提问。", headline: "没有哪个问题太平常。",
+    greet: "你好，朋友。今天心里在想些什么？",
+    starters: ["美好的生活是什么样子？", "我觉得自己落后了。", "我把什么当成了理所当然？"],
+    scripted: {
+      "我觉得自己落后了。": "落后于谁呢？也许我们先该问问，你想抵达的是谁的终点。",
+      "美好的生活是什么样子？": "好问题。不过先告诉我：你上一次觉得一天过得很值，是什么时候？是什么让它这样？",
+      "我把什么当成了理所当然？": "我们来检验一下。说一件你今天没问为什么就做了的事。那真的是你的选择吗？"
+    },
+    sample: { title: "我在跟着谁的时间表走？", why: "当生活像一场比赛时，值得回头想想的问题。", topic: "关于找到自己的节奏" },
+    fallback: ["你说的到底是什么意思？举一个例子，我们一起来检验。", "有意思。可如果一位聪明的朋友不同意你，他会先说什么？",
+      "这么看来，我们发现自己并不知道原以为知道的东西。这是一上午不错的功课。接下来呢？"]
+  },
+  montaigne: {
+    name: "蒙田", tagline: "让我们对“身而为人”保持好奇。",
+    about: "我们会带着好奇、坦诚和容纳矛盾的空间，探索你的日常经验，不急着找到完美答案。",
+    inspired: "《随笔集》：自我认识、不确定与日常生活。", headline: "没有哪个问题太平常。",
+    greet: "你好，同路的漫游者。今天有什么平常的小事一直留在你心里？",
+    starters: ["我为什么总是改变主意？", "一个我解释不了的小习惯", "糟糕的一天教会了我什么？"],
+    scripted: {},
+    sample: { title: "我自己的生活方式是什么？", why: "当生活像一场比赛时，值得回头想想的问题。", topic: "关于找到自己的节奏" },
+    fallback: ["啊，我也一样。我每天都在自相矛盾，也早就不再为此道歉了。多跟我说说那个小细节。",
+      "我的猫教给我的，比三本书还多。你遇到过最平凡的老师是谁？", "我知道什么呢？很少，但我喜欢去发现。如果没人看着，你会尝试什么？"]
+  },
+  schopenhauer: {
+    name: "叔本华", tagline: "让我们看看是什么让我们一直想要。",
+    about: "我们会坦诚地审视欲望、失望和比较，并想想艺术、同情和更安静的快乐如何带来些许解脱。",
+    inspired: "《作为意志和表象的世界》：欲望、艺术与同情。", headline: "没有哪个问题太平常。",
+    greet: "坐吧，如果你非坐不可。今天是什么在困扰你？",
+    starters: ["为什么我总想要更多？", "什么能给我片刻的平静？", "为什么满足感会消退？"],
+    scripted: {},
+    sample: { title: "什么能给我片刻的平静？", why: "当生活像一场比赛时，值得回头想想的问题。", topic: "关于找到自己的节奏" },
+    fallback: ["啊。欲望是一种越喝越渴的渴。告诉我，这周你想要的是什么？", "音乐是唯一直接诉说意志的艺术。放一首曲子，少受三分钟的苦。",
+      "人就像冬天的豪猪：靠得太近会扎到彼此，离得太远又会冻僵。找到那个礼貌的距离吧。"]
+  },
+  seneca: {
+    name: "塞涅卡", tagline: "让我们好好利用拥有的时间。",
+    about: "我们会看看你如何度过每一天、你害怕什么、你能放下什么，像朋友间的书信，一次一句真话。",
+    inspired: "《致鲁基里乌斯书信集》与《论生命之短暂》。", headline: "没有哪个问题太平常。",
+    greet: "你好，朋友。坐下来告诉我：你这些天是怎么度过的？",
+    starters: ["我的时间都去哪儿了？", "我总在担心还没发生的事。", "生气的时候怎么保持冷静？"],
+    scripted: {
+      "我的时间都去哪儿了？": "大部分时间是在我们忙着别的事时溜走的。告诉我：昨天哪一个小时是真正属于你自己的？",
+      "我总在担心还没发生的事。": "我们在想象中受的苦，比在现实中多。这些担心里，到目前为止有哪一个真的发生了？",
+      "生气的时候怎么保持冷静？": "治愤怒最好的药是拖延。下次被惹恼时，在回应之前，那第一分钟你可以做什么？"
+    },
+    sample: { title: "今天哪一个小时真正属于我？", why: "当日子过得匆忙时，值得回头想想的问题。", topic: "关于生命之短暂" },
+    fallback: ["只要懂得如何使用，生命就足够长。如果你开始数自己的时间，你会停止做什么？", "抓住每一个小时，你就会少依赖明天一点。有什么事你今天就能做，而不是以后？",
+      "在我们等待生活的时候，生活已经过去了。你还在等什么才开始？"]
+  },
+  epictetus: {
+    name: "爱比克泰德", tagline: "让我们分清什么取决于我们，什么不取决于我们。",
+    about: "我们会把你能控制的和不能控制的分开，把力气用在真正有用的地方，冷静地，一件事一件事来。",
+    inspired: "《论说集》与《手册》。", headline: "没有哪个问题太平常。",
+    greet: "欢迎。告诉我是什么在困扰你，我们来看看其中哪一部分真正属于你。",
+    starters: ["什么才真正取决于我？", "有人说了伤害我的话。", "怎么才能不再在意别人的看法？"],
+    scripted: {
+      "什么才真正取决于我？": "你的判断、你的选择、你的欲求与厌恶，这些属于你。说说今天的烦恼里，哪一部分在这张清单上。",
+      "有人说了伤害我的话。": "困扰我们的不是话语本身，而是我们对它的判断。你告诉自己那些话意味着什么？",
+      "怎么才能不再在意别人的看法？": "他们的看法是他们的事，你的品格是你的事。如果永远没人知道，你会怎么做？"
+    },
+    sample: { title: "这取决于我吗？", why: "当事情好像不在你掌控之中时，值得回头想想的问题。", topic: "关于我们能控制的事" },
+    fallback: ["有些事取决于我们，有些不。这件属于哪一种？", "不要求事情如你所愿地发生，而要愿它们如其所是地发生。在这里会是什么样子？",
+      "先告诉自己你想成为什么样的人，然后去做该做的事。在这件事里，你想成为谁？"]
+  }
+};
+if (LANG === "zh") for (const id in PH_ZH) Object.assign(PH[id], PH_ZH[id]);
+document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
+
+
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -350,12 +702,31 @@ const ICONS = {
   cup: "M3 7h12v2H3zM3 9h2v7H3zM13 9h2v7h-2zM5 16h8v2H5zM15 9h3v2h-3zM18 11h2v3h-2zM15 14h3v2h-3zM6 3h2v3H6zM10 2h2v4h-2z",
   chat: "M3 3h16v2H3zM3 5h2v10H3zM17 5h2v10h-2zM3 15h6v2H3zM11 15h8v2h-8zM7 17h2v2H7zM9 17h2v2H9z",
   mark: "M5 2h12v2H5zM5 4h2v16H5zM15 4h2v16h-2zM7 16h2v2H7zM9 14h4v2H9zM13 16h2v2h-2z",
-  back: "M12 5h2v2h-2zM10 7h2v2h-2zM8 9h2v4H8zM10 13h2v2h-2zM12 15h2v2h-2z"
+  back: "M12 5h2v2h-2zM10 7h2v2h-2zM8 9h2v4H8zM10 13h2v2h-2zM12 15h2v2h-2z",
+  backBold: "M13 3h3v2h-3zM11 5h4v2h-4zM9 7h4v2H9zM7 9h4v4H7zM9 13h4v2H9zM11 15h4v2h-4zM13 17h3v2h-3z",     // the chat bar's back: bigger, thicker
+  // reply actions (7.9)
+  markFull: "M5 2h12v18h-2v-2h-2v-2H9v2H7v2H5z",
+  copy: "M4 4h10v2H4zM4 6h2v10H4zM4 14h4v2H4zM12 6h2v2h-2zM8 8h10v2H8zM8 10h2v8H8zM16 10h2v8h-2zM8 16h10v2H8z",
+  book: "M2 4h8v2H2zM12 4h8v2h-8zM2 6h2v12H2zM18 6h2v12h-2zM10 6h2v14h-2zM4 16h6v2H4zM12 16h6v2h-6zM5 9h3v2H5zM14 9h3v2h-3zM5 12h3v2H5zM14 12h3v2h-3z",
+  up: "M3 10h4v9H3zM7 10h2v9H7zM9 6h2v4H9zM11 3h2v7h-2zM13 9h5v2h-5zM17 11h2v6h-2zM9 17h8v2H9z",
+  upFull: "M3 10h4v9H3zM7 10h2v9H7zM9 6h2v13H9zM11 3h2v16h-2zM13 9h4v10h-4zM17 11h2v6h-2z",
+  // two arrows chasing each other round (a single arrow read as "back" or "undo")
+  mic: "M8 2h6v12H8zM6 4h2v8H6zM14 4h2v8h-2zM3 9h2v4H3zM17 9h2v4h-2zM5 13h2v2H5zM15 13h2v2h-2zM7 15h8v2H7zM10 17h2v3h-2zM7 20h8v2H7z",
+  speaker: "M3 8h4v6H3zM7 6h2v10H7zM9 4h2v14H9zM14 7h2v2h-2zM16 9h2v4h-2zM14 13h2v2h-2zM17 3h2v2h-2zM19 5h2v12h-2zM17 17h2v2h-2z",
+  stop: "M6 6h10v10H6z",
+  speakerOff: "M3 8h4v6H3zM7 6h2v10H7zM9 4h2v14H9zM14 7h2v2h-2zM16 9h2v2h-2zM18 11h2v2h-2zM18 7h2v2h-2zM14 11h2v2h-2z",
+  send: "M10 4h2v15h-2zM8 6h2v2H8zM12 6h2v2h-2zM6 8h2v2H6zM14 8h2v2h-2zM4 10h2v2H4zM16 10h2v2h-2z",
+  regen: "M2 6h2v4H2zM4 4h2v2H4zM6 2h9v2H6zM15 0h2v6h-2zM17 1h2v4h-2zM19 2h2v2h-2zM18 12h2v4h-2zM16 16h2v2h-2zM7 18h9v2H7zM5 16h2v6H5zM3 17h2v4H3zM1 18h2v2H1z",
+  more: "M3 9h4v4H3zM9 9h4v4H9zM15 9h4v4h-4z",
+  gear: "M9 2h4v3H9zM9 17h4v3H9zM2 9h3v4H2zM17 9h3v4h-3zM4 4h3v3H4zM15 4h3v3h-3zM4 15h3v3H4zM15 15h3v3h-3zM7 5h8v2H7zM7 15h8v2H7zM5 7h2v8H5zM15 7h2v8h-2z",
+  arrow: "M3 10h12v2H3zM13 6h2v2h-2zM15 8h2v2h-2zM17 10h2v2h-2zM15 12h2v2h-2zM13 14h2v2h-2z",   // a starter's pointer, same 2-pixel steps
+  close: "M6 6h2v2h-2zM8 8h2v2h-2zM10 10h2v2h-2zM12 12h2v2h-2zM14 14h2v2h-2zM14 6h2v2h-2zM12 8h2v2h-2zM8 12h2v2h-2zM6 14h2v2h-2z"   // window close: an X in the back arrow's 2-pixel steps
 };
-const COLORS = { ink: "#6b4e2e", paper: "#fffae0", clay: "#d4aa73" };
+const COLORS = { ink: "#6b4e2e", paper: "#fffae0", clay: "#d4aa73", muted: "#79694f" };
 const icon = (name, color = "ink", size = 22) => {
   const box = name === "back" ? '<rect x=".5" y=".5" width="21" height="21" fill="none" stroke="#d4aa73"/>' : "";
-  return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 22 22" shape-rendering="crispEdges" aria-hidden="true">${box}<path fill="${COLORS[color]}" d="${ICONS[name]}"/></svg>`;
+  const down = name.startsWith("down");               // thumbs down = thumbs up flipped
+  return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 22 22" shape-rendering="crispEdges" aria-hidden="true">${box}<path fill="${COLORS[color]}" d="${ICONS[down ? name.replace("down", "up") : name]}"${down ? ' transform="matrix(1 0 0 -1 0 22)"' : ""}/></svg>`;
 };
 const TAIL = {
   them: '<svg class="tail" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="#6b4e2e" d="M0 0h14v2H0zM12 2h2v2h-2zM10 4h2v2h-2zM12 6h2v2h-2zM12 8h2v2h-2z"/><path fill="#faedcd" d="M0 2h12v2H0zM0 4h10v2H0z"/></svg>',
@@ -372,7 +743,7 @@ function actor(key, W, H) {
   const box = el("div", "actor px");
   Object.assign(box.style, { left: x0 / W * 100 + "%", top: y0 / H * 100 + "%", width: (x1 - x0) / W * 100 + "%", height: (y1 - y0) / H * 100 + "%" });
   const img = el("img"); img.alt = ""; img.src = A + d.frames[d.seq[0][0]];
-  if (d.flip) img.style.transform = "scaleX(-1)";   // face the table on the seat's left
+  if (d.flip) img.style.transform = "scaleX(-1)";   // the table is on the seat's left
   box.append(img);
   let i = 0, t = null, alive = true;
   const step = () => {
@@ -384,12 +755,52 @@ function actor(key, W, H) {
   };
   if (!reduce) step();
   box.stop = () => { alive = false; clearTimeout(t); };
+  // Mood (7.5): hold one frame; after `ms` the idle loop comes back, with ms null it stays (locked: still).
+  box.hold = (frame, ms) => {
+    if (!alive) return;
+    clearTimeout(t);
+    img.src = A + frame;
+    if (ms != null && !reduce) { i = 0; t = setTimeout(step, ms); }
+  };
   return box;
 }
 
+/* ---------- Mood (7.5, FR-15, FR-16, FR-34) ---------- */
+// The scene sprite shows the persona's mood with poses it already has; the values are never shown.
+// From tier 2 up, at an exit and in support mode the mood is locked: a still, attentive pose.
+const MOOD_POSES = {
+  pondering: ["ponder_up_hmm"],
+  curious: ["rest_hmm_raised", "o_raised", "rest_right"],
+  skeptical: ["hold_hmm_stern", "hold_closed_hmm", "rest_hmm_raised", "ponder_up_hmm"],
+  amused: ["rest_happy_smile", "hold_happy_smile", "raise_happy_smile", "happy_smile"],
+  pleased: ["rest_smile", "hold_smile", "smile"],
+  wry: ["hold_smile", "o_raised", "rest_smile"],
+  grave: ["rest_stern", "rest_closed"],
+  attentive: ["_rest.png", "rest_left", "01_rest"],
+};
+function moodFrame(key, label) {
+  const frames = DATA[key].frames;
+  for (const k of [...(MOOD_POSES[label] || []), ...MOOD_POSES.attentive])
+    { const f = frames.find(x => x.includes(k)); if (f) return f; }
+  return frames[0];
+}
+let curMood = null;            // the latest mood event of this conversation
+const MOOD_HOLD_MS = 6000;     // after a reply, the mood pose stays this long before the idle loop
+function showMood(mood, ms = null) {
+  if (mood) curMood = mood;
+  if (stage && cur) { const m = curMood || { label: "attentive", locked: false }; return stage.mood(m.label, m.locked, ms); }
+  if (!sceneActor || !cur) return;
+  const m = curMood || { label: "attentive", locked: false };
+  sceneActor.hold(moodFrame(cur.land, m.label), m.locked ? null : ms);
+}
+function thinkingPose() {                      // while the reply is on its way (7.6 latency)
+  if (stage && cur) { if (!curMood?.locked) stage.mood("pondering"); return; }      // the bubble waits for his thinking (7.8)
+  if (sceneActor && cur && !curMood?.locked) sceneActor.hold(moodFrame(cur.land, "pondering"), null);
+}
+
 /* ---------- Navigation ---------- */
-const SCREENS = ["home", "meet", "chat", "notes", "pause"];
-const TABBED = { home: "home", notes: "notes" };
+const SCREENS = ["home", "meet", "chat", "notes", "convos", "pause", "settings"];
+const TABBED = { home: "home", notes: "notes", convos: "chat", settings: "settings" };
 let screen = "home";
 function show(id) {
   screen = id;
@@ -397,48 +808,180 @@ function show(id) {
   $("#tabs").hidden = !(id in TABBED);
   document.querySelectorAll(".tab").forEach(t => t.toggleAttribute("aria-current", false));
   if (TABBED[id]) $(`.tab[data-tab="${TABBED[id]}"]`).setAttribute("aria-current", "page");
-  $("#homebar").hidden = id === "home" || id === "notes";
+  $("#homebar").hidden = id in TABBED;
+  document.body.classList.toggle("fixed", id === "chat" && chat.classList.contains("full"));
   document.querySelector(".veil")?.remove();
 }
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
   const to = t.dataset.tab;
-  if (to === "chat") return resumeChat();
-  if (to === "notes") renderNotes();
+  if (to === "chat") { renderConvos(); return show("convos"); }
+  if (to === "notes") { renderNotes(); loadNotes().then(() => screen === "notes" && renderNotes()).catch(() => {}); }
+  if (to === "settings") renderSettings();
   show(to);
 });
 
 /* ---------- 01 Home ---------- */
-const cafe = $("#cafe");
+// The team's café (assets/home_bg.png) with its sprites, unchanged, made to cover the screen. The café is
+// a little taller than most phones, so it fills the width and the plain wall at the top gives way first;
+// the wordmark floats over that wall.
+const cafe = $("#cafe"), pano = $("#pano");
 const HOME_W = 1179, HOME_H = 2556;
+function layoutHome() {
+  const W = cafe.clientWidth, H = cafe.clientHeight;
+  if (!W || !H) return;
+  const k = Math.max(W / HOME_W, H / HOME_H), w = HOME_W * k, h = HOME_H * k;
+  Object.assign(pano.style, { width: w + "px", height: h + "px", left: (W - w) / 2 + "px", top: Math.min(0, H - h) + "px" });
+  const px = Math.max(2, Math.min(12 * k, (W - 24) / 116));       // the logo is 116 cells wide
+  Object.assign($("#logo").style, { width: 116 * px + "px", height: 24 * px + "px" });
+}
+addEventListener("resize", layoutHome);
+new ResizeObserver(layoutHome).observe(cafe);
 ["socrates", "schopenhauer", "montaigne", "seneca", "epictetus"].forEach(id => {
   const a = actor(PH[id].home, HOME_W, HOME_H);
   const seat = el("button", "seat");
-  seat.setAttribute("aria-label", "Meet " + PH[id].name);
+  seat.setAttribute("aria-label", t("Meet {name}", { name: PH[id].name }));
   seat.style.cssText = a.style.cssText;
   seat.onclick = () => openMeet(id);
-  cafe.append(seat, a);
+  pano.append(seat, a);
 });
 
 /* ---------- 02 Meet ---------- */
+// The bust is a window onto his chat scene: the same picture at the same scale and place it will have
+// when the conversation opens (fullScene's layout), cut round his head and shoulders. Taking a seat
+// grows that window until the whole conversation shows (revealChat).
+const sceneMeta = {};
+const loadMeta = id => sceneMeta[id] ||= fetch(FULL[id] + "faces.json").then(r => r.json());
+function bustGeo(meta, W, H) {
+  const [GW, GH] = meta.grid, k = Math.max(W / GW, H / GH), w = GW * k;
+  const left = Math.min(0, Math.max(W - w, W / 2 - meta.anchor.face[0] * k));
+  const [hx0, hy0, hx1] = meta.anchor.head, bw = Math.min(204, W - 48), bh = Math.round(bw * 230 / 204);
+  const x = Math.round(Math.min(W - 24 - bw, Math.max(24, left + (hx0 + hx1) / 2 * k - bw / 2)));
+  return { k, left, w, h: GH * k, x, y: Math.round(Math.max(64, hy0 * k - 18)), bw, bh };
+}
+function placeBust(m) {
+  const bust = $(".bust", m), body = $(".body", m);
+  if (!bust?._meta || !m.clientWidth) return;
+  const g = bustGeo(bust._meta, m.clientWidth, m.clientHeight), img = $("img", bust);
+  body.scrollTop = 0;
+  bust.style.margin = "0";
+  const tag = $(".tag", m);
+  if (tag) {
+    if (tag.nextElementSibling !== bust) bust.before(tag);
+    tag.style.marginTop = "";
+    const head = $(".meethead", m).getBoundingClientRect().bottom - m.getBoundingClientRect().top;
+    tag.style.marginTop = Math.max(0, head + 2 - (tag.getBoundingClientRect().top - m.getBoundingClientRect().top)) + "px";
+    if (tag.getBoundingClientRect().bottom - m.getBoundingClientRect().top > g.y - 6) { bust.after(tag); tag.style.marginTop = ""; }
+  }
+  const r = bust.getBoundingClientRect(), o = m.getBoundingClientRect();
+  Object.assign(bust.style, { width: g.bw + "px", height: g.bh + "px", marginLeft: g.x - (r.left - o.left) + "px", marginTop: g.y - (r.top - o.top) + "px" });
+  Object.assign(img.style, { width: g.w + "px", height: g.h + "px", left: g.left - g.x + "px", top: -g.y + "px" });
+  bust.style.visibility = "visible";
+}
 function openMeet(id) {
   const p = PH[id];
   const open = backend.available(id);
   const m = $("#meet");
-  m.innerHTML = `<div class="body">
-      <button class="backlink"><span data-icon="back"></span>The café</button>
-      <img class="portrait px" src="${A}portrait_${id}.png" alt="Pixel portrait of ${p.name}">
-      <div class="intro"><p class="t28">${p.name}</p><p class="t16 muted">${p.tagline}</p></div>
-      <p class="t20">A conversation with me</p>
+  m.innerHTML = `<header class="meethead"><button class="back" aria-label="${t("Back to the café")}">${icon("backBold", "ink", 30)}</button>
+      <h1>${p.name}</h1><span class="tools"><button class="tool aloud" hidden></button></span></header>
+    <div class="body">
+      <p class="t16 muted tag">${p.tagline}</p>
+      ${FULL[id] ? `<div class="bust" role="img" aria-label="${t("Pixel portrait of {name}", { name: p.name })}"><img class="px" src="${FULL[id]}scene.png" alt=""></div>`
+                 : `<img class="portrait px" src="${A}portrait_${id}.png" alt="${t("Pixel portrait of {name}", { name: p.name })}">`}
+      <p class="t20">${t("A conversation with me")}</p>
       <p class="t16">${p.about}</p>
-      <div class="card"><div class="titlebar">Inspired by</div>
-        <div class="inner" style="padding:12px 14px 14px"><p class="t14">${p.inspired}</p><p class="t14 muted">An AI interpretation, not the historical person.</p></div></div>
+      <div class="card"><div class="titlebar">${t("Inspired by")}</div>
+        <div class="inner" style="padding:12px 14px 14px"><p class="t14">${p.inspired}</p><p class="t14 muted">${t("An AI interpretation, not the historical person.")}</p></div></div>
     </div>
-    <div class="foot"><button class="primary"${open ? "" : " disabled"}>${open ? `Take a seat with ${p.name}` : "Coming at the final"}</button>
-      ${open ? "" : `<p class="t11 muted coming">${p.name} joins the café at the final showcase.</p>`}</div>`;
-  paintIcons(m);
-  $(".backlink", m).onclick = () => show("home");
-  $(".primary", m).onclick = () => openChat(id);
+    <div class="foot"><button class="primary"${open ? "" : " disabled"}>${open ? t("Take a seat with {name}", { name: p.name }) : t("Coming at the final")}</button>
+      ${open ? "" : `<p class="t11 muted coming">${t("{name} joins the café at the final showcase.", { name: p.name })}</p>`}</div>`;
+  $(".back", m).onclick = () => { stopSpeaking(); show("home"); };
+  $(".aloud", m).onclick = toggleAloud;
+  $(".primary", m).onclick = () => { unlockAudio(); takeSeat(id); };
   show("meet");
+  paintAloud();
+  if (FULL[id]) loadMeta(id).then(meta => { const b = $(".bust", m); if (b) { b._meta = meta; placeBust(m); } }).catch(() => {});
+}
+new ResizeObserver(() => { if (screen === "meet") placeBust($("#meet")); }).observe($("#meet"));
+
+// From the bust to the conversation: the chat screen opens over Meet showing only the bust's window,
+// and the rest of it dissolves in block by block, spreading out from the bust (each 3px block's turn is
+// its distance from the bust plus a little noise, as in `dissolve`). The scene is drawn first, so the
+// head never jumps or flashes.
+async function revealChat(from) {
+  const meet = $("#meet");
+  if (!from || reduce || !CLIP || screen !== "chat" || !isFull()) return;
+  chat.style.visibility = "hidden";
+  meet.hidden = false;
+  await Promise.race([stage.ready, new Promise(r => setTimeout(r, 900))]);
+  const c = chat.getBoundingClientRect(), Bk = 3;
+  const cols = Math.ceil(c.width / Bk), rows = Math.ceil(c.height / Bk);
+  const x0 = from.left - c.left, y0 = from.top - c.top, x1 = from.right - c.left, y1 = from.bottom - c.top;
+  const far = Math.hypot(Math.max(x0, c.width - x1), Math.max(y0, c.height - y1)) || 1;
+  const noise = thresholds(cols, rows, seedN++ * 2654435761), turn = new Float32Array(cols * rows);
+  for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) {
+    const cx = k * Bk + Bk / 2, cy = r * Bk + Bk / 2;
+    const d = Math.hypot(Math.max(x0 - cx, 0, cx - x1), Math.max(y0 - cy, 0, cy - y1)) / far;
+    turn[r * cols + k] = d <= 0 ? -1 : 0.78 * d + 0.22 * noise[r * cols + k];
+  }
+  const path = lv => {
+    let d = "";
+    for (let r = 0; r < rows; r++) {
+      let k = 0;
+      while (k < cols) {
+        if (turn[r * cols + k] >= lv) { k++; continue; }
+        const k0 = k; while (k < cols && turn[r * cols + k] < lv) k++;
+        d += `M${k0 * Bk} ${r * Bk}h${(k - k0) * Bk}v${Bk}h${-(k - k0) * Bk}z`;
+      }
+    }
+    return `path("${d || "M0 0z"}")`;
+  };
+  const STEPS = 30, ms = 720, frames = [];
+  for (let i = 0; i <= STEPS; i++) frames.push(path(i === 0 ? 0 : 1.0001 * Math.pow(i / STEPS, 0.85)));
+  const paint = i => { chat.style.clipPath = chat.style.webkitClipPath = frames[i]; };
+  chat.style.zIndex = 3;
+  paint(0);
+  chat.style.visibility = "visible";
+  await new Promise(res => {
+    const t0 = performance.now(); let last = 0;
+    const step = now => {
+      const f = Math.min(1, (now - t0) / ms), i = Math.round(f * STEPS);
+      if (i !== last) { last = i; paint(i); }
+      if (f < 1) requestAnimationFrame(step); else res();
+    };
+    requestAnimationFrame(step);
+  });
+  chat.style.clipPath = chat.style.webkitClipPath = "";
+  chat.style.zIndex = "";
+  if (screen === "chat") meet.hidden = true;
+}
+
+// Taking a seat: with earlier conversations with this philosopher, offer them beside a new one;
+// without any, the new conversation starts at once (no "sit down?" question).
+async function takeSeat(id) {
+  const bust = $("#meet .bust");
+  if (bust) { $("#meet .body").scrollTop = 0; placeBust($("#meet")); }
+  const from = bust?.getBoundingClientRect();
+  const go = async open => { await open(); revealChat(from); };
+  if (!backend.live || !backend.me || (isPaused() && paused?.id === id)) return go(() => openChat(id));
+  let rows = [];
+  try { rows = (await backend.threads()).filter(r => r.persona_id === id); } catch {}
+  if (!rows.length) return go(() => openChat(id));
+  const p = PH[id];
+  const veil = el("div", "veil");
+  veil.innerHTML = `<div class="pop card seat" role="dialog" aria-label="${t("Your table with {name}", { name: p.name })}">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">${t("Your table with {name}", { name: p.name })}<button class="x" aria-label="${t("Close")}">${icon("close", "ink", 22)}</button></div>
+    <div class="seat-body"><p class="t14 muted">${t("Pick up where you left off, or start a new conversation.")}</p>
+      <div class="past">${rows.map(r => `<button class="card ccard" data-t="${r.thread_id}">
+          <div class="titlebar"><span class="when">${ago(r.updated_at)}</span></div>
+          <div class="inner"><p class="ctitle">${esc(r.title)}</p><p class="t14 muted last">${esc(r.last_line)}</p></div></button>`).join("")}</div>
+      <button class="btn go" data-a="new">${t("NEW CONVERSATION")}</button></div></div>`;
+  const close = () => veil.remove();
+  veil.querySelector(".x").onclick = close;
+  veil.onclick = e => { if (e.target === veil) close(); };
+  veil.querySelector('[data-a="new"]').onclick = () => { close(); go(() => openChat(id)); };
+  veil.querySelectorAll(".ccard").forEach(b => b.onclick = () => { close(); go(() => openThread(rows.find(r => r.thread_id === b.dataset.t), "home")); });
+  $(".screens").append(veil);
+  veil.querySelector('[data-a="new"]').focus();
 }
 
 /* ---------- Backend (design doc 7.2) ---------- */
@@ -449,39 +992,61 @@ const DEBUG = /debug/.test(location.hash + location.search);
 const backend = {
   live: false,
   ids: new Set(),
+  me: null,                 // {nickname, prefs, paused} of the signed-in account (7.10)
   // The deployed café asks for an access code (ADR-11); it is kept on this device only.
   code() { try { return localStorage.getItem("philocafe.code") || ""; } catch { return ""; } },
   setCode(c) { try { c ? localStorage.setItem("philocafe.code", c) : localStorage.removeItem("philocafe.code"); } catch {} },
-  headers(extra = {}) { const c = this.code(); return c ? { ...extra, "X-Philocafe-Code": c } : extra; },
+  // The account token (7.10): the café's server keeps everything else.
+  token() { try { return localStorage.getItem("philocafe.token") || ""; } catch { return ""; } },
+  setToken(t) { try { t ? localStorage.setItem("philocafe.token", t) : localStorage.removeItem("philocafe.token"); } catch {} },
+  headers(extra = {}) {
+    const h = { ...extra }, c = this.code(), t = this.token();
+    if (c) h["X-Philocafe-Code"] = c;
+    if (t) h.Authorization = `Bearer ${t}`;
+    return h;
+  },
   async init() {
     try {
       const r = await fetch("personas", { cache: "no-store", headers: this.headers() });
-      if (r.status === 401) { this.live = false; askCode(this.code() ? "That code didn’t open the café. Please try again." : ""); return; }
+      if (r.status === 401) { this.live = false; askCode(this.code() ? t("That code didn’t open the café. Please try again.") : ""); return; }
       if (!r.ok) throw new Error(r.status);
       this.ids.clear();
       (await r.json()).filter(p => p.available).forEach(p => this.ids.add(p.id));
       this.live = true;
-    } catch { this.live = false; }
+    } catch { this.live = false; return; }
+    if (!this.token()) return askAccount();
+    try { await this.loadMe(); refreshComposer(); await loadNotes(); } catch {}
   },
   available(id) { return !this.live || this.ids.has(id); },
-  // One thread for the whole visit, shared by every philosopher (7.2 sends persona_id with each message),
-  // so a pause holds whoever the visitor talks to next (FR-32, UC-03).
-  visit() { try { return JSON.parse(localStorage.getItem("philocafe.visit")) || {}; } catch { return {}; } },
-  save(v) { try { localStorage.setItem("philocafe.visit", JSON.stringify({ ...this.visit(), ...v })); } catch {} },
-  paused() { return !!this.visit().paused; },
-  async thread() {
-    const v = this.visit();
-    if (v.thread_id) return v.thread_id;
-    const r = await fetch("threads", { method: "POST", headers: this.headers() });
-    const { thread_id } = await r.json();
-    this.save({ thread_id, paused: false });
-    return thread_id;
+  // JSON calls to the café's API; a lost sign-in or access code asks again.
+  async api(path, { method = "GET", body } = {}) {
+    const r = await fetch(path, { method, cache: "no-store", headers: this.headers(body ? { "Content-Type": "application/json" } : {}),
+                                  ...(body ? { body: JSON.stringify(body) } : {}) });
+    if (r.status === 401) {
+      let code = ""; try { code = (await r.clone().json()).error.code; } catch {}
+      if (code === "access_code") { this.setCode(""); askCode(t("That code no longer opens the café.")); }
+      else { this.setToken(""); this.me = null; askAccount(t("Please sign in again.")); }
+    }
+    if (!r.ok) { let e = { code: String(r.status) }; try { e = (await r.json()).error; } catch {} throw Object.assign(new Error(e.code), e); }
+    return r.status === 204 ? null : r.json();
   },
-  async *turn(text, personaId, intent) {
-    const id = await this.thread();
-    const r = await fetch(`threads/${id}/messages`, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
-                                                    body: JSON.stringify({ text, persona_id: personaId, ...(intent ? { intent } : {}) }) });
-    if (r.status === 401) { this.setCode(""); askCode("That code no longer opens the café."); }
+  async loadMe() { this.me = await this.api("me"); return this.me; },
+  paused() { return !!this.me?.paused; },
+  setPaused(v) { if (this.me) this.me.paused = v; },
+  async newThread(personaId) { return (await this.api("threads", { method: "POST", body: { persona_id: personaId } })).thread_id; },
+  threads() { return this.api("threads"); },
+  history(id) { return this.api(`threads/${id}`); },
+  deleteThread(id) { return this.api(`threads/${id}`, { method: "DELETE" }); },
+  // `regenerate` answers the latest message again (FR-41). The server reads the account's
+  // reply preferences itself (7.9); one conversation is one philosopher (7.10).
+  async *turn(thread, text, intent, regenerate = false) {
+    const body = regenerate ? { regenerate: true } : { text, ...(intent ? { intent } : {}) };
+    const r = await fetch(`threads/${thread}/messages`, { method: "POST", headers: this.headers({ "Content-Type": "application/json" }),
+                                                        body: JSON.stringify(body) });
+    if (r.status === 401) {
+      let code = ""; try { code = (await r.clone().json()).error.code; } catch {}
+      if (code === "access_code") { this.setCode(""); askCode(t("That code no longer opens the café.")); } else { this.setToken(""); askAccount(t("Please sign in again.")); }
+    }
     if (!r.ok) {
       let e = { code: String(r.status), message: "request failed" };
       try { e = (await r.json()).error; } catch {}
@@ -506,15 +1071,122 @@ const backend = {
       }
     }
   },
-  async note() {
-    const r = await fetch(`threads/${this.visit().thread_id}/note`, { method: "POST", headers: this.headers() });
-    if (!r.ok) throw new Error(r.status);
-    return r.json();
+  note(ex) { return this.api(`threads/${ex.thread}/note`, { method: "POST", body: { message_id: ex.messageId } }); },   // 7.7: stored on the server
+  async rate(rating, ex, feedback = null) {   // 7.9: a thumb (or its feedback window) -> the account's reply preferences
+    const j = await this.api("preferences", { method: "POST", body: { thread_id: ex.thread, message_id: ex.messageId, rating, ...(feedback ? { feedback } : {}) } });
+    if (this.me) this.me.prefs = j.prefs;
+    return j.prefs;
   }
+};
+
+/* ---------- Account (7.10): a nickname and a passcode; everything else lives on the server ---------- */
+function askAccount(message = "") {
+  if (document.querySelector(".veil.account")) return;
+  let mode = "in";
+  const veil = el("div", "veil account");
+  veil.innerHTML = `<form class="pop card" role="dialog" aria-label="${t("Your café card")}">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">${t("Your café card")}</div>
+    <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
+      <div class="lead">${esc(message || t("Sign in to keep your conversations and notes."))}</div>
+      <input class="codein" name="nickname" autocomplete="username" placeholder="${t("Nickname")}" aria-label="${t("Nickname")}" required minlength="3" maxlength="24">
+      <label class="pw"><input class="codein" name="passcode" type="password" autocomplete="current-password" placeholder="${t("Passcode")}" aria-label="${t("Passcode")}" required minlength="6"><span class="mask" aria-hidden="true"></span></label>
+      <p class="t14 err" role="alert" hidden></p>
+      <div class="btns"><button class="btn go" type="submit">${t("SIGN IN")}</button></div>
+      <button class="switch t14" type="button">${t("New here? Create a card")}</button></div></form>`;
+  const err = $(".err", veil), go = $(".go", veil), sw = $(".switch", veil), pass = $('[name="passcode"]', veil);
+  // The passcode stays a password field (managers and autofill still work); a layer over it shows * per character.
+  pass.addEventListener("input", () => { $(".mask", veil).textContent = "*".repeat(pass.value.length); });
+  sw.onclick = () => {
+    mode = mode === "in" ? "up" : "in";
+    go.textContent = mode === "in" ? t("SIGN IN") : t("CREATE");
+    sw.textContent = mode === "in" ? t("New here? Create a card") : t("Have a card? Sign in");
+    pass.autocomplete = mode === "in" ? "current-password" : "new-password";
+    $(".lead", veil).textContent = mode === "in" ? t("Sign in to keep your conversations and notes.") : t("Pick a nickname and a passcode of six or more characters. There is no way to recover a forgotten passcode.");
+    err.hidden = true;
+  };
+  $("form", veil).onsubmit = async e => {
+    e.preventDefault();
+    err.hidden = true; go.disabled = true;
+    try {
+      const j = await backend.api(mode === "in" ? "auth/login" : "auth/register",
+                                  { method: "POST", body: { nickname: $('[name="nickname"]', veil).value.trim(), passcode: pass.value } });
+      backend.setToken(j.token);
+      veil.remove();
+      await backend.loadMe(); refreshComposer(); await importLocalNotes(); await loadNotes();
+      toast(t("Welcome, {name}", { name: j.nickname }));
+      if (screen === "convos") renderConvos(); else if (screen === "notes") renderNotes(); else if (screen === "settings") renderSettings();
+    } catch (x) {
+      err.textContent = x.message || t("That didn’t work. Please try again."); err.hidden = false;
+    }
+    go.disabled = false;
+  };
+  $(".screens").append(veil);
+  $('[name="nickname"]', veil).focus();
+}
+function signOut() {
+  backend.setToken(""); backend.me = null; notes = []; curThread = null;
+  stopChat(); chat.innerHTML = ""; show("home");
+  askAccount(t("You’re signed out."));
+}
+async function deleteAccount() {
+  const ok = await confirmBox(t("Delete your café card?"), t("This deletes your account with every conversation, note and preference. It can’t be undone."), t("DELETE"));
+  if (!ok) return;
+  try { await backend.api("me", { method: "DELETE" }); } catch { return toast("Couldn’t delete just now"); }
+  signOut();
+}
+// A yes/no window in the café's style; resolves true for the action.
+function confirmBox(title, text, action) {
+  return new Promise(resolve => {
+    const veil = el("div", "veil");
+    veil.innerHTML = `<div class="pop card" role="alertdialog" aria-label="${esc(title)}">
+      <div class="titlebar">${esc(title)}</div>
+      <div class="pop-body"><div>${esc(text)}</div>
+        <div class="btns"><button class="btn" data-a="no">${t("CANCEL")}</button><button class="btn danger" data-a="yes">${esc(action)}</button></div></div></div>`;
+    const done = v => { veil.remove(); resolve(v); };
+    veil.querySelector('[data-a="no"]').onclick = () => done(false);
+    veil.querySelector('[data-a="yes"]').onclick = () => done(true);
+    veil.onclick = e => { if (e.target === veil) done(false); };
+    $(".screens").append(veil);
+    veil.querySelector('[data-a="no"]').focus();
+  });
+}
+
+/* ---------- Reply preferences (7.9): four dials from -2 to +2, kept with the account (7.10) ---------- */
+const DIALS = { length: ["shorter replies", "longer replies"], plain: ["plainer words", "richer vocabulary"],
+                questions: ["fewer questions back", "more questions back"], quotes: ["fewer quotes", "more quotes"] };
+const prefs = {
+  // Signed in: the account's dials (the server stores every change). The scripted demo keeps them on the device.
+  get() { let v = {};
+          if (backend.live) v = backend.me?.prefs || {};
+          else { try { v = JSON.parse(localStorage.getItem("philocafe.prefs")) || {}; } catch {} }
+          return Object.fromEntries(Object.keys(DIALS).map(k => [k, Math.max(-2, Math.min(2, Math.trunc(+v[k] || 0)))])); },
+  set(v) { if (backend.live) { if (backend.me) backend.me.prefs = v; return; }
+           try { localStorage.setItem("philocafe.prefs", JSON.stringify(v)); } catch {} },
+  async reset() {
+    if (backend.live) { const me = await backend.api("me", { method: "PATCH", body: { prefs: {} } }); backend.me = me; return; }
+    try { localStorage.removeItem("philocafe.prefs"); } catch {}
+  },
+  // "shorter replies, plainer words" — what the dials currently ask for
+  summary(v = this.get()) { return Object.keys(DIALS).filter(k => v[k]).map(k => (Math.abs(v[k]) === 2 ? "much " : "") + DIALS[k][v[k] > 0 ? 1 : 0]).join(", "); },
+  // the offline rule (no server, or it failed): a thumbs-down on a long reply asks for shorter ones
+  rule(rating, reply) { const v = this.get(); if (rating === "down" && reply.split(/\s+/).length > 120) v.length = Math.max(-2, v.length - 1); return v; },
+  // the feedback window's tags without a server: one step per dial they name
+  tags(rating, tags) { const v = this.get(), step = {};
+    tags.forEach(t => { const [k, d] = FEEDBACK_TAGS[rating][t].dial; step[k] = (step[k] || 0) + d; });
+    Object.keys(step).forEach(k => { v[k] = Math.max(-2, Math.min(2, v[k] + Math.sign(step[k]))); }); return v; }
+};
+// Long-press on a filled thumb opens these (the server keeps the same list, app/prefs.py).
+const FEEDBACK_TAGS = {
+  down: { too_long: { label: t("Too long"), dial: ["length", -1] }, too_short: { label: t("Too short"), dial: ["length", 1] },
+          too_technical: { label: t("Too technical"), dial: ["plain", -1] }, too_many_questions: { label: t("Too many questions"), dial: ["questions", -1] },
+          too_many_quotes: { label: t("Too many quotes"), dial: ["quotes", -1] } },
+  up: { nice_and_short: { label: t("Nice and short"), dial: ["length", -1] }, nicely_detailed: { label: t("Nicely detailed"), dial: ["length", 1] },
+        clear_words: { label: t("Clear, everyday words"), dial: ["plain", -1] }, good_questions: { label: t("Good questions"), dial: ["questions", 1] },
+        liked_the_quotes: { label: t("Liked the quotes"), dial: ["quotes", 1] } }
 };
 const setMode = () => {
   const live = backend.live;
-  document.querySelectorAll(".mode").forEach(m => { m.textContent = live ? "Live" : "Demo"; m.classList.toggle("live", live); m.title = live ? "Replies come from the PhiloCafe server" : "Scripted demo replies"; });
+  if (typeof screen !== "undefined" && screen === "settings") renderSettings();     // the account box needs the server's answer
   $("#modeNote").textContent = live ? "Replies: live from the PhiloCafe server, with a safety check on every turn." : "Replies: scripted demo lines (open the page from the PhiloCafe server for live replies).";
 };
 backend.init().then(setMode);
@@ -523,12 +1195,12 @@ backend.init().then(setMode);
 function askCode(message) {
   if (document.querySelector(".veil.entrance")) return;
   const veil = el("div", "veil entrance");
-  veil.innerHTML = `<form class="pop card" role="dialog" aria-label="Café entrance">
-    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">Café entrance</div>
+  veil.innerHTML = `<form class="pop card" role="dialog" aria-label="${t("Café entrance")}">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">${t("Café entrance")}</div>
     <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
-      <div>${esc(message || "This café is open to our class. Please enter the access code.")}</div>
-      <input class="codein" type="password" autocomplete="off" aria-label="Access code" required>
-      <div class="btns"><button class="btn go" type="submit">ENTER</button></div></div></form>`;
+      <div>${esc(message || t("This café is open to our class. Please enter the access code."))}</div>
+      <input class="codein" type="password" autocomplete="off" aria-label="${t("Access code")}" required>
+      <div class="btns"><button class="btn go" type="submit">${t("ENTER")}</button></div></div></form>`;
   $("form", veil).onsubmit = async e => {
     e.preventDefault();
     backend.setCode($(".codein", veil).value.trim());
@@ -549,9 +1221,331 @@ function debugShow(ev) {
   pre.textContent = [pre.dataset.safety, pre.dataset.trace].filter(Boolean).join("\n");
 }
 
+/* ---------- Full-screen scene (kbtest layout) ---------- */
+// A philosopher with full-screen art sits in a scene that covers the chat screen. The face is a
+// small patch drawn over the scene: blinks, talking, and moods (7.5) that change behind a blink.
+const FULL = Object.fromEntries(["socrates", "montaigne", "schopenhauer", "seneca", "epictetus"].map(id => [id, A + `personas/${id}/full/`]));
+const FULL_MOODS = { wry: "amused", grave: "pondering" };      // labels the art has no face for
+let stage = null;                                             // the open scene, or null
+function fullScene(id) {
+  const base = FULL[id];
+  const wrap = el("div", "scene-full");
+  const cv = el("canvas"); cv.setAttribute("aria-hidden", "true");
+  const think = el("div", "think"); think.setAttribute("aria-live", "polite");
+  think.innerHTML = '<div class="cloud"></div><i class="d1"></i><i class="d2"></i>';
+  wrap.append(cv, think);
+  const g = cv.getContext("2d");
+  const s = { meta: null, scene: null, faces: null, poses: {}, amb: null, breathIn: false, nodding: false, 
+              mood: "attentive", locked: true, eyes: "open", talking: false, mouth: "open",
+              busy: false, queued: null, alive: true, thinking: false, reserve: 60, els: [], motes: [], puffs: [] };
+  let holdT = null;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const between = ([a, b]) => a + Math.random() * (b - a);
+  const load = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = base + src; });
+  // Body poses (faces.json "poses"), one picture each, made from the philosopher on his own layer over a
+  // painted-out plate (tools/art/layers.py): breathing, and a nod when a message arrives, when he starts
+  // a reply and now and then while he talks. The face patch has alpha, so only his head is redrawn, and
+  // it moves with the pose. Over them the scene's own motion (faces.json "ambient", ambient.png: plants,
+  // pets, a flame, each on its own layer) and a few loose pixels: dust in the lamplight, steam off a cup.
+  function pose() { return s.nodding ? "nod" : s.breathIn ? "in" : null; }
+  function draw() {
+    if (!s.faces) return;
+    const m = s.meta, P = m.patch, name = pose(), pz = name && s.poses[name] ? m.poses[name] : null;
+    g.drawImage(pz ? s.poses[name] : s.scene, 0, 0);
+    if (s.amb) for (const e of s.els) {
+      const f = e.mode === "once" ? (e.playing ? e.seq[e.i] : 0) : e.mode === "flicker" ? e.f : e.seq[e.i];
+      if (f) g.drawImage(s.amb, f * e.w, e.sy, e.w, e.h, e.x, e.y, e.w, e.h);
+    }
+    const H = m.anchor.head;
+    for (const d of s.motes) {
+      const x = Math.round(d.x), y = Math.round(d.y);
+      if (x >= H[0] && x <= H[2] && y >= H[1]) continue;                 // never over his head
+      g.globalAlpha = d.a * (0.6 + 0.4 * Math.sin(d.t)); g.fillStyle = "#fffdf2"; g.fillRect(x, y, 1, 1);
+    }
+    for (const q of s.puffs) { g.globalAlpha = q.a; g.fillStyle = "#f6f1e8"; g.fillRect(Math.round(q.x), Math.round(q.y), 1, 1); }
+    g.globalAlpha = 1;
+    const col = m.frames.indexOf(s.eyes !== "open" ? s.eyes : s.talking ? s.mouth : "open");
+    const row = Math.max(0, m.moods.indexOf(s.mood));
+    g.drawImage(s.faces, col * P.w, row * P.h, P.w, P.h, P.x + (pz?.dx || 0), P.y + (pz?.dy || 0), P.w, P.h);
+  }
+  function tick(now) {                                             // 12 times a second while the scene is open
+    for (const e of s.els) {
+      if (now < e.next) continue;
+      if (e.mode === "flicker") { e.f = Math.floor(Math.random() * e.frames); e.next = now + between(e.ms); }
+      else if (e.mode === "once") {
+        if (!e.playing) continue;
+        if (++e.i >= e.seq.length) { e.playing = false; e.i = 0; } else e.next = now + (e.ms[1] || e.ms[0]);
+      } else { e.i = (e.i + 1) % e.seq.length; e.next = now + between(e.ms); }
+    }
+    const D = s.meta.particles?.dust;
+    if (D) {
+      while (s.motes.length < 12) {
+        const k = Math.random();
+        s.motes.push({ x: D.x + (Math.random() - .5) * D.spread * (.3 + k), y: D.y + k * D.depth, vx: (Math.random() - .5) * .06,
+                       vy: .015 + Math.random() * .03, a: .55 + Math.random() * .4, t: Math.random() * 6, life: 120 + Math.random() * 200 });
+      }
+      s.motes = s.motes.filter(d => (d.x += d.vx + Math.sin(d.t) * .02, d.y += d.vy, d.t += .15, --d.life > 0 && d.y < D.y + D.depth + 6));
+    }
+    const S = s.meta.particles?.steam;
+    if (S) {
+      if (Math.random() < .2) s.puffs.push({ x: S[0] + Math.round((Math.random() - .5) * 2), y: S[1], a: .55, t: Math.random() * 6 });
+      s.puffs = s.puffs.filter(q => (q.y -= .12, q.x += Math.sin(q.t += .3) * .08, q.a -= .018, q.a > 0));
+    }
+    draw();
+  }
+  function react(event) {
+    if (!s.meta || reduce) return;
+    if (!s.locked) for (const e of s.els) if (e.mode === "once" && e.on?.includes(event) && !e.playing) {
+      e.playing = true; e.i = 0; e.next = performance.now() + e.ms[0];
+    }
+    if (!s.nodding) (async () => { s.nodding = true; await wait(s.meta.timing_ms.nod || 260); s.nodding = false; })();
+  }
+  // A blink and a change of mood share one path: open, half, closed (the new face lands here), half, open.
+  async function blink(next) {
+    if (!s.meta) { if (next) s.mood = next; return; }
+    if (reduce) { if (next) s.mood = next; draw(); return; }
+    if (s.busy) { if (next) s.queued = next; return; }
+    const T = s.meta.timing_ms; s.busy = true;
+    s.eyes = "half"; draw(); await wait(T.half);
+    s.eyes = "closed"; if (next) s.mood = next; draw(); await wait(T.closed);
+    s.eyes = "half"; draw(); await wait(T.half);
+    s.eyes = "open"; draw(); s.busy = false;
+    if (s.queued) { const q = s.queued; s.queued = null; if (q !== s.mood) blink(q); }
+  }
+  function loops() {
+    if (reduce) return;
+    const T = s.meta.timing_ms;
+    s.els = (s.meta.ambient || []).map(e => ({ ...e, i: 0, f: 0, playing: false, next: performance.now() + between(e.ms[1] ? e.ms : [e.ms[0], e.ms[0]]) }));
+    const timer = setInterval(() => { if (!s.alive) return clearInterval(timer); if (!document.hidden) tick(performance.now()); }, 83);
+    (async () => { while (s.alive) { await wait(between(T.blink_every)); if (s.alive) await blink(); } })();
+    if (T.breath) (async () => {                                   // slow, even breathing
+      while (s.alive) { await wait(between(T.breath)); s.breathIn = !s.breathIn; }
+    })();
+    if (T.nod) (async () => {                                      // now and then a small nod while he talks
+      while (s.alive) {
+        await wait(between(T.nod_every));
+        if (!s.talking || !s.alive || s.nodding) continue;
+        s.nodding = true; await wait(T.nod); s.nodding = false;
+      }
+    })();
+    (async () => {
+      while (s.alive) {
+        await wait(between(T.talk));
+        const next = !s.talking ? "open" : (r => r < .4 ? "talk1" : r < .7 ? "talk2" : "open")(Math.random());
+        if (next !== s.mouth) { s.mouth = next; if (!s.busy) draw(); }
+      }
+    })();
+  }
+  const api = {
+    el: wrap, geo: null, get meta() { return s.meta; }, state: () => ({ mood: s.mood, eyes: s.eyes, talking: s.talking, thinking: s.thinking }),
+    ready: (async () => {
+      s.meta = await (await fetch(base + "faces.json")).json();
+      [s.scene, s.faces] = await Promise.all([load("scene.png"), load("faces.png")]);
+      for (const [k, v] of Object.entries(s.meta.poses || {})) load(v.src).then(i => { s.poses[k] = i; }).catch(() => {});
+      if (s.meta.ambient?.length) load("ambient.png").then(i => { s.amb = i; }).catch(() => {});
+      cv.width = s.meta.grid[0]; cv.height = s.meta.grid[1];
+      api.layout(); draw(); loops();
+      if (stage === api) { chat.classList.add("snap"); fullApply(); requestAnimationFrame(() => requestAnimationFrame(() => { chat.classList.remove("snap"); scrollDown(); })); }
+    })().catch(() => {}),
+    layout() {                                   // cover the screen, the philosopher kept near the middle
+      if (!s.meta || !wrap.clientWidth) return;
+      const [GW, GH] = s.meta.grid, W = wrap.clientWidth, H = wrap.clientHeight;
+      const k = Math.max(W / GW, H / GH), w = GW * k, h = GH * k;
+      const left = Math.min(0, Math.max(W - w, W / 2 - s.meta.anchor.face[0] * k));
+      Object.assign(cv.style, { width: w + "px", height: h + "px", left: left + "px", top: "0px" });
+      api.geo = { k, left, W, H };
+      api.place();
+    },
+    mood(label, locked = false, ms = null) {
+      clearTimeout(holdT);
+      s.locked = !!locked;
+      const face = locked ? "attentive" : (FULL_MOODS[label] || label);
+      const known = !s.meta || s.meta.moods.includes(face) ? face : "attentive";
+      if (known !== s.mood) blink(known);
+      if (ms != null && !locked && known !== "attentive") holdT = setTimeout(() => blink("attentive"), ms);
+    },
+    react,
+    talk(on) { if (on && !s.talking) react("reply"); s.talking = !!on; if (!on && s.mouth !== "open") { s.mouth = "open"; if (!s.busy) draw(); } },
+    // The thought bubble (7.8): the latest one or two sentences of his thinking (one when two
+    // would not fit over his head); null takes it away.
+    think(lines) {
+      const cloud = $(".cloud", think);
+      if (lines == null) { if (s.thinking) { s.thinking = false; dissolve(think, false, 220); } return; }
+      lines = [].concat(lines);
+      cloud.textContent = lines.slice(-2).join(" ");          // model text: never as HTML
+      if (lines.length > 1 && !api.place(true)) cloud.textContent = lines[lines.length - 1];
+      api.place();
+      if (!s.thinking) { s.thinking = true; dissolve(think, true, 240); }
+    },
+    place(probe = false) {                       // over his head; beside his face when there is no room above
+      if (!api.geo) return false;
+      const { k, left, W } = api.geo, [, hy0, hx1] = s.meta.anchor.head, fx = left + s.meta.anchor.face[0] * k;
+      const lift = parseFloat(chat.style.getPropertyValue("--lift")) || 0;
+      think.classList.remove("side");
+      think.style.left = "0px";                                    // measure at full width, not squeezed at the old spot
+      think.style.maxWidth = W - 24 + "px";                        // one line where it fits
+      let x = fx - think.offsetWidth / 2, y = (hy0 + 3) * k - think.offsetHeight;   // the dots end on the crown
+      if (probe) return y - lift >= s.reserve;
+      if (y - lift < s.reserve) {
+        think.classList.add("side");
+        x = left + hx1 * k;
+        think.style.maxWidth = Math.max(120, W - x - 8) + "px";
+        think.style.left = Math.min(x, W - 128) + "px";
+        y = Math.max(s.reserve + lift, (hy0 + 8) * k);             // level with his eyes, under the buttons
+      }
+      x = Math.max(8, Math.min(x, W - think.offsetWidth - 8));
+      Object.assign(think.style, { left: x + "px", top: y + "px" });
+      think.style.setProperty("--tx", Math.max(14, Math.min(think.offsetWidth - 14, fx - x)) + "px");
+      return true;
+    },
+    set reserve(px) { s.reserve = px; },
+    stop() { s.alive = false; clearTimeout(holdT); }
+  };
+  return api;
+}
+const isFull = () => chat.classList.contains("full") && !!stage;
+
+// Pixel dissolve (from kbtest). Every 4px block gets a fixed random threshold (mixed with an 8x8 Bayer
+// value so the noise doesn't clump); a block shows once the reveal level passes its threshold. Frames
+// are clip-path polygons, applied synchronously, so iOS Safari drops none.
+const BLOCK = 4;
+const B8 = [0,32,8,40,2,34,10,42,48,16,56,24,50,18,58,26,12,44,4,36,14,46,6,38,60,28,52,20,62,30,54,22,
+            3,35,11,43,1,33,9,41,51,19,59,27,49,17,57,25,15,47,7,39,13,45,5,37,63,31,55,23,61,29,53,21];
+function thresholds(cols, rows, seed) {
+  let x = seed >>> 0 || 1; const rnd = () => (x = (x * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const t = new Float32Array(cols * rows);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) t[r * cols + c] = 0.65 * rnd() + 0.35 * (B8[(r % 8) * 8 + (c % 8)] + 0.5) / 64;
+  return t;
+}
+const CLIP = CSS.supports("clip-path", 'path("M0 0h1v1z")');
+function blocksPath(cols, rows, keep) {
+  let d = "";
+  for (let r = 0; r < rows; r++) {
+    let k = 0;
+    while (k < cols) {
+      if (!keep(k, r)) { k++; continue; }
+      const k0 = k; while (k < cols && keep(k, r)) k++;
+      d += `M${k0 * BLOCK} ${r * BLOCK}h${(k - k0) * BLOCK}v${BLOCK}h${-(k - k0) * BLOCK}z`;
+    }
+  }
+  return `path("${d || "M0 0z"}")`;
+}
+let seedN = 7;
+function dissolve(node, showIt, ms = 280, done, grow = false) {
+  cancelAnimationFrame(node._dz);
+  if (!CLIP || reduce) { node.style.visibility = showIt ? "visible" : "hidden"; done?.(); return; }
+  node.style.visibility = "visible";
+  const w = Math.ceil(node.offsetWidth / BLOCK) * BLOCK + BLOCK, h = Math.ceil(node.offsetHeight / BLOCK) * BLOCK + BLOCK;   // +1 block for the shadow
+  const cols = w / BLOCK, rows = h / BLOCK, t = thresholds(cols, rows, seedN++ * 2654435761), STEPS = 24;
+  const frames = [];
+  for (let i = 0; i <= STEPS; i++) {
+    const lv = i / STEPS; let f = blocksPath(cols, rows, (k, r) => t[r * cols + k] < lv);
+    if (grow) f = f.slice(0, -2) + `M0 ${h}h${w}v99999h${-w}z")`;    // still streaming: what grows below shows at once
+    frames.push(f);
+  }
+  const paint = i => { node.style.clipPath = node.style.webkitClipPath = frames[i]; };
+  const t0 = performance.now(); let last = -1;
+  paint(showIt ? 0 : STEPS);
+  const step = now => {
+    const f = Math.min(1, (now - t0) / ms), i = Math.round((showIt ? f : 1 - f) * STEPS);
+    if (i !== last) { last = i; paint(i); }
+    if (f < 1) node._dz = requestAnimationFrame(step);
+    else { node.style.clipPath = node.style.webkitClipPath = ""; if (!showIt) node.style.visibility = "hidden"; done?.(); }
+  };
+  node._dz = requestAnimationFrame(step);
+}
+// The conversation's top edge: a band whose pixels belong to the content, not the screen. A bubble
+// crumbles block by block as it scrolls up into the band and fills back in as it scrolls down.
+const BAND_ROWS = 13, NOISE_ROWS = 256;   // 52px
+function band(scroll) {
+  if (scroll._band) return scroll._band;      // one per conversation list, kept with it
+  let cols = 0, t = null, raf = 0;
+  const update = () => {
+    if (!CLIP || !t) return;
+    const st = scroll.scrollTop, off = ((st % BLOCK) + BLOCK) % BLOCK, r0 = Math.floor(st / BLOCK), Hb = BAND_ROWS * BLOCK;
+    let d = "";
+    for (let r = 0; r <= BAND_ROWS; r++) {
+      const y0 = Math.max(0, r * BLOCK - off), y1 = Math.min(Hb, r * BLOCK - off + BLOCK);
+      if (y1 <= y0) continue;
+      const x = ((y0 + y1) / 2) / Hb, keepP = x * x * (3 - 2 * x);          // smoothstep down the band
+      const row = ((r0 + r) % NOISE_ROWS) * cols;
+      let k = 0;
+      while (k < cols) {
+        if (!(t[row + k] < keepP)) { k++; continue; }
+        const k0 = k; while (k < cols && t[row + k] < keepP) k++;
+        d += `M${k0 * BLOCK} ${y0}h${(k - k0) * BLOCK}v${y1 - y0}h${-(k - k0) * BLOCK}z`;
+      }
+    }
+    d += `M0 ${Hb}h${cols * BLOCK}v99999h${-cols * BLOCK}z`;   // everything below the band
+    scroll.style.clipPath = scroll.style.webkitClipPath = `path("${d}")`;
+  };
+  const setup = () => { if (!scroll.clientWidth) return; cols = Math.ceil((scroll.clientWidth + 8) / BLOCK); t = thresholds(cols, NOISE_ROWS, 12345); update(); };
+  scroll.addEventListener("scroll", () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; update(); }); }, { passive: true });
+  return (scroll._band = { setup, update });
+}
+
+// Keyboard (from kbtest). The screen never changes size. On iOS the composer moves above the keyboard
+// *before* focus lands, so Safari sees the field already visible and does not pan the page; the scene
+// lifts so his face stays just under the buttons, and the conversation starts under his beard.
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const vv = window.visualViewport;
+let kbPx = 0, kbEst = Math.round(innerHeight * 0.42), chatBand = null;
+try { kbEst = +(localStorage.getItem("philocafe.kb") || 0) || kbEst; } catch {}
+function fullApply() {
+  if (!isFull() || !stage.geo) return;
+  const { k, H } = stage.geo, head = stage.meta.anchor.head;
+  const top0 = chat.getBoundingClientRect().top, below = $(".convhead", chat).getBoundingClientRect().bottom - top0 + 6;
+  const open = kbPx > 0;
+  const lift = open ? Math.max(0, 50 * k - below) : 0;                    // brows just under the buttons
+  const chin = head[3] * k - lift;
+  chat.style.setProperty("--lift", lift + "px");
+  chat.style.setProperty("--chat-top", (open ? chin - 48 : Math.max(chin + 10, H * 0.48) - 52) + "px");   // 52px: the dissolve band
+  stage.reserve = below;
+  stage.place();
+  requestAnimationFrame(scrollDown);
+}
+function setKb(px, snap) {
+  kbPx = Math.max(0, Math.round(px));
+  chat.classList.toggle("kb", kbPx > 0);
+  if (snap) chat.classList.add("snap");
+  chat.style.setProperty("--kb", kbPx + "px");
+  fullApply();
+  if (snap) { void chat.offsetHeight; requestAnimationFrame(() => requestAnimationFrame(() => chat.classList.remove("snap"))); }
+}
+function wireFullKeyboard(dock) {
+  const msg = $("#msg", dock), phone = $("#phone");
+  const preOpen = () => { if (IOS && !kbPx && isFull()) setKb(kbEst, true); };
+  msg.addEventListener("touchstart", e => {
+    if (document.activeElement === msg || !IOS || !isFull()) return;
+    e.preventDefault();                                     // no native tap-to-focus at the old position
+    preOpen();
+    msg.focus({ preventScroll: true });                     // still inside the touch, so the keyboard opens
+  }, { passive: false });
+  msg.addEventListener("focus", preOpen);
+  msg.addEventListener("blur", () => { phone.style.transform = ""; if (isFull()) setKb(0); });
+}
+if (vv) for (const kind of ["resize", "scroll"]) vv.addEventListener(kind, () => {
+  if (!isFull() || screen !== "chat") return;
+  const phone = $("#phone"), msg = $("#msg", chat);
+  if (document.activeElement !== msg) { if (!vv.offsetTop) phone.style.transform = ""; return; }
+  const real = Math.round(innerHeight - vv.height);
+  if (real > 120 && Math.abs(real - kbPx) > 2) { kbEst = real; try { localStorage.setItem("philocafe.kb", real); } catch {} setKb(real); }
+  phone.style.transform = vv.offsetTop ? `translateY(${vv.offsetTop}px)` : "";   // Safari panned anyway: follow it
+});
+addEventListener("resize", () => { if (isFull() && !kbPx) { stage.layout(); chatBand?.setup(); fullApply(); } });
+// His reply bubble appears with its first words (the thought bubble covers the wait).
+function reveal(b) {
+  const row = b?.closest(".row");
+  if (!row?.classList.contains("pending")) return;
+  row.classList.remove("pending");
+  dissolve(row, true, 260, null, true);
+  scrollDown();
+}
+
 /* ---------- 03 / 04 Conversation ---------- */
 const chat = $("#chat");
 let cur = null, curId = null, sceneActor = null, history = [], busy = false, fbIdx = 0, typer = null, citations = [];
+let curThread = null;        // the open conversation's thread on the server (7.10); made on the first message
 
 function sceneFor(p) {
   const wrap = el("div", "scene-wrap px");
@@ -560,6 +1554,7 @@ function sceneFor(p) {
   const frame = el("div", "frame");
   const bg = el("img", "px"); bg.src = A + d.scene; bg.alt = ""; Object.assign(bg.style, { position: "absolute", inset: 0, width: "100%", height: "100%" });
   sceneActor = actor(p.land, W, H);
+  if (curMood?.locked) sceneActor.hold(moodFrame(p.land, curMood.label), null);
   frame.append(bg, sceneActor); scene.append(frame); wrap.append(scene);
   return wrap;
 }
@@ -567,19 +1562,36 @@ function sceneFor(p) {
 function header(id, sub) {
   const p = PH[id];
   const head = el("header", "convhead");
-  head.innerHTML = `<button class="back" aria-label="Back to the café">${icon("back")}</button>
+  head.innerHTML = `<button class="back" aria-label="${t("Back to the café")}">${icon("backBold", "ink", 30)}</button>
     <img class="mono px" src="${A}mono_${id}.png" alt="">
     <div><h1>${p.name}</h1><p class="sub">${sub}</p></div>
-    <span class="mode"></span>`;
+    <span class="tools"><button class="tool copychat" aria-label="${t("Copy chat")}" title="${t("Copy chat")}">${icon("copy", "ink", 24)}</button>
+      <button class="tool aloud" hidden></button></span>`;
   $(".back", head).onclick = leaveChat;
+  $(".copychat", head).onclick = () => copyChat();
+  $(".aloud", head).onclick = toggleAloud;
   return head;
 }
+function toggleAloud() {
+  unlockAudio(); readAloud.set(!readAloud.get());
+  if (!readAloud.get()) stopSpeaking();
+  paintAloud();
+  toast(readAloud.get() ? t("Replies will be read aloud") : t("Reading aloud is off"));
+}
+// The read-aloud switch (FR-09): shown when the server has voice; the speaker is crossed out when off.
+function paintAloud() {
+  document.querySelectorAll(".convhead .aloud, .meethead .aloud").forEach(b => {
+    const on = readAloud.get();
+    b.hidden = !voiceOn();
+    b.setAttribute("aria-pressed", on);
+    b.setAttribute("aria-label", on ? t("Reading replies aloud: on") : t("Reading replies aloud: off"));
+    b.title = b.getAttribute("aria-label");
+    b.innerHTML = icon(on ? "speaker" : "speakerOff", "ink", 24);
+  });
+}
 
-function openChat(id) {
-  if (isPaused() && paused?.id === id) return restorePaused();     // back to the conversation the pause set aside
-  // Kept aside until the visitor sits down, so "Not yet" leaves the last conversation as it was.
-  const prev = cur ? { nodes: [...chat.childNodes], cls: chat.className, cur, curId, history, fbIdx, citations } : null;
-  const p = PH[id]; cur = p; curId = id; history = []; busy = false; fbIdx = 0; citations = [];
+function buildChat(id) {
+  const p = PH[id]; cur = p; curId = id; history = []; busy = false; fbIdx = 0; citations = []; curThread = null; curMood = null;
   pauseScene(); clearInterval(typer);
   chat.className = "screen";
   chat.innerHTML = "";
@@ -587,92 +1599,129 @@ function openChat(id) {
   scroll.innerHTML = `<h2 class="headline">${p.headline.replace("question ", "question<br>")}</h2>
     <div class="card greet"><div class="titlebar">${p.name}</div>
       <div class="body2"><img class="pic px" src="${A}mono_${id}.png" alt=""><div class="say" id="say"></div></div></div>
-    <div class="label">Try a conversation starter</div>
-    <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">→  ${esc(s)}</button>`).join("")}</div>`;
-  scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => send(c.dataset.s));
-  const tools = el("div", "tools"); tools.hidden = true;
-  tools.innerHTML = `<button id="saveBtn">Save thought</button><button id="copyBtn">Copy chat</button><button id="srcBtn" hidden>From the source ↗</button>`;
+    <div class="label">${t("Try a conversation starter")}</div>
+    <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">${icon("arrow", "ink", 16)}${esc(s)}</button>`).join("")}</div>`;
+  scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => { unlockAudio(); send(c.dataset.s); });
   const dock = el("div", "dock");
-  dock.innerHTML = `<form class="composer">${icon("cup", "ink", 30)}
-    <input id="msg" type="text" placeholder="Share a thought..." autocomplete="off" aria-label="Your message">
-    <button class="send" type="submit" aria-label="Send">↑</button></form>`;
-  $("form", dock).onsubmit = e => { e.preventDefault(); const v = $("#msg").value.trim(); if (v) { $("#msg").value = ""; send(v); } };
-  chat.append(header(id, "A table for your thoughts"), sceneFor(p), scroll, tools, dock);
-  $("#saveBtn").onclick = saveThought;
-  $("#copyBtn").onclick = copyChat;
-  $("#srcBtn").onclick = openSource;
-  setMode();
+  dock.innerHTML = `<form class="composer">
+    <textarea id="msg" rows="1" placeholder="${t("Share a thought...")}" autocomplete="off" enterkeyhint="send" aria-label="${t("Your message")}"></textarea>
+    <div class="rec" aria-live="polite"><span class="dot"></span><span class="what">${t("Listening 0:00")}</span><span class="hint">${t("release")}</span></div>
+    <button class="send" type="submit" aria-label="Send">${icon("send", "ink", 22)}</button></form>`;
+  wireComposer(dock);
+  if (FULL[id]) {                               // full-screen scene (kbtest layout)
+    chat.classList.add("full");
+    scroll.innerHTML = `<div class="row them"><div class="bubble" id="say"></div></div>
+      <div class="label">${t("Try a conversation starter")}</div>
+      <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">${icon("arrow", "ink", 16)}${esc(s)}</button>`).join("")}</div>`;
+    scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => { unlockAudio(); send(c.dataset.s); });
+    stage = fullScene(id);
+    chat.append(stage.el, header(id, t("A table for your thoughts")), scroll, dock);
+    wireFullKeyboard(dock);
+    chatBand = band(scroll);
+    new ResizeObserver(() => chat.style.setProperty("--dock-h", dock.offsetHeight + "px")).observe(dock);
+  } else chat.append(header(id, t("A table for your thoughts")), sceneFor(p), scroll, dock);
+  setMode(); paintAloud();
   show("chat");
-  if (isPaused()) return enterSupport(p);
-
-  // "A table for you" popup, as in the design
-  const veil = el("div", "veil");
-  veil.innerHTML = `<div class="pop card" role="dialog" aria-label="A table for you">
-    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">A table for you<button class="x" aria-label="Not yet">×</button></div>
-    <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
-      <div>${p.name} has saved you a seat.<br>Would you like to sit down?</div>
-      <div class="btns"><button class="btn" data-a="no">NOT YET</button><button class="btn go" data-a="yes">SIT DOWN</button></div></div></div>`;
-  const back = () => {
-    veil.remove();
-    if (prev) {
-      pauseScene();
-      chat.replaceChildren(...prev.nodes); chat.className = prev.cls;
-      ({ cur, curId, history, fbIdx, citations } = prev);
-      busy = false; const s = $(".send", chat); if (s) s.disabled = false;
-    } else stopChat();
-    openMeet(id);
-  };
-  veil.querySelector('[data-a="no"]').onclick = back;
-  veil.querySelector(".x").onclick = back;
-  veil.querySelector('[data-a="yes"]').onclick = () => { veil.remove(); typeInto($("#say"), p.greet); };
-  $(".screens").append(veil);
-  veil.querySelector('[data-a="yes"]').focus();
+  if (FULL[id]) { setKb(0); stage.layout(); chatBand.setup(); fullApply(); }
+  return p;
 }
 
-function stopChat() { pauseScene(); clearInterval(typer); cur = null; curId = null; }
-function pauseScene() { sceneActor?.stop(); sceneActor = null; }
+// A new conversation (7.10); takeSeat() and the Conversations tab offer the old ones.
+function openChat(id) {
+  if (isPaused() && paused?.id === id) return restorePaused();     // back to the conversation the pause set aside
+  const p = buildChat(id);
+  backTo = "home";
+  if (isPaused()) return enterSupport(p);
+  const voice = readAloud.get() && voiceOn() && FULL[id] && GREET_S[id];
+  typeInto($("#say"), p.greet, null, voice ? Math.max(24, GREET_S[id][LANG] * 1000 / p.greet.length) : 24);
+  if (voice) greetAloud(id);
+}
+// The greetings, recorded once in each philosopher's own voice (personas/<id>.yaml voice, Flash v2.5):
+// assets/personas/<id>/full/greet_<lang>.mp3; their lengths in seconds pace the typing.
+const GREET_S = { socrates: { en: 2.51, zh: 3.11 }, montaigne: { en: 4.69, zh: 6.22 }, schopenhauer: { en: 2.79, zh: 3.67 },
+                  seneca: { en: 4.92, zh: 4.74 }, epictetus: { en: 6.18, zh: 5.2 } };
+async function greetAloud(id) {
+  stopSpeaking();
+  let stopped = false;
+  speaking = { acts: null, stop: () => { stopped = true; try { clipSource?.stop(); } catch {} player.pause(); player.removeAttribute("src"); } };
+  try {
+    const blob = await (await fetch(`${FULL[id]}greet_${LANG}.mp3`)).blob();
+    if (!stopped) await playClip(blob);
+  } catch {}
+  if (!stopped) speaking = null;
+}
+
+function stopChat() { pauseScene(); clearInterval(typer); stopSpeaking(); cur = null; curId = null; }
+function pauseScene() { sceneActor?.stop(); sceneActor = null; stage?.stop(); stage = null; }
 
 // Leaving for the café keeps the conversation; the Conversation tab brings it back.
-function leaveChat() { pauseScene(); show("home"); }
+let backTo = "home";
+function leaveChat() { pauseScene(); stopSpeaking(); if (backTo === "convos") { renderConvos(); show("convos"); } else show("home"); }
 function resumeChat() {
+  syncBookmarks();
   if (paused && isPaused()) return restorePaused();
   if (!cur || !$(".dock", chat)) return noChatYet();
   const wrap = $(".scene-wrap", chat);
   if (wrap && !sceneActor) wrap.replaceWith(sceneFor(cur));      // restart the scene animation
-  show("chat"); scrollDown();
+  const full = $(".scene-full", chat);
+  if (full && !stage) { stage = fullScene(curId); full.replaceWith(stage.el); }
+  show("chat");
+  if (isFull()) { chatBand = band($("#scroll")); setKb(0); stage.layout(); chatBand.setup(); fullApply(); if (curMood) showMood(curMood); }
+  scrollDown();
 }
 function noChatYet() {
   show("home");
   const veil = el("div", "veil");
-  veil.innerHTML = `<div class="pop card" role="dialog" aria-label="No conversation yet">
-    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">No conversation yet<button class="x" aria-label="Close">×</button></div>
+  veil.innerHTML = `<div class="pop card" role="dialog" aria-label="${t("No conversation yet")}">
+    <div class="titlebar"><img class="px" src="${A}icon_quill.png" alt="">${t("No conversation yet")}<button class="x" aria-label="${t("Close")}">${icon("close", "ink", 22)}</button></div>
     <div class="pop-body"><img class="px" src="${A}icon_coffee_big.png" alt="">
-      <div>Tap a philosopher in the café<br>and take a seat to start talking.</div>
+      <div>${t("Tap a philosopher in the café<br>and take a seat to start talking.")}</div>
       <div class="btns"><button class="btn go">OK</button></div></div></div>`;
   veil.onclick = e => { if (e.target === veil || e.target.closest(".x, .btn")) veil.remove(); };
   $(".screens").append(veil);
   $(".btn", veil).focus();
 }
 
-function typeInto(node, text, done) {
+function typeInto(node, text, done, ms = 24) {
   clearInterval(typer);
   if (reduce) { node.textContent = text; done?.(); return; }
+  const talking = isFull() && chat.contains(node);
+  if (talking) { reveal(node); stage.talk(true); }
   let i = 0; node.textContent = ""; node.classList.add("typing");
   typer = setInterval(() => {
-    i += 1; node.textContent = text.slice(0, i); if (chat.classList.contains("convo")) scrollDown();
-    if (i >= text.length) { clearInterval(typer); node.classList.remove("typing"); done?.(); }
-  }, 24);
+    i += 1; node.textContent = text.slice(0, i); if (chat.classList.contains("convo") || talking) scrollDown();
+    if (i >= text.length) { clearInterval(typer); node.classList.remove("typing"); if (talking) stage?.talk(false); done?.(); }
+  }, ms);
 }
 const scrollDown = () => { const s = $("#scroll"); if (s) s.scrollTop = s.scrollHeight; };
 
+function clearNexts() { document.querySelectorAll(".nexts").forEach(n => n.remove()); }
+function showNexts(acts, items) {
+  clearNexts();
+  if (!acts || !items?.length || isPaused()) return;
+  const box = el("div", "nexts");
+  box.setAttribute("role", "group"); box.setAttribute("aria-label", t("Things you might say next"));
+  for (const t of items) {
+    const b = el("button"); b.type = "button"; b.textContent = t;          // model text: never as HTML
+    b.onclick = () => { if (busy) return; unlockAudio(); clearNexts(); send(t); };
+    box.append(b);
+  }
+  acts.after(box); scrollDown();
+}
 function bubble(who, text) {
+  if (who === "me") { document.querySelectorAll(".acts.latest").forEach(a => a.classList.remove("latest")); clearNexts(); }
   const row = el("div", "row " + who);
   if (who === "them") row.append(Object.assign(el("img", "ava px"), { src: `${A}mono_${curId}.png`, alt: "" }));
   const b = el("div", "bubble"); b.textContent = text ?? "";
   row.append(b); row.insertAdjacentHTML("beforeend", TAIL[who]);
+  const full = isFull();
+  if (full && who === "them" && text == null) row.classList.add("pending");
+  else if (full && !quietBubbles) row.style.visibility = "hidden";
   $("#scroll").append(row); scrollDown();
+  if (full && !quietBubbles && !row.classList.contains("pending")) dissolve(row, true, 280);
   return b;
 }
+let quietBubbles = false;      // reopening a conversation: no dissolve for each old bubble
 
 // Severe-distress signals only; ordinary sadness or philosophical pessimism should not pause the café.
 const DISTRESS = /(kill(ing)? myself|suicid|end (it all|my life)|want(ed)? to die|don.?t want to (live|be alive|wake up)|hurt(ing)? myself|self.?harm|(don.?t|do not) feel safe with myself|no reason to live|自杀|自殘|自残|不想活|活不下去|想死|伤害自己|傷害自己|结束(我的)?生命)/i;
@@ -682,16 +1731,22 @@ function startConvo(p) {
   if (chat.classList.contains("convo")) return;
   clearInterval(typer);
   chat.classList.add("convo");
-  $("#scroll").innerHTML = "";
-  $(".tools").hidden = false;
-  bubble("them", p.greet);
+  if (isFull()) {                               // the greeting is already a bubble; the starters go
+    stage.talk(false);
+    $("#scroll .label")?.remove(); $("#scroll .chips")?.remove();
+    const say = $("#say"); if (say) { say.textContent = p.greet; say.classList.remove("typing"); say.removeAttribute("id"); }
+    else bubble("them", p.greet);
+  } else {
+    $("#scroll").innerHTML = "";
+    bubble("them", p.greet);
+  }
   history.push({ role: "assistant", content: p.greet });
 }
 
 // A system-voice card in the thread: support-mode replies, never the persona's voice (NFR-12).
 function systemCard(text, resources) {
   const card = el("div", "card sysnote");
-  card.innerHTML = `<div class="titlebar">A moment of care</div><div class="inner"><p class="t16"></p></div>`;
+  card.innerHTML = `<div class="titlebar">${t("A moment of care")}</div><div class="inner"><p class="t16"></p></div>`;
   $(".t16", card).textContent = text;
   (resources || []).forEach(r => { const row = el("p", "t14"); row.innerHTML = `<b>${esc(r.name)}</b>: ${esc(r.contact)}`; $(".inner", card).append(row); });
   $("#scroll").append(card); scrollDown();
@@ -704,9 +1759,9 @@ function systemCard(text, resources) {
 let paused = null;          // { id, nodes, cls, history, fbIdx, citations } of the conversation set aside
 let demoPaused = false;
 const isPaused = () => backend.live ? backend.paused() : demoPaused;
-const READY = p => `I’m ready to talk with ${p.name} again`;
-const SAFE = p => `I’m safe right now, and I’d like to keep talking with ${p.name}.`;
-const HARD = "I’m still having a hard time.";
+const READY = p => t("I’m ready to talk with {name} again", { name: p.name });
+const SAFE = p => t("I’m safe right now, and I’d like to keep talking with {name}.", { name: p.name });
+const HARD = t("I’m still having a hard time.");
 
 function setAside(id) {
   if (cur && curId === id && $(".dock", chat)) paused = { id, nodes: [...chat.childNodes], cls: chat.className, history, fbIdx, citations };
@@ -717,28 +1772,31 @@ function restorePaused() {
   cur = PH[s.id]; curId = s.id; ({ history, fbIdx, citations } = s); busy = false;
   chat.replaceChildren(...s.nodes); chat.className = s.cls;
   $(".scene-wrap", chat)?.replaceWith(sceneFor(cur));
+  const full = $(".scene-full", chat);
+  if (full) { stage = fullScene(s.id); full.replaceWith(stage.el); stage.mood("attentive", true); }
   const btn = $(".send", chat); if (btn) btn.disabled = false;
   setMode(); show("chat");
+  if (isFull()) { chatBand = band($("#scroll")); setKb(0); stage.layout(); chatBand.setup(); fullApply(); }
   enterSupport(cur);
 }
 function enterSupport(p) {
+  clearNexts();
   clearInterval(typer);
   if (!chat.classList.contains("convo")) { chat.classList.add("convo"); $("#scroll").innerHTML = ""; }
-  $(".tools").hidden = true;
-  systemCard(`This conversation is paused, and ${p.name} is waiting nearby. You can tell me how you are. When you feel ready, tap the button below.`);
-  $("#msg").placeholder = "Say how you are…";
+  systemCard(t("This conversation is paused, and {name} is waiting nearby. You can tell me how you are. When you feel ready, tap the button below.", { name: p.name }));
+  $("#msg").placeholder = t("Say how you are…");
   comeBack(p);
 }
 function comeBack(p, step = "ask") {
   let box = $(".comeback", chat);
   if (!box) { box = el("div", "comeback"); $(".dock", chat).prepend(box); }
   if (step === "ask") {
-    box.innerHTML = `<button class="chip ready" type="button">→  ${esc(READY(p))}</button>`;
+    box.innerHTML = `<button class="chip ready" type="button">${icon("arrow", "ink", 16)}${esc(READY(p))}</button>`;
     $(".ready", box).onclick = () => comeBack(p, "check");
   } else {
-    box.innerHTML = `<p class="t14">Before ${esc(p.name)} comes back, how are you feeling right now?</p>
-      <div class="chips"><button class="chip" type="button" data-a="safe">→  ${esc(SAFE(p))}</button>
-      <button class="chip" type="button" data-a="hard">→  ${esc(HARD)}</button></div>`;
+    box.innerHTML = `<p class="t14">${t("Before {name} comes back, how are you feeling right now?", { name: esc(p.name) })}</p>
+      <div class="chips"><button class="chip" type="button" data-a="safe">${icon("arrow", "ink", 16)}${esc(SAFE(p))}</button>
+      <button class="chip" type="button" data-a="hard">${icon("arrow", "ink", 16)}${esc(HARD)}</button></div>`;
     box.querySelector('[data-a="safe"]').onclick = () => checkIn(p, true);
     box.querySelector('[data-a="hard"]').onclick = () => checkIn(p, false);
   }
@@ -746,8 +1804,7 @@ function comeBack(p, step = "ask") {
 }
 function leaveSupport() {
   $(".comeback", chat)?.remove();
-  $("#msg").placeholder = "Share a thought...";
-  $(".tools").hidden = false;
+  $("#msg").placeholder = t("Share a thought...");
 }
 async function checkIn(p, safe) {
   if (busy) return;
@@ -756,64 +1813,464 @@ async function checkIn(p, safe) {
   bubble("me", text);
   history.push({ role: "user", content: text });
   if (!safe) {
-    systemCard(`Thank you for telling me. ${p.name} will wait a little longer. If you might be in danger, please reach out to someone who can help right away. Whenever you’re ready, you can try again.`);
+    systemCard(t("Thank you for telling me. {name} will wait a little longer. If you might be in danger, please reach out to someone who can help right away. Whenever you’re ready, you can try again.", { name: p.name }));
     return comeBack(p);
   }
   demoPaused = false; leaveSupport();
   busy = true;
   const b = bubble("them");
-  await new Promise(r => typeInto(b, "I’m glad you’re here. Let’s go on gently, at your own pace. Where would you like to begin?", r));
+  await new Promise(r => typeInto(b, t("I’m glad you’re here. Let’s go on gently, at your own pace. Where would you like to begin?"), r));
   history.push({ role: "assistant", content: b.textContent });
+  addActions(b, { who: curId, you: text, them: b.textContent, cites: [] });
   busy = false;
 }
 
+// Reads one turn's events into bubble `b` (7.2); shared by a new message and Regenerate.
+// Every line of his is typed out like the greeting: streamed text queues up and the bubble shows it a
+// character at a time (a little faster when the queue runs long), so a reply never lands in chunks.
+function typewriter(node) {
+  let queue = "", timer = null, ended = null;
+  const tick = () => {
+    if (!queue) { clearInterval(timer); timer = null; ended?.(); return; }
+    const n = queue.length > 240 ? 4 : queue.length > 120 ? 2 : 1;
+    const cut = [...queue.slice(0, n + 1)].slice(0, n).join("").length;      // never split a surrogate pair
+    node.textContent += queue.slice(0, cut); queue = queue.slice(cut);
+    if (isFull() || chat.classList.contains("convo")) scrollDown();
+  };
+  return {
+    push(t) { if (reduce) { node.textContent += t; return; } queue += t; if (!timer) timer = setInterval(tick, 24); },
+    end() { return new Promise(r => { if (!queue && !timer) return r(); ended = r; }); },
+  };
+}
+async function streamInto(b, events) {
+  const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null, messageId: null, mood: null, suggestions: [], thinking: [] };
+  const tw = typewriter(b);
+  thinkingPose();
+  try {
+    for await (const ev of events) {
+      const d = ev.data;
+      if (ev.type === "voice") {
+        out.voice = d.speaker;
+        if (out.voice === "persona") { b.textContent = ""; backend.setPaused(false); leaveSupport(); }
+        else stage?.think(null);                     // the exit flow: no persona thoughts
+      } else if (ev.type === "thinking") {          // 7.8: rolls in the thought bubble, gone at the first word
+        out.thinking.push(d.text);
+        if (out.voice === "persona" && !out.said && stage) { stage.think(out.thinking); if (!curMood?.locked) stage.mood("pondering"); }
+      } else if (ev.type === "suggestions") {
+        out.suggestions = d.items || [];
+      } else if (ev.type === "mood") {
+        out.mood = d; showMood(d);
+      } else if (ev.type === "token") {
+        if (out.voice === "persona" && !out.said && stage) { stage.think(null); reveal(b); stage.talk(true); }
+        out.said += d.text;
+        if (out.voice === "persona") tw.push(d.text);
+      } else if (ev.type === "citation" && out.voice === "persona") {
+        citations.push(d); out.cites.push({ ...d, n: citations.length });
+        tw.push(` [${citations.length}]`);             // matches the numbered entry in "From the source"
+      } else if (ev.type === "exit") { out.resources = d.resources; out.reason = d.reason; }
+      else if (ev.type === "error") out.failed = d;
+      else if (ev.type === "done") out.messageId = d.message_id || null;
+      if (DEBUG && (ev.type === "safety" || ev.type === "trace")) debugShow(ev);
+    }
+  } catch (e) { out.failed = { code: "network", message: String(e) }; }
+  if (out.voice === "persona") await tw.end();
+  stage?.think(null); stage?.talk(false);
+  showMood(null, MOOD_HOLD_MS);                // hold the pose a while, then back to idle (still when locked)
+  return out;
+}
+
 async function sendLive(text, intent = null) {
-  const id = curId;
+  const id = curId, spoken = saidByVoice;
+  saidByVoice = false;
   busy = true; $(".send").disabled = true;
   startConvo(cur);
   bubble("me", text);
   history.push({ role: "user", content: text });
   const b = bubble("them");
   b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
-  let voice = null, said = "", resources = null, reason = null, failed = null;
+  let r;
   try {
-    for await (const ev of backend.turn(text, id, intent)) {
-      const d = ev.data;
-      if (ev.type === "voice") {
-        voice = d.speaker;
-        if (voice === "persona") { b.textContent = ""; backend.save({ paused: false }); leaveSupport(); }
-      } else if (ev.type === "token") {
-        said += d.text;
-        if (voice === "persona") { b.textContent += d.text; scrollDown(); }
-      } else if (ev.type === "citation" && voice === "persona") {
-        citations.push(d);
-        b.textContent += ` [${citations.length}]`;     // matches the numbered entry in "From the source"
-        $("#srcBtn").hidden = false;
-      } else if (ev.type === "exit") { resources = d.resources; reason = d.reason; }
-      else if (ev.type === "error") failed = d;
-      if (DEBUG && (ev.type === "safety" || ev.type === "trace")) debugShow(ev);
-    }
-  } catch (e) { failed = { code: "network", message: String(e) }; }
+    if (!curThread) curThread = await backend.newThread(id);       // the first message makes the conversation
+    r = await streamInto(b, backend.turn(curThread, text, intent));
+  } catch (e) { r = { failed: { code: e.code || "network" } }; }
   busy = false; $(".send").disabled = false;
-  if (voice === "system") {
+  if (r.voice === "system") {
+    stopSpeaking();                                  // FR-35: playback stops at the exit
     b.closest(".row").remove();
-    backend.save({ paused: true });
-    if (reason === "tier_3") return distress(id, text, { text: said, resources });
-    $(".tools").hidden = true;
-    systemCard(said, resources);
+    backend.setPaused(true);
+    if (r.reason === "tier_3") return distress(id, text, { text: r.said, resources: r.resources });
+    systemCard(r.said, r.resources);
     return comeBack(PH[id]);
   }
-  if (failed || voice !== "persona") {          // never stand in for the persona with a made-up reply
+  if (r.failed || r.voice !== "persona") {          // never stand in for the persona with a made-up reply
     b.closest(".row").remove();
-    $("#scroll").append(el("p", "t11 muted netnote", "The café could not answer just now. Please try again."));
+    $("#scroll").append(el("p", "t11 muted netnote", t("The café could not answer just now. Please try again.")));
     return scrollDown();
   }
-  history.push({ role: "assistant", content: said });
-  $(".tools").hidden = false; scrollDown();
+  history.push({ role: "assistant", content: r.said });
+  const acts = addActions(b, { who: id, you: text, them: b.textContent, cites: r.cites, thread: curThread, messageId: r.messageId });
+  showNexts(acts, r.suggestions);
+  scrollDown();
+  if ((readAloud.get() || spoken) && voiceOn() && r.messageId) speak(acts);    // a spoken message always gets a spoken reply
+}
+
+/* ---------- Composer and voice (7.6, FR-08, FR-09) ---------- */
+// Voice is on when the server has it set up (GET /me) and this browser can record.
+const canRecord = () => !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+const voiceOn = () => backend.live && !!backend.me?.voice;
+let micDenied = false;
+function wireComposer(dock) {
+  const form = $("form", dock), msg = $("#msg", dock), btn = $(".send", dock);
+  const grow = () => { msg.style.height = "auto"; msg.style.height = Math.max(42, Math.min(msg.scrollHeight + 2, 64)) + "px"; };
+  const mode = () => {
+    const mic = !msg.value.trim() && voiceOn() && canRecord() && !micDenied;
+    btn.dataset.mode = mic ? "mic" : "send";
+    btn.type = mic ? "button" : "submit";
+    btn.setAttribute("aria-label", mic ? t("Talk") : t("Send"));
+    btn.innerHTML = icon(mic ? "mic" : "send", "ink", 22);
+  };
+  form.onsubmit = e => {
+    e.preventDefault();
+    const v = msg.value.trim();
+    if (!v) return;
+    msg.value = ""; grow(); mode();
+    unlockAudio(); stopSpeaking();
+    send(v);
+  };
+  msg.addEventListener("input", () => { grow(); mode(); });
+  msg.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
+  // Talk: tap the mic, speak, tap again to send; or hold it while speaking and let go. What was
+  // heard is sent as the message (its bubble shows the words), and the mic is back for the next one.
+  let press = 0;
+  btn.addEventListener("pointerdown", e => {
+    if (rec) { e.preventDefault(); press = 0; return stopRecording(dock); }      // second tap: done
+    if (btn.dataset.mode !== "mic" || btn.disabled) return;
+    e.preventDefault(); unlockAudio(); stopSpeaking();
+    press = Date.now(); startRecording(dock);
+  });
+  btn.addEventListener("pointerup", () => {
+    if (!rec || !press) return;
+    if (Date.now() - press > 450) stopRecording(dock);                           // held: letting go sends
+    else { rec.tap = true; $(".hint", dock).textContent = t("tap to send"); btn.innerHTML = icon("send", "ink", 22); }
+    press = 0;
+  });
+  ["pointercancel", "pointerleave"].forEach(ev => btn.addEventListener(ev, () => { if (rec && press) { press = 0; stopRecording(dock); } }));
+  btn.addEventListener("contextmenu", e => e.preventDefault());
+  dock._mode = mode;
+  mode();
+}
+const refreshComposer = () => { $("#chat .dock")?._mode?.(); paintAloud(); };
+
+let rec = null;        // {recorder, stream, chunks, started, timer}
+async function startRecording(dock) {
+  if (rec) return;
+  const form = $("form", dock);
+  rec = { chunks: [], started: Date.now(), pending: true };
+  form.classList.add("recording");
+  $(".what", dock).textContent = t("Listening 0:00");
+  $(".hint", dock).textContent = t("release");
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (!rec) { stream.getTracks().forEach(t => t.stop()); return; }     // let go before the mic opened
+    const type = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find(t => MediaRecorder.isTypeSupported?.(t)) || "";
+    const recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    recorder.ondataavailable = e => e.data.size && rec?.chunks.push(e.data);
+    Object.assign(rec, { recorder, stream, pending: false, started: Date.now() });
+    recorder.start(250);
+    rec.timer = setInterval(() => {
+      const s = Math.floor((Date.now() - rec.started) / 1000);
+      $(".what", dock).textContent = t("Listening {time}", { time: `0:${String(s).padStart(2, "0")}` });
+      if (s >= 60) stopRecording(dock);                               // about a minute at most
+    }, 250);
+  } catch {
+    rec = null; form.classList.remove("recording");
+    micDenied = true; refreshComposer();
+    toast("The microphone is off. You can still type.");
+  }
+}
+async function stopRecording(dock) {
+  if (!rec) return;
+  const r = rec; rec = null;
+  const form = $("form", dock), msg = $("#msg", dock);
+  clearInterval(r.timer);
+  if (r.pending || !r.recorder) { form.classList.remove("recording"); return; }
+  const done = new Promise(res => { r.recorder.onstop = res; });
+  r.recorder.stop(); await done;
+  r.stream.getTracks().forEach(t => t.stop());
+  form.classList.remove("recording");
+  refreshComposer();
+  if (Date.now() - r.started < 600) return toast("That was too short. Tap the mic and speak.");
+  const blob = new Blob(r.chunks, { type: r.recorder.mimeType || "audio/webm" });
+  form.classList.add("transcribing");
+  $(".what", dock).textContent = t("Writing it down…"); $(".hint", dock).textContent = "";
+  try {
+    if (!curThread) curThread = await backend.newThread(curId);
+    const resp = await fetch(`threads/${curThread}/transcribe`, { method: "POST", headers: backend.headers({ "Content-Type": blob.type.split(";")[0] }), body: blob });
+    if (!resp.ok) throw new Error(resp.status);
+    const { text } = await resp.json();
+    form.classList.remove("transcribing");
+    if (text) { saidByVoice = true; send(text); }
+    else toast("I didn’t catch that. Try again?");
+  } catch { toast("Couldn’t turn that into text just now"); }
+  form.classList.remove("transcribing");
+}
+
+// Read aloud (FR-09): the shown reply, sentence by sentence, in the philosopher's voice. One audio
+// element is reused, unlocked by a tap, so iPhone lets later replies play on their own.
+const player = new Audio();
+let speaking = null;   // {stop: () => void, acts}
+function unlockAudio() {
+  const ctx = audioCtx();
+  if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+  if (player._unlocked) return;
+  player._unlocked = true;
+  player.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+  player.play().catch(() => {});
+  if (ctx) { const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(); }
+}
+
+// Even volume across voices (7.6): every clip is measured and brought to the same loudness before it
+// plays, since ElevenLabs voices come in at quite different levels. Gated RMS over 50 ms frames
+// (silence below -50 dBFS left out), a gain toward TARGET_DB within ±18 dB, then a limiter.
+const TARGET_DB = -20, MAX_GAIN_DB = 18, GATE = 1e-5;
+let actx = null, limiter = null, clipSource = null;
+const lastLevel = { measured: null, gainDb: null };          // for tests and the debug panel
+function audioCtx() {
+  if (actx) return actx;
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!C) return null;
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}   // iPhone: play with the silent switch on
+  actx = new C();
+  limiter = actx.createDynamicsCompressor();
+  Object.entries({ threshold: -3, knee: 0, ratio: 20, attack: 0.003, release: 0.1 }).forEach(([k, v]) => { limiter[k].value = v; });
+  limiter.connect(actx.destination);
+  return actx;
+}
+function loudnessDb(channels, sampleRate) {
+  const n = Math.max(1, Math.round(sampleRate * 0.05)), len = channels[0].length;
+  let sum = 0, count = 0;
+  for (let s = 0; s + n <= len; s += n) {
+    let e = 0;
+    for (const d of channels) for (let k = s; k < s + n; k++) e += d[k] * d[k];
+    e /= n * channels.length;
+    if (e > GATE) { sum += e; count++; }
+  }
+  return count ? 10 * Math.log10(sum / count) : null;
+}
+const levelGainDb = db => db == null ? 0 : Math.max(-MAX_GAIN_DB, Math.min(MAX_GAIN_DB, TARGET_DB - db));
+async function playClip(blob) {
+  const ctx = audioCtx();
+  if (ctx) {
+    try {
+      if (ctx.state === "suspended") await ctx.resume();
+      const buf = await ctx.decodeAudioData(await blob.arrayBuffer());
+      const chans = Array.from({ length: buf.numberOfChannels }, (_, i) => buf.getChannelData(i));
+      lastLevel.measured = loudnessDb(chans, buf.sampleRate);
+      lastLevel.gainDb = levelGainDb(lastLevel.measured);
+      const src = ctx.createBufferSource(), gain = ctx.createGain();
+      src.buffer = buf; gain.gain.value = 10 ** (lastLevel.gainDb / 20);
+      src.connect(gain).connect(limiter);
+      clipSource = src;
+      await new Promise(res => { src.onended = res; src.start(); });
+      clipSource = null;
+      return;
+    } catch { clipSource = null; }                          // fall back to the plain audio element
+  }
+  const url = URL.createObjectURL(blob);
+  player.src = url;
+  await new Promise(res => { player.onended = player.onerror = res; player.play().catch(res); });
+  URL.revokeObjectURL(url);
+}
+let saidByVoice = false;      // the message on its way came from the mic
+// Replies are read aloud by default (when voice is set up); the ⋯ menu turns it off for this device.
+const readAloud = { get() { try { return localStorage.getItem("philocafe.readAloud") !== "0"; } catch { return true; } },
+                    set(v) { try { localStorage.setItem("philocafe.readAloud", v ? "1" : "0"); } catch {} } };
+function sentences(text) {
+  const clean = text.replace(/\s*\[\d+\]/g, "").replace(/\s+/g, " ").trim();
+  const parts = clean.match(/[^.!?。！？]+[.!?。！？]+["”’)\]]*\s*|[^.!?。！？]+$/g) || [clean];
+  const out = [];
+  for (const p of parts.map(x => x.trim()).filter(Boolean)) {
+    const cjk = /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(p);       // no space between Chinese sentences
+    if (out.length && out[out.length - 1].length < 40) out[out.length - 1] += (cjk ? "" : " ") + p;   // fewer, fuller requests
+    else out.push(p);
+  }
+  return out.flatMap(p => p.length <= 600 ? [p] : p.match(/[\s\S]{1,580}(?:\s|$)|[\s\S]{1,580}/g).map(x => x.trim()));
+}
+function stopSpeaking() {
+  if (!speaking) return;
+  speaking.stop(); speaking = null;
+}
+async function speak(acts) {
+  stopSpeaking();
+  const ex = acts._ex, list = sentences(ex.them);
+  let stopped = false;
+  const btn = $(".speak", acts);
+  const paint = on => { if (btn) { btn.setAttribute("aria-pressed", on); btn.setAttribute("aria-label", on ? t("Stop reading") : t("Read aloud")); setIcon(btn, on ? "stop" : "speaker", on ? "ink" : "muted"); } };
+  speaking = { acts, stop: () => { stopped = true; stage?.talk(false); try { clipSource?.stop(); } catch {} player.pause(); player.removeAttribute("src"); paint(false); } };
+  paint(true);
+  const fetchClip = t => fetch(`threads/${ex.thread}/speech`, { method: "POST", headers: backend.headers({ "Content-Type": "application/json" }), body: JSON.stringify({ text: t }) })
+    .then(r => r.ok ? r.blob() : null).catch(() => null);
+  let next = fetchClip(list[0]);
+  for (let i = 0; i < list.length && !stopped; i++) {
+    const blob = await next;
+    next = i + 1 < list.length ? fetchClip(list[i + 1]) : null;     // fetch the next sentence while this one plays
+    if (!blob || stopped) break;
+    if (acts.isConnected) stage?.talk(true);
+    await playClip(blob);
+  }
+  stage?.talk(false);
+  if (!stopped) { paint(false); speaking = null; }
+}
+
+/* ---------- Reply actions (7.9): save, copy, source, thumbs, regenerate ---------- */
+function addActions(b, ex) {
+  const row = b.closest(".row");
+  row.nextElementSibling?.classList.contains("acts") && row.nextElementSibling.remove();
+  document.querySelectorAll(".acts.latest").forEach(a => a.classList.remove("latest"));
+  const acts = el("div", "acts latest");
+  acts.setAttribute("role", "toolbar"); acts.setAttribute("aria-label", t("Reply actions"));
+  acts._ex = { rating: null, noteId: null, ...ex };
+  const btn = (a, label, ico) => `<button type="button" data-a="${a}" class="${a}" aria-label="${t(label)}" title="${t(label)}">${icon(ico, "muted", 18)}</button>`;
+  acts.innerHTML = btn("save", "Save to My notes", "mark") + btn("copy", "Copy", "copy") +
+    (ex.cites.length ? btn("source", "From the source", "book") : "") +
+    btn("up", "Good reply", "up") + btn("down", "Bad reply", "down") + btn("regen", "Regenerate", "regen") +
+    (voiceOn() && ex.thread && ex.messageId ? btn("speak", "Read aloud", "speaker") : "");
+  acts.querySelectorAll("button").forEach(x => x.onclick = () => { if (x._held) { x._held = false; return; } ACTIONS[x.dataset.a](acts, x); });
+  acts.querySelectorAll(".up, .down").forEach(x => longPress(x, () => { if (acts._ex.rating === x.dataset.a) openFeedback(acts, x.dataset.a); }));
+  row.after(acts);
+  if (acts._ex.rating) paintThumbs(acts);
+  if (acts._ex.noteId) markSaved($(".save", acts), true);
+  return acts;
+}
+// Selected = the filled icon, unselected = the outline; no frame or background.
+const setIcon = (x, name, color = "muted") => { x.innerHTML = icon(name, color, 18); };
+const markSaved = (x, on) => { x.setAttribute("aria-pressed", on); x.setAttribute("aria-label", on ? t("Remove from My notes") : t("Save to My notes")); setIcon(x, on ? "markFull" : "mark", on ? "ink" : "muted"); };
+// A note deleted in My notes empties its bookmark when the chat comes back.
+const syncBookmarks = () => document.querySelectorAll(".acts").forEach(a => {
+  if (a._ex.noteId && !notes.some(n => n.id === a._ex.noteId)) { a._ex.noteId = null; markSaved($(".save", a), false); }
+});
+
+const ACTIONS = {
+  async save(acts, x) {             // tap again to take the note back out of My notes
+    const ex = acts._ex;
+    if (ex.noteId && notes.some(n => n.id === ex.noteId)) {
+      await removeNote(ex.noteId); ex.noteId = null;
+      markSaved(x, false);
+      return toast("Removed from My notes");
+    }
+    x.disabled = true;
+    try { ex.noteId = await saveExchange(ex); } catch { x.disabled = false; return toast("Couldn’t save just now"); }
+    x.disabled = false; markSaved(x, true);
+    toast("Saved to My notes");
+  },
+  async copy(acts) {
+    toast(await copyText(acts._ex.them) ? "Copied" : "Couldn’t copy. Press and hold the reply to copy it.");
+  },
+  source(acts) { openSource(acts._ex.cites); },
+  up(acts, x) { rate(acts, x, "up"); },
+  down(acts, x) { rate(acts, x, "down"); },
+  regen(acts) { stopSpeaking(); regenerate(acts); },
+  speak(acts) { unlockAudio(); if (speaking?.acts === acts) return stopSpeaking(); speak(acts); }
+};
+
+// Long press (about half a second) on a button; the click that follows it is swallowed.
+function longPress(x, fn) {
+  let t = null;
+  const stop = () => clearTimeout(t);
+  x.addEventListener("pointerdown", () => { stop(); t = setTimeout(() => { x._held = true; fn(); }, 500); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(e => x.addEventListener(e, stop));
+  x.addEventListener("contextmenu", e => e.preventDefault());
+}
+
+// The feedback window (7.9): tags and a short note on a rated reply. They only move the reply-style
+// dials (the note is read by the server's model, never put in the persona's prompt, FR-37).
+function openFeedback(acts, rating) {
+  const ex = acts._ex, picked = new Set(ex.feedback?.tags || []);
+  const veil = el("div", "veil");
+  veil.innerHTML = `<form class="pop card feedback" role="dialog" aria-label="${t("Feedback")}">
+    <div class="titlebar"><span>${rating === "up" ? t("What worked?") : t("What missed?")}</span><button class="x" type="button" aria-label="${t("Close")}">${icon("close", "ink", 22)}</button></div>
+    <div class="inner">
+      <p class="t14 muted">${t("{name} will keep this in mind for the next replies.", { name: esc(PH[ex.who].name) })}</p>
+      <div class="tags">${Object.entries(FEEDBACK_TAGS[rating]).map(([k, t]) => `<button type="button" class="tag" data-t="${k}" aria-pressed="${picked.has(k)}">${esc(t.label)}</button>`).join("")}</div>
+      <textarea maxlength="500" placeholder="${t("Anything else? (optional)")}" aria-label="${t("Your feedback")}">${esc(ex.feedback?.text || "")}</textarea>
+      <div class="btns"><button class="btn" type="button" data-a="cancel">${t("CANCEL")}</button><button class="btn go" type="submit">${t("SEND")}</button></div>
+    </div></form>`;
+  veil.querySelectorAll(".tag").forEach(b => b.onclick = () => { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", on); on ? picked.add(b.dataset.t) : picked.delete(b.dataset.t); });
+  const close = () => veil.remove();
+  $(".x", veil).onclick = close; $('[data-a="cancel"]', veil).onclick = close;
+  veil.onclick = e => { if (e.target === veil) close(); };
+  $("form", veil).onsubmit = async e => {
+    e.preventDefault();
+    const feedback = { tags: [...picked], text: $("textarea", veil).value.trim() };
+    if (!feedback.tags.length && !feedback.text) return close();
+    ex.feedback = feedback;
+    $(".go", veil).disabled = true;
+    let next = null;
+    if (backend.live && ex.messageId) { try { next = await backend.rate(rating, ex, feedback); } catch {} }
+    prefs.set(next || prefs.tags(rating, feedback.tags));
+    close();
+    toast("Thanks, noted");
+  };
+  $(".screens").append(veil);
+  $(".tag", veil).focus();
+}
+
+const paintThumbs = acts => acts.querySelectorAll(".up, .down").forEach(b => {
+  const on = b.dataset.a === acts._ex.rating; b.setAttribute("aria-pressed", on); setIcon(b, b.dataset.a + (on ? "Full" : ""), on ? "ink" : "muted");
+});
+
+// A thumb (7.9): toggles the rating; a new rating asks the server how to move the reply style.
+async function rate(acts, x, rating) {
+  const ex = acts._ex;
+  const off = ex.rating === rating;
+  ex.rating = off ? null : rating; ex.feedback = null;
+  paintThumbs(acts);
+  if (off) { if (backend.live && ex.messageId) backend.rate("none", ex).catch(() => {}); return; }
+  let next = null;
+  if (backend.live && ex.messageId) { try { next = await backend.rate(rating, ex); } catch {} }
+  next = next || prefs.rule(rating, ex.them);
+  prefs.set(next);                   // silent: the ⋯ menu shows the reply style
+}
+
+// Regenerate (FR-41): the latest reply is answered again and replaces the old one in place.
+async function regenerate(acts) {
+  if (busy) return;
+  const ex = acts._ex, row = acts.previousElementSibling, b = $(".bubble", row);
+  const old = b.textContent;
+  busy = true; $(".send").disabled = true;
+  acts.querySelectorAll("button").forEach(x => x.disabled = true);
+  b.innerHTML = '<span class="dots" aria-label="typing"><i></i><i></i><i></i></span>';
+  clearNexts();
+  let said = null, cites = [], nexts = [];
+  if (backend.live) {
+    const r = await streamInto(b, backend.turn(ex.thread, null, null, true));
+    if (r.voice === "system") {                      // the safety node decides again; it may pause
+      busy = false; $(".send").disabled = false;
+      row.remove(); acts.remove(); history.pop();
+      backend.setPaused(true);
+      if (r.reason === "tier_3") return distress(ex.who, ex.you, { text: r.said, resources: r.resources });
+      systemCard(r.said, r.resources);
+      return comeBack(PH[ex.who]);
+    }
+    if (!r.failed && r.voice === "persona") { said = b.textContent; cites = r.cites; ex.messageId = r.messageId; nexts = r.suggestions; }
+  } else {
+    const p = PH[ex.who];
+    const reply = p.fallback[fbIdx++ % p.fallback.length];
+    await new Promise(r => setTimeout(r, reduce ? 0 : 700));
+    await new Promise(r => typeInto(b, reply, r));
+    said = reply;
+  }
+  busy = false; $(".send").disabled = false;
+  if (said == null) { b.textContent = old; acts.querySelectorAll("button").forEach(x => x.disabled = false); return toast("Couldn’t regenerate just now"); }
+  const last = history.map(m => m.role).lastIndexOf("assistant");
+  if (last >= 0) history[last].content = said;
+  showNexts(addActions(b, { ...ex, them: said, cites }), nexts);
+  scrollDown();
 }
 
 async function send(text) {
   if (busy) return;
+  stage?.react("send");                                // he looks up from his thoughts: a small nod
   if (backend.live) return sendLive(text);
   const p = cur;
   if (DISTRESS.test(text)) return distress(curId, text);   // demo only; live pauses come from the server
@@ -821,7 +2278,7 @@ async function send(text) {
     startConvo(p);
     bubble("me", text);
     history.push({ role: "user", content: text });
-    systemCard(`I’m still here with you, and ${p.name} is staying aside for now. When you feel ready, tap the button below. If you might be in danger, please reach out to someone who can help right away.`);
+    systemCard(t("I’m still here with you, and {name} is staying aside for now. When you feel ready, tap the button below. If you might be in danger, please reach out to someone who can help right away.", { name: p.name }));
     return comeBack(p);
   }
   busy = true; $(".send").disabled = true;
@@ -833,70 +2290,106 @@ async function send(text) {
 
   // Demo mode: scripted lines only.
   const reply = (history.length === 2 && p.scripted[text]) || p.fallback[fbIdx++ % p.fallback.length];
+  thinkingPose();
   await new Promise(r => setTimeout(r, reduce ? 0 : 1100));
+  showMood(null, MOOD_HOLD_MS);
   await new Promise(r => typeInto(b, reply, r));
   history.push({ role: "assistant", content: reply });
+  addActions(b, { who: curId, you: text, them: reply, cites: [] });
   busy = false; $(".send").disabled = false; scrollDown();
 }
 
 /* ---------- Source card ---------- */
-function openSource() {
-  if (!citations.length) return;     // nothing quoted, nothing to show
+function openSource(list = citations.map((c, i) => ({ ...c, n: i + 1 }))) {
+  if (!list.length) return;     // nothing quoted, nothing to show
   const veil = el("div", "veil");
-  veil.innerHTML = `<div class="pop card source" role="dialog" aria-label="From the source">
-    <div class="titlebar">From the source</div><div class="inner"></div></div>`;
+  veil.innerHTML = `<div class="pop card source" role="dialog" aria-label="${t("From the source")}">
+    <div class="titlebar"><span>${t("From the source")}</span><button class="x" type="button" aria-label="${t("Close")}">${icon("close", "ink", 22)}</button></div><div class="inner"></div></div>`;
   const inner = $(".inner", veil);
-  citations.forEach((c, i) => {
+  list.forEach(c => {
     const where = c.section ? `${c.work}, ${c.section}` : c.work;
     const block = el("div", "cite");
-    block.innerHTML = `<p class="t11 muted">[${i + 1}] ${esc(where)}</p>
+    block.innerHTML = `<p class="t11 muted">[${c.n}] ${esc(where)}</p>
       ${c.quote ? `<blockquote class="t16">${esc(c.quote)}</blockquote>` : ""}
-      ${c.passage ? `<details><summary class="t14">Full passage</summary><p class="t14 passage">${esc(c.passage)}</p></details>` : ""}
-      <a class="t14" href="${esc(c.source_url)}" target="_blank" rel="noopener">Read it in the source ↗</a>`;
+      ${c.passage ? `<details><summary class="t14">${t("Full passage")}</summary><p class="t14 passage">${esc(c.passage)}</p></details>` : ""}
+      <a class="t14" href="${esc(c.source_url)}" target="_blank" rel="noopener">${t("Read it in the source ↗")}</a>`;
     inner.append(block);
   });
-  inner.append(Object.assign(el("button", "close", "Close ×"), { type: "button" }));
-  veil.onclick = e => { if (e.target === veil || e.target.closest(".close")) veil.remove(); };
+  veil.onclick = e => { if (e.target === veil || e.target.closest(".x")) veil.remove(); };
   $(".screens").append(veil);
-  $(".close", veil).focus();
+  $(".x", veil).focus();
 }
 
-/* ---------- Save thought → My notes ---------- */
+/* ---------- My notes (7.7): stored with the account (7.10); the scripted demo keeps them on the device ---------- */
 const store = {
   get() { try { return JSON.parse(localStorage.getItem("philocafe.notes")) || null; } catch { return null; } },
-  set(v) { try { localStorage.setItem("philocafe.notes", JSON.stringify(v)); } catch {} }
+  set(v) { if (!backend.live) { try { localStorage.setItem("philocafe.notes", JSON.stringify(v)); } catch {} } }
 };
-let notes = store.get() || [{ id: "sample", who: "socrates", ...PH.socrates.sample, reflection: "" }];
-let filter = "all", selected = notes[0]?.id;
+const SAMPLE = "sample";            // seeded example (demo only); leaves once a real note is saved
+const sampleFrom = { you: "I feel like I’m falling behind.", them: PH.socrates.scripted["I feel like I’m falling behind."], cites: [] };
+let notes = store.get() || [{ id: SAMPLE, who: "socrates", ...PH.socrates.sample, from: sampleFrom, reflection: "" }];
+const sample = notes.find(n => n.id === SAMPLE);
+if (sample && !sample.from) { sample.from = sampleFrom; store.set(notes); }
+const dropSample = () => { notes = notes.filter(n => n.id !== SAMPLE || (n.reflection || "").trim()); };
+if (notes.length > 1) { dropSample(); store.set(notes); }
+let filter = "all";
+const fromServer = n => ({ ...n, who: n.persona_id });
+async function loadNotes() {
+  if (!backend.live || !backend.me) return;
+  notes = (await backend.api("notes")).map(fromServer);
+}
+// Notes a device kept before accounts move to the account once, at the first sign-in.
+async function importLocalNotes() {
+  const local = (store.get() || []).filter(n => n.id !== SAMPLE);
+  for (const n of local.slice().reverse()) { try { await backend.api("notes", { method: "POST", body: { note: { ...n, persona_id: n.who } } }); } catch {} }
+  try { localStorage.removeItem("philocafe.notes"); localStorage.removeItem("philocafe.prefs"); localStorage.removeItem("philocafe.visit"); } catch {}
+}
+async function removeNote(id) {
+  if (backend.live) await backend.api(`notes/${id}`, { method: "DELETE" }).catch(() => {});
+  notes = notes.filter(n => n.id !== id); store.set(notes);
+}
+let reflectTimer = null;
+function saveReflection(n, text) {
+  n.reflection = text;
+  if (!backend.live) return store.set(notes);
+  clearTimeout(reflectTimer);
+  reflectTimer = setTimeout(() => backend.api(`notes/${n.id}`, { method: "PATCH", body: { reflection: text } }).catch(() => {}), 600);
+}
+function savedOn(n) {
+  let d = n.created_at ? new Date(n.created_at) : null;
+  if (!d) { const t = parseInt(n.id, 36); if (n.id === SAMPLE || !Number.isFinite(t) || t < 1.6e12) return ""; d = new Date(t); }
+  const opts = { month: "short", day: "numeric" };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
+  return d.toLocaleDateString(LOCALE, opts);
+}
 
 function toast(msg) {
+  msg = t(msg);
   document.querySelector(".toast")?.remove();
-  const t = el("div", "toast", esc(msg)); $(".dock").append(t);
-  setTimeout(() => t.remove(), 1800);
+  const dock = $("#chat .dock");
+  if (!dock) return;
+  const pop = el("div", "toast", esc(msg)); dock.append(pop);
+  setTimeout(() => pop.remove(), 1800);
 }
 
 const lastQuestion = s => { const parts = s.match(/[^.!?。！？]+[.!?。！？]*/g) || [s]; return (parts.filter(x => /[?？]/.test(x)).pop() || parts[0]).trim(); };
 
-async function saveThought() {
-  const btn = $("#saveBtn");
-  const said = history.filter(m => m.role === "assistant");
-  if (!said.length || btn.disabled) return;
-  btn.disabled = true; btn.textContent = "Saving…";
-  const p = cur, id = curId, firstUser = history.find(m => m.role === "user")?.content || "";
-  let note = null;
-  if (!backend.live && p.scripted[firstUser] && p.sample && history.length <= 3) note = { ...p.sample };
-  if (!note && backend.live) {
-    try {
-      const j = await backend.note();
-      if (j.title) note = { title: j.title, why: j.why || "", topic: j.topic || "From your conversation" };
-    } catch {}
+// Bookmark (7.7): the exchange becomes a note. Signed in, the server distils a title and stores the
+// note with the account; in the scripted demo the reply's question stands in and the note stays here.
+async function saveExchange(ex) {
+  if (backend.live) {
+    const n = fromServer(await backend.note(ex));
+    notes.unshift(n);
+    return n.id;
   }
-    if (!note) note = { title: lastQuestion(said[said.length - 1].content), why: firstUser ? `From your talk about “${firstUser}”.` : "A thought to revisit later.", topic: "From your conversation" };
-  const dup = notes.find(x => x.who === id && x.title === note.title);
-  if (dup) selected = dup.id;
-  else { const n = { id: Date.now().toString(36), who: id, reflection: "", ...note }; notes.unshift(n); selected = n.id; store.set(notes); }
-  btn.disabled = false; btn.textContent = "Save thought";
-  toast("Saved to My notes");
+  const p = PH[ex.who];
+  let note = null;
+  if (ex.who === "socrates" && ex.you === sampleFrom.you && ex.them === sampleFrom.them) note = { ...p.sample };
+  if (!note) note = { title: lastQuestion(ex.them), why: ex.you ? t("From your talk about “{text}”.", { text: ex.you }) : t("A thought to revisit later."), topic: t("From your conversation") };
+  const cites = ex.cites.map(c => ({ n: c.n, where: c.section ? `${c.work}, ${c.section}` : c.work, quote: c.quote || "", passage: c.passage || "", url: c.source_url || "" }));
+  const n = { id: Date.now().toString(36), who: ex.who, reflection: "", ...note, from: { you: ex.you, them: ex.them, cites } };
+  dropSample(); notes.unshift(n); store.set(notes);
+  return n.id;
 }
 
 // Copy chat (user test, ui/web/test.html): the whole conversation as plain text, headed
@@ -909,7 +2402,9 @@ function chatText() {
 }
 async function copyChat() {
   if (!history.some(m => m.role === "user")) return toast("Say something first");
-  const text = chatText();
+  toast(await copyText(chatText()) ? "Chat copied" : "Couldn’t copy. Press and hold each message to copy it.");
+}
+async function copyText(text) {
   let ok = false;
   try { await navigator.clipboard.writeText(text); ok = true; } catch {}
   if (!ok) {          // older iOS, or a page opened without HTTPS
@@ -919,7 +2414,7 @@ async function copyChat() {
     try { ok = document.execCommand("copy"); } catch {}
     ta.remove();
   }
-  toast(ok ? "Chat copied" : "Couldn’t copy. Press and hold each message to copy it.");
+  return ok;
 }
 
 /* ---------- 05 My Notes ---------- */
@@ -928,28 +2423,177 @@ function renderNotes() {
   const people = [...new Set(notes.map(n => n.who))];
   if (filter !== "all" && !people.includes(filter)) filter = "all";
   const list = notes.filter(n => filter === "all" || n.who === filter);
-  if (!list.some(n => n.id === selected)) selected = list[0]?.id;
   v.innerHTML = `<div class="body">
-    <p class="t28">Your pocket<br>of perspectives.</p>
-    <p class="t16 muted">Small thoughts worth keeping.</p>
-    <div class="filters" role="group" aria-label="Filter notes">
-      <button class="pill" data-f="all" aria-pressed="${filter === "all"}">All notes · ${notes.length}</button>
+    <p class="t28">${t("Your pocket<br>of perspectives.")}</p>
+    <p class="t16 muted">${t("Small thoughts worth keeping.")}</p>
+    <div class="filters" role="group" aria-label="${t("Filter notes")}">
+      <button class="pill" data-f="all" aria-pressed="${filter === "all"}">${t("All notes · {n}", { n: notes.length })}</button>
       ${people.map(w => `<button class="pill" data-f="${w}" aria-pressed="${filter === w}">${PH[w].name}</button>`).join("")}
     </div>
-    ${list.length ? "" : `<div class="card empty t16 muted">No saved thoughts yet. Tap “Save thought” during a conversation.</div>`}
-    ${list.map(n => `<button class="card note-card${n.id === selected ? " sel" : ""}" data-id="${n.id}">
-        <div class="titlebar">Saved thought</div>
-        <div class="inner"><div class="notehead">${icon("mark")}<p class="t11 muted">SAVED FROM YOUR CONVERSATION</p></div>
-          <p class="t28">${esc(n.title)}</p><p class="t16">${esc(n.why)}</p><p class="t11 muted">${PH[n.who].name} · ${esc(n.topic)}</p></div></button>
-      ${n.id === selected ? `<div class="card reflect"><div class="titlebar">Your reflection</div>
-        <div class="inner"><p class="t20">Make it your own</p>
-          <textarea data-id="${n.id}" placeholder="What does this question bring up for you?" aria-label="Your reflection">${esc(n.reflection || "")}</textarea></div></div>` : ""}`).join("")}
-    <button class="primary" id="returnBtn">${cur ? "Return to the conversation" : "Return to the café"}</button>
+    ${list.length ? "" : `<div class="card empty t16 muted">${t("No saved thoughts yet. Tap “Save thought” during a conversation.")}</div>`}
+    ${list.map(n => {
+      const ex = n.id === SAMPLE, when = savedOn(n);
+      return `<button class="card note-card${ex ? " example" : ""}" data-id="${n.id}" aria-haspopup="dialog">
+        <div class="titlebar">${ex ? t("Example") : t("Saved thought")}</div>
+        <div class="inner"><div class="notehead">${icon("mark")}<p class="t11 muted">${ex ? t("LEAVES ONCE YOU SAVE YOUR OWN") : t("SAVED FROM YOUR CONVERSATION")}</p></div>
+          <p class="t28">${esc(n.title)}</p><p class="t16">${esc(n.why)}</p>
+          <p class="t11 muted meta">${[PH[n.who].name, esc(n.topic), when].filter(Boolean).join(" · ")}</p></div></button>`;
+    }).join("")}
+    <button class="primary" id="returnBtn">${cur ? t("Return to the conversation") : t("Return to the café")}</button>
   </div>`;
   v.querySelectorAll(".pill").forEach(b => b.onclick = () => { filter = b.dataset.f; renderNotes(); });
-  v.querySelectorAll(".note-card").forEach(b => b.onclick = () => { selected = b.dataset.id; renderNotes(); });
-  v.querySelectorAll("textarea").forEach(t => t.oninput = () => { const n = notes.find(x => x.id === t.dataset.id); n.reflection = t.value; store.set(notes); });
+  v.querySelectorAll(".note-card").forEach(b => b.onclick = () => openNote(b.dataset.id));
   $("#returnBtn").onclick = () => cur ? resumeChat() : show("home");
+}
+
+// Tap a note: its detail as a window over My notes, with the reflection and Delete.
+function openNote(id) {
+  const n = notes.find(x => x.id === id);
+  if (!n) return;
+  const when = savedOn(n);
+  const veil = el("div", "veil notesveil");
+  veil.innerHTML = `<div class="pop card notepop" role="dialog" aria-label="${t("Saved thought")}">
+    <div class="titlebar"><span>${n.id === SAMPLE ? t("Example") : t("Saved thought")}</span><button class="x" type="button" aria-label="${t("Close")}">${icon("close", "ink", 22)}</button></div>
+    <div class="inner">
+      <p class="t11 muted">${[PH[n.who].name.toUpperCase(), esc(n.topic).toUpperCase(), when.toUpperCase()].filter(Boolean).join(" · ")}</p>
+      <p class="t28">${esc(n.title)}</p>
+      <p class="t16">${esc(n.why)}</p>
+      <hr>
+      <p class="label muted">${t("From your conversation")}</p>
+      ${n.from ? `<div class="excerpt">
+        ${n.from.you ? `<div class="line me"><p class="who">${t("You")}</p><p class="t14">${esc(n.from.you)}</p></div>` : ""}
+        <div class="line them"><p class="who">${PH[n.who].name}</p><p class="t14">${esc(n.from.them)}</p>
+          ${n.from.cites?.length ? `<div class="cites">${n.from.cites.map(c => `<div class="cite"><p class="t11 muted">[${c.n}] ${esc(c.where)}</p>
+            ${c.quote ? `<blockquote class="t14">${esc(c.quote)}</blockquote>` : ""}
+            ${c.passage ? `<details><summary class="t14">${t("Full passage")}</summary><p class="t14 passage">${esc(c.passage)}</p></details>` : ""}
+            ${c.url ? `<a class="t14" href="${esc(c.url)}" target="_blank" rel="noopener">${t("Read it in the source ↗")}</a>` : ""}</div>`).join("")}</div>` : ""}</div>
+      </div>` : `<p class="t14 muted">${t("This note was saved before the café kept the conversation with it.")}</p>`}
+      <hr>
+      <p class="t20">${t("Your reflection")}</p>
+      <textarea placeholder="${t("What does this question bring up for you?")}" aria-label="${t("Your reflection")}">${esc(n.reflection || "")}</textarea>
+      <div class="btns"><button class="btn del" type="button">${t("DELETE")}</button><button class="btn go done" type="button">${t("DONE")}</button></div>
+    </div></div>`;
+  const close = () => { veil.remove(); renderNotes(); };
+  $("textarea", veil).oninput = e => saveReflection(n, e.target.value);
+  $(".x", veil).onclick = close;
+  $(".done", veil).onclick = close;
+  $(".del", veil).onclick = async () => { await removeNote(id); close(); };
+  veil.onclick = e => { if (e.target === veil) close(); };
+  $(".screens").append(veil);
+  $(".done", veil).focus();
+}
+
+/* ---------- Conversations tab (FR-44): sections by philosopher, cards to reopen ---------- */
+const ORDER = ["socrates", "montaigne", "schopenhauer", "seneca", "epictetus"];
+const ago = iso => {
+  const d = new Date(iso), mins = (Date.now() - d) / 60000;
+  if (mins < 1) return t("just now");
+  if (mins < 60) return t("{n} min ago", { n: Math.floor(mins) });
+  if (mins < 1440) return t("{n} h ago", { n: Math.floor(mins / 60) });
+  return d.toLocaleDateString(LOCALE, { month: "short", day: "numeric", ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) });
+};
+async function renderConvos() {
+  const v = $("#convos");
+  const head = `<p class="t28">${t("Your conversations")}</p><p class="t16 muted">${t("Pick up where you left off, or start fresh.")}</p>`;
+  if (!backend.live || !backend.me) {
+    v.innerHTML = `<div class="body">${head}
+      <div class="card empty t16 muted">${backend.live ? t("Sign in to keep your conversations.") : t("Saved conversations need the PhiloCafé server; this demo keeps only the one open now.")}</div>
+      ${cur ? `<button class="primary" id="resumeBtn">${t("Back to {name}", { name: esc(cur.name) })}</button>` : ""}
+      ${backend.live ? `<button class="primary" id="signBtn">${t("Sign in")}</button>` : ""}</div>`;
+    $("#resumeBtn", v) && ($("#resumeBtn", v).onclick = resumeChat);
+    $("#signBtn", v) && ($("#signBtn", v).onclick = () => askAccount());
+    return;
+  }
+  if (!v.firstChild) v.innerHTML = `<div class="body">${head}<p class="t14 muted">${t("Loading…")}</p></div>`;
+  let rows = [];
+  try { rows = await backend.threads(); } catch { v.innerHTML = `<div class="body">${head}<div class="card empty t16 muted">${t("The café could not load your conversations just now.")}</div></div>`; return; }
+  const by = Object.fromEntries(ORDER.map(id => [id, rows.filter(r => r.persona_id === id)]));
+  const order = [...ORDER].sort((a, b) => (by[b][0]?.updated_at || "").localeCompare(by[a][0]?.updated_at || ""));
+  v.innerHTML = `<div class="body">${head}
+    ${order.filter(id => backend.available(id)).map(id => `<section class="csec" aria-label="${PH[id].name}">
+      <div class="csec-head"><img class="px" src="${A}mono_${id}.png" alt=""><h2>${PH[id].name}</h2>
+        <button class="newc" data-new="${id}">${t("+ New")}</button></div>
+      ${by[id].length ? by[id].map(r => `<button class="card ccard" data-t="${r.thread_id}">
+          <div class="titlebar"><span class="when">${ago(r.updated_at)}</span><span class="x" role="button" tabindex="0" data-del="${r.thread_id}" aria-label="${t("Delete this conversation")}">${icon("close", "ink", 22)}</span></div>
+          <div class="inner"><p class="ctitle">${esc(r.title)}</p><p class="t14 muted last">${esc(r.last_line)}</p></div></button>`).join("")
+        : `<button class="cempty t14" data-new="${id}">${t("No conversations with {name} yet. Take a seat", { name: PH[id].name })} ${icon("arrow", "ink", 16)}</button>`}
+    </section>`).join("")}</div>`;
+  v.querySelectorAll("[data-new]").forEach(b => b.onclick = () => { pauseScene(); openChat(b.dataset.new); });
+  v.querySelectorAll(".ccard").forEach(b => b.onclick = e => {
+    const del = e.target.closest("[data-del]");
+    if (del) return deleteConvo(rows.find(r => r.thread_id === del.dataset.del));
+    openThread(rows.find(r => r.thread_id === b.dataset.t));
+  });
+}
+/* ---------- Settings (bottom tab): language and your café card ---------- */
+function renderSettings() {
+  const v = $("#settings");
+  const acct = backend.live && backend.me
+    ? `<p class="t16">${t("Signed in as {name}", { name: `<b>${esc(backend.me.nickname)}</b>` })}</p>
+       <div class="setrow"><button class="btn" data-a="out">${t("SIGN OUT")}</button>
+         <p class="t14 muted">${t("Leaves this device. Your conversations and notes stay, and come back when you sign in again.")}</p></div>
+       <div class="setrow"><button class="btn danger" data-a="del">${t("DELETE MY CAFÉ CARD")}</button>
+         <p class="t14 muted">${t("Deletes your account and every conversation, note and preference, for good.")}</p></div>`
+    : backend.live
+      ? `<p class="t16">${t("Not signed in.")}</p><div class="setrow"><button class="btn go" data-a="in">${t("SIGN IN")}</button></div>`
+      : `<p class="t14 muted">${t("Accounts need the PhiloCafé server; this demo keeps everything on this device.")}</p>`;
+  v.innerHTML = `<div class="body">
+    <p class="t28">${t("Settings")}</p>
+    <section class="card" aria-label="${t("Language")}"><div class="titlebar">${t("Language")}</div>
+      <div class="inner"><div class="seg" role="radiogroup" aria-label="${t("Language")}">
+        <button role="radio" data-lang="en" aria-checked="${LANG === "en"}" lang="en">English</button>
+        <button role="radio" data-lang="zh" aria-checked="${LANG === "zh"}" lang="zh-CN">中文</button></div>
+        <p class="t14 muted">${t("Changes the café’s words. Philosophers answer in whatever language you write in.")}</p></div></section>
+    <section class="card" aria-label="${t("Your café card")}"><div class="titlebar">${t("Your café card")}</div>
+      <div class="inner">${acct}</div></section>
+  </div>`;
+  v.querySelectorAll("[data-lang]").forEach(b => b.onclick = () => {
+    if (b.dataset.lang === LANG) return;
+    try { localStorage.setItem("philocafe.lang", b.dataset.lang); } catch {}
+    location.hash = "settings"; location.reload();          // every screen is drawn again in the new language
+  });
+  const on = (a, fn) => { const b = v.querySelector(`[data-a="${a}"]`); if (b) b.onclick = fn; };
+  on("out", signOut); on("del", deleteAccount); on("in", () => askAccount());
+}
+async function deleteConvo(r) {
+  const ok = await confirmBox(t("Delete this conversation?"), t("“{title}” with {name} will be gone for good. Notes you saved from it stay.", { title: r.title, name: PH[r.persona_id].name }), t("DELETE"));
+  if (!ok) return;
+  try { await backend.deleteThread(r.thread_id); } catch { return; }
+  if (curThread === r.thread_id) { stopChat(); chat.innerHTML = ""; curThread = null; }
+  renderConvos();
+}
+// Reopen a stored conversation with its history (7.10); replies keep their sources, ratings and bookmarks.
+async function openThread(r, from = "convos") {
+  let h;
+  try { h = await backend.history(r.thread_id); } catch { return; }
+  const p = buildChat(r.persona_id);
+  curThread = r.thread_id; backTo = from;
+  quietBubbles = true;
+  startConvo(p);
+  let you = "";
+  for (const m of h.messages) {
+    if (m.role === "user") { you = m.text; bubble("me", m.text); history.push({ role: "user", content: m.text }); }
+    else if (m.role === "system") systemCard(m.text);
+    else {
+      const cites = (m.citations || []).map(c => { citations.push(c); return { ...c, n: citations.length }; });
+      const b = bubble("them", m.text + cites.map(c => ` [${c.n}]`).join(""));
+      history.push({ role: "assistant", content: m.text });
+      addActions(b, { who: r.persona_id, you, them: m.text, cites, thread: r.thread_id, messageId: m.id,
+                      rating: m.rating || null, noteId: notes.find(n => n.message_id === m.id)?.id || null });
+    }
+  }
+  document.querySelectorAll(".acts").forEach(a => a.classList.remove("latest"));
+  const lastActs = [...document.querySelectorAll("#scroll > *")].pop();
+  if (lastActs?.classList.contains("acts")) lastActs.classList.add("latest");     // only a final persona reply can be regenerated
+  const lastMsg = h.messages[h.messages.length - 1];
+  if (!h.paused && lastActs?.classList.contains("acts") && lastMsg?.role === "persona") showNexts(lastActs, lastMsg.suggestions);
+  backend.setPaused(h.paused);
+  const lastMood = [...h.messages].reverse().find(m => m.role === "persona")?.mood;
+  if (h.paused) showMood({ label: "attentive", intensity: 0.2, locked: true });   // FR-34
+  else if (lastMood) showMood(lastMood, MOOD_HOLD_MS);
+  if (h.paused) enterSupport(p);
+  quietBubbles = false;
+  scrollDown();
 }
 
 /* ---------- 07 System detects distress → 06 Pause the café ---------- */
@@ -963,14 +2607,14 @@ function distress(id, text, care) {
   c.className = "screen"; c.innerHTML = "";
   const body = el("div", "body");
   body.style.gap = "18px";
-  const [head, ...rest] = care?.text ? care.text.split(/(?<=[.!?])\s+/) : ["Let’s take a moment.", "You deserve support with what you’re carrying. We’re pausing this conversation to make room for that."];
-  body.innerHTML = `<p class="t11 muted syscheck">${care ? "SAFETY CHECK" : "PROTOTYPE · SIMULATED SYSTEM CHECK"}</p>
-    <div class="youcard"><p class="t11">YOU · AT THIS TABLE</p><p class="t16">${esc(text)}</p></div>
-    <div class="card"><div class="titlebar">A moment of care</div>
+  const [head, ...rest] = care?.text ? care.text.split(/(?<=[.!?。！？])\s*/) : [t("Let’s take a moment."), t("You deserve support with what you’re carrying. We’re pausing this conversation to make room for that.")];
+  body.innerHTML = `<p class="t11 muted syscheck">${care ? t("SAFETY CHECK") : t("PROTOTYPE · SIMULATED SYSTEM CHECK")}</p>
+    <div class="youcard"><p class="t11">${t("YOU · AT THIS TABLE")}</p><p class="t16">${esc(text)}</p></div>
+    <div class="card"><div class="titlebar">${t("A moment of care")}</div>
       <div class="inner"><p class="t20">${esc(head)}</p><p class="t16">${esc(rest.join(" "))}</p></div></div>`;
   const dock = el("div", "dock");
-  dock.innerHTML = `<div class="composer quiet" aria-disabled="true"><span>What’s on your mind?</span><span>↑</span></div><p class="note t11 muted">${care ? "AI interpretation" : "AI interpretation · Demo conversation"}</p>`;
-  c.append(header(id, "On finding your own pace"), body, dock);
+  dock.innerHTML = `<div class="composer quiet" aria-disabled="true"><span>${t("What’s on your mind?")}</span><span>↑</span></div><p class="note t11 muted">${care ? t("AI interpretation") : t("AI interpretation · Demo conversation")}</p>`;
+  c.append(header(id, t("On finding your own pace")), body, dock);
   $(".back", c).onclick = () => { clearTimeout(pauseTimer); show("home"); };
   setMode(); show("chat");
   clearTimeout(pauseTimer);
@@ -979,29 +2623,32 @@ function distress(id, text, care) {
 
 function openPause(resources) {
   const v = $("#pause");
-  v.innerHTML = `<img class="rest px" src="${A}cafe_rest.png" alt="The café, quiet and at rest">
+  v.innerHTML = `<img class="rest px" src="${A}cafe_rest.png" alt="${t("The café, quiet and at rest")}">
     <div class="body">
-      <div class="titlebar">A moment of care</div>
-      <p class="t20">Let’s pause the café<br>for a moment.</p>
-      <p class="t16">Some thoughts need a real person alongside you. Take your time, and reach out to someone you trust.</p>
+      <div class="titlebar">${t("A moment of care")}</div>
+      <p class="t20">${t("Let’s pause the café<br>for a moment.")}</p>
+      <p class="t16">${t("Some thoughts need a real person alongside you. Take your time, and reach out to someone you trust.")}</p>
       ${resources?.length
         ? resources.map(r => `<div class="card support"><p class="t16">${esc(r.name)}</p><p class="t14">${esc(r.contact)}</p></div>`).join("")
-        : `<div class="card support"><p class="t16">Local support</p><p class="t14">Find a crisis or support service in your area.</p></div>
-      <div class="card support"><p class="t16">Campus or community counseling</p><p class="t14">Arrange time to talk with a counselor.</p></div>`}
-      <div class="card support"><p class="t16">Someone you trust</p><p class="t14">A friend, family member, or mentor.</p></div>
-      <button class="primary">Return to the café</button>
-      ${resources?.length ? "" : `<p class="t11">Support options shown for prototype review.</p>`}
+        : `<div class="card support"><p class="t16">${t("Local support")}</p><p class="t14">${t("Find a crisis or support service in your area.")}</p></div>
+      <div class="card support"><p class="t16">${t("Campus or community counseling")}</p><p class="t14">${t("Arrange time to talk with a counselor.")}</p></div>`}
+      <div class="card support"><p class="t16">${t("Someone you trust")}</p><p class="t14">${t("A friend, family member, or mentor.")}</p></div>
+      <button class="primary">${t("Return to the café")}</button>
+      ${resources?.length ? "" : `<p class="t11">${t("Support options shown for prototype review.")}</p>`}
     </div>`;
   $(".primary", v).onclick = () => show("home");
   show("pause");
 }
 
 paintIcons();
+document.querySelectorAll("[data-i18n]").forEach(e => { e.innerHTML = t(e.dataset.i18n); });
+document.querySelectorAll("[data-i18n-label]").forEach(e => { e.setAttribute("aria-label", t(e.dataset.i18nLabel)); e.title = t(e.dataset.i18nLabel); });
 document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { pauseScene(); openMeet(b.dataset.go); });
 $("#demoDistress").onclick = () => distress("socrates", "I feel completely hopeless, and I don’t feel safe with myself.");
 show("home");
 const start = location.hash.slice(1);
 if (PH[start]) openMeet(start);
 else if (start === "notes") { renderNotes(); show("notes"); }
+else if (start === "settings") { renderSettings(); show("settings"); }
 else if (start === "distress") $("#demoDistress").click();
 </script>

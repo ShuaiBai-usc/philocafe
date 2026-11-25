@@ -42,6 +42,8 @@ class Deps:
     decision_log: DecisionLog = field(default_factory=DecisionLog)
     translate: Callable[[str], str] | None = None   # non-English query -> English, before retrieval
     distill_note: Callable[[str, Sequence[AnyMessage]], dict] | None = None   # "Save thought" (FR-07)
+    tune_prefs: Callable[..., dict] | None = None   # thumbs -> preference changes (7.9); None: the offline rule
+    voice_io: object | None = None                  # speech in and out (7.6): .transcribe(), .speak(); None: off
 
 
 def default_deps(config: Config | None = None) -> Deps:
@@ -50,18 +52,42 @@ def default_deps(config: Config | None = None) -> Deps:
     from app import retrieval
     from app.exit import load_resources
     from app.notes import NoteDistiller
+    from app.prefs import PreferenceTuner
     from app.safety.fallback import FallbackModel
     from app.safety.jev import JevModel
     from app.translate import ClaudeTranslator
     from app.voice import ClaudeVoice
 
     config = config or load_config()
-    retrieval.open_db()
+    con = retrieval.open_db()
+    personas = load_personas()
+    missing = sorted({p.corpus for p in personas.values()
+                      if not con.execute("SELECT 1 FROM passages WHERE persona = ? LIMIT 1", (p.corpus,)).fetchone()})
+    if missing:   # those personas answer without quotes until the database is rebuilt
+        import logging
+        logging.getLogger(__name__).error(
+            "corpus database has no passages for %s; rebuild it with: .venv/bin/python deploy/vercel_build.py",
+            ", ".join(missing))
     return Deps(config=config,
                 safety_models=[JevModel(config.safety), FallbackModel(config.safety)],
                 retrieve=retrieval.retrieve,
                 generate=ClaudeVoice(config.voice_model, effort=config.voice_effort),
-                personas=load_personas(),
+                personas=personas,
                 resources=load_resources(),
                 translate=ClaudeTranslator(config.translate_model, config.translate_timeout_s),
-                distill_note=NoteDistiller(config.notes_model))
+                distill_note=NoteDistiller(config.notes_model),
+                tune_prefs=PreferenceTuner(config.notes_model),
+                voice_io=voice_io(config))
+
+
+def voice_io(config: Config):
+    """Voice (7.6) from the configured provider, on only when its key is set."""
+    import os
+    from app.speech import ElevenLabsVoice, OpenAIVoice
+    if config.voice_provider == "elevenlabs":
+        if not os.environ.get("ELEVENLABS_API_KEY", "").strip():
+            return None
+        return ElevenLabsVoice(config.elevenlabs_tts_model, config.elevenlabs_stt_model)
+    if not os.environ.get("OPENAI_API_KEY", "").strip():
+        return None
+    return OpenAIVoice(config.transcribe_model, config.speech_model)

@@ -16,6 +16,7 @@ from pathlib import Path
 from langchain_core.messages import AnyMessage
 
 from app.deps import SafetyScores
+from app.thinking import Thought
 
 
 def _messages(messages: Sequence[AnyMessage]) -> list:
@@ -76,11 +77,12 @@ class CachedVoice:
         hit = self.cache.get(key)
         if hit is not None:
             self.hits += 1
-            yield from hit
+            for piece in hit:                         # thinking pieces are stored as {"thinking": text} (7.8)
+                yield Thought(piece["thinking"]) if isinstance(piece, dict) else piece
             return
         pieces = []
         for piece in self.voice(system, messages):
-            pieces.append(piece)
+            pieces.append({"thinking": str(piece)} if isinstance(piece, Thought) else piece)
             yield piece
         self.cache.put(key, pieces)
 

@@ -17,6 +17,7 @@ from langchain_core.messages import AIMessage
 from app.config import ROOT
 from app.deps import Deps
 from app.events import emit
+from app.mood import LOCKED
 from app.state import TurnState
 
 RESOURCES_PATH = ROOT / "data" / "resources.yaml"
@@ -49,7 +50,8 @@ def exit_node(state: TurnState, deps: Deps) -> dict:
     name = persona.name if persona else "the philosopher"
     text = HANDOVER if first else (NOT_YET if state.get("return_request") else STILL_HERE).format(name=name)
     emit("voice", speaker="system", persona_id=None)
+    emit("mood", **LOCKED)                    # FR-34: the portrait holds still while the persona is aside
     emit("token", text=text)
     emit("exit", reason="tier_3" if first else "support_mode", resources=list(deps.resources))
-    return {"mode": "support", "retrieved": [], "reply": text, "citations": [],
+    return {"mode": "support", "retrieved": [], "reply": text, "citations": [], "mood": dict(LOCKED), "mood_candidate": None,
             "messages": [AIMessage(text, name="system")]}

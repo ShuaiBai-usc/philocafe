@@ -1,0 +1,81 @@
+{
+  "grid": [
+    143,
+    256
+  ],
+  "patch": {
+    "x": 61,
+    "y": 52,
+    "w": 20,
+    "h": 38
+  },
+  "moods": [
+    "attentive",
+    "curious",
+    "amused",
+    "skeptical",
+    "pondering",
+    "pleased"
+  ],
+  "frames": [
+    "open",
+    "half",
+    "closed",
+    "talk1",
+    "talk2"
+  ],
+  "anchor": {
+    "face": [
+      70,
+      60
+    ],
+    "head": [
+      57,
+      38,
+      84,
+      78
+    ]
+  },
+  "source": "epictetus_restyled_gen.jpg",
+  "palette": 48,
+  "timing_ms": {
+    "half": 55,
+    "closed": 85,
+    "blink_every": [
+      2800,
+      6500
+    ],
+    "talk": [
+      90,
+      150
+    ],
+    "breath": [
+      1500,
+      1700
+    ],
+    "nod_every": [
+      1800,
+      4200
+    ],
+    "nod": 260
+  },
+  "poses": {
+    "in": {
+      "src": "scene_in.png",
+      "dy": -1
+    },
+    "nod": {
+      "src": "scene_nod.png",
+      "dy": 1
+    }
+  },
+  "ambient": [],
+  "particles": {
+    "dust": {
+      "x": 122.5,
+      "y": 29,
+      "spread": 16,
+      "depth": 44
+    }
+  }
+}

@@ -15,11 +15,15 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemM
 
 from app.deps import Deps
 from app.events import emit
+from app.mood import LOCKED, MoodTagFilter, mood_rule, next_mood
 from app.personas import PersonaConfig
+from app.prefs import prefs_note
 from app.quotes import LeadingNotesFilter, QuoteFilter
 from app.retrieval import Chunk
+from app.suggest import NEXT_RULE, NextFilter, parse
+from app.thinking import THINK_RULE, ThinkingFilter, Thought
 from app.state import TurnState
-from app.translate import needs_translation
+from app.translate import needs_translation, script_language
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +41,7 @@ def quoting_rules(persona: PersonaConfig) -> str:
 
 
 REPLY_RULE = ("Write only what you say to the person. Never include notes to yourself, drafts, reasoning, "
-              "or any tags other than <q>.")
+              "or any tags other than the opening mood tag, <q> and the closing <next> block.")
 
 REENTRY_NOTE = ("The person stepped away from your conversation for a while to get support, and has now asked "
                 "to continue with you. Welcome them back warmly in a sentence, don't bring up the difficult "
@@ -46,9 +50,22 @@ REENTRY_NOTE = ("The person stepped away from your conversation for a while to g
 SHORT_QUERY_WORDS = 6
 
 
+def language_note(text: str) -> str:
+    """Sent last, after the English passages, so the first reply follows the user's language too
+    (with only English notes after a short Chinese message, the model tended to answer in English)."""
+    lang = script_language(text)
+    if lang == "Chinese":
+        return ("The person's latest message is in Chinese. Reply in Chinese, in the same script they used "
+                "(simplified or traditional); quote the passages as your quoting rules say.")
+    if lang:
+        return f"The person's latest message is in {lang}. Reply in {lang}; quote the passages as your quoting rules say."
+    return "Reply in the language of the person's latest message."
+
+
 def system_prompt(persona: PersonaConfig) -> str:
     style = "\n".join(f"- {rule}" for rule in persona.style)
-    return f"{persona.prompt}\n\nHow you talk:\n{style}\n- {REPLY_RULE}\n\n{quoting_rules(persona)}"
+    return (f"{persona.prompt}\n\nHow you talk:\n{style}\n- {REPLY_RULE}\n\n{mood_rule(persona.moods)}"
+            f"\n\n{quoting_rules(persona)}\n\n{NEXT_RULE}\n\n{THINK_RULE}")
 
 
 def passages_note(chunks: Sequence[Chunk], retrieved: bool, texts: str = "your writings") -> str:
@@ -109,12 +126,30 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
                 query = deps.translate(query)
             except Exception as e:   # search with the original words rather than fail the turn
                 log.warning("query translation failed: %s", type(e).__name__)
-        chunks = deps.retrieve(persona.corpus, query,
-                               k=persona.k or deps.config.k,
-                               min_score=persona.min_score if persona.min_score is not None else deps.config.min_score)
+        try:
+            chunks = deps.retrieve(persona.corpus, query,
+                                   k=persona.k or deps.config.k,
+                                   min_score=persona.min_score if persona.min_score is not None else deps.config.min_score)
+        except Exception as e:
+            # A corpus missing from the database (ValueError: unknown persona) or a broken index:
+            # the persona still answers, without quoting and saying it speaks from memory (UC-01).
+            log.error("retrieval failed for %s: %s: %s", persona.corpus, type(e).__name__, e)
 
-    notes, quotes = LeadingNotesFilter(), QuoteFilter(chunks)
+    # 7.5: the mood tag comes off first. From tier 2 up the mood is locked and the tag ignored (FR-34).
+    # 7.9: the <next> block at the end comes off before the quote check too.
+    moodf, notes, nextf, quotes = MoodTagFilter(persona.moods), LeadingNotesFilter(), NextFilter(), QuoteFilter(chunks)
+    locked = state["safety"]["tier"] >= 2
+    mood, candidate = (dict(LOCKED), None) if locked else (None, state.get("mood_candidate"))
+    if locked:
+        emit("mood", **mood)
+
+    def settle():
+        nonlocal mood, candidate
+        if mood is None and moodf.settled:
+            mood, candidate = next_mood(state.get("mood"), candidate, *moodf.tag)
+            emit("mood", **mood)              # before the first visible word
     parts: list[str] = []
+    cited: list[dict] = []      # kept on the reply so a reopened conversation shows its sources (7.10)
 
     def send(outputs):
         for kind, value in outputs:
@@ -123,19 +158,54 @@ def persona_node(state: TurnState, deps: Deps) -> dict:
                 parts.append(value)
             else:
                 # quote and passage are optional 7.2 fields: the checked words and the full passage.
-                emit("citation", chunk_id=value["chunk_id"], work=value["work"], section=value["section"],
-                     source_url=value["source_url"], quote=value["quote"], passage=value["text"])
+                citation = dict(chunk_id=value["chunk_id"], work=value["work"], section=value["section"],
+                                source_url=value["source_url"], quote=value["quote"], passage=value["text"])
+                emit("citation", **citation)
+                cited.append(citation)
 
     returning = state.get("mode") == "support"      # FR-32: safety let the persona back in
+    # 7.8 / FR-36: the thinking summary is shown only at tiers 0-1, never on the way back from support mode.
+    thinking = ThinkingFilter()
+    show_thinking = not locked and not returning
+
+    def think(sentences):
+        if show_thinking:
+            for s in sentences:
+                emit("thinking", text=s)
     notes_for_turn = ([SystemMessage(REENTRY_NOTE)] if returning else []) + [SystemMessage(passages_note(chunks, wants_passages, persona.texts))]
+    if (style := prefs_note(state.get("prefs"))) is not None:     # 7.9: after the passages, so the system prompt stays cached
+        notes_for_turn.append(SystemMessage(style))
+    said = [m.content for m in history if isinstance(m, HumanMessage)]
+    notes_for_turn.append(SystemMessage(language_note(said[-1] if said else "")))
     messages = [*history, *notes_for_turn]
     for delta in deps.generate(system_prompt(persona), messages):
-        send(quotes.feed(notes.feed(delta)))
-    send(quotes.feed(notes.close()))
+        if isinstance(delta, Thought):               # 7.8: never part of the reply, never quote-checked
+            think(thinking.feed(delta))
+            continue
+        think(thinking.close())                      # the reply has begun: the rest of the thinking goes out first
+        text = moodf.feed(delta)
+        settle()
+        send(quotes.feed(nextf.feed(notes.feed(text))))
+    think(thinking.close())
+    text = moodf.close()
+    settle()
+    send(quotes.feed(nextf.feed(notes.feed(text))))
+    send(quotes.feed(nextf.feed(notes.close())))
+    send(quotes.feed(nextf.close()))
     send(quotes.close())
+    # Suggestions only while the conversation is ordinary (tier 0-1); none from tier 2 up.
+    suggestions = [] if locked else parse(nextf.block)
+    if suggestions:
+        emit("suggestions", items=suggestions)
     if notes.dropped:
         log.warning("dropped notes the voice model wrote before its reply")
+    if thinking.dropped:
+        log.info("held back %d thinking sentences that named the machinery", thinking.dropped)
 
-    reply = "".join(parts)
+    reply = "".join(parts).rstrip()
     return {"retrieved": chunks, "reply": reply, "citations": quotes.cited, "quotes": quotes.checks,
-            "retrieval_query": query, "mode": "persona", "messages": [AIMessage(reply, name=persona.id)]}
+            "thinking": thinking.shown if show_thinking else [],
+            "retrieval_query": query, "mode": "persona", "mood": mood, "mood_candidate": candidate,
+            "suggestions": suggestions,
+            "messages": [AIMessage(reply, name=persona.id,
+                                   additional_kwargs={"citations": cited, "mood": mood, "suggestions": suggestions})]}

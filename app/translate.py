@@ -23,6 +23,19 @@ def needs_translation(text: str) -> bool:
     return bool(letters) and sum(c.isascii() for c in letters) / len(letters) < LATIN_SHARE
 
 
+SCRIPTS = (("Japanese", ("\u3040", "\u30ff"), 0.1), ("Korean", ("\uac00", "\ud7af"), 0.3),
+           ("Chinese", ("\u4e00", "\u9fff"), 0.3), ("Russian", ("\u0400", "\u04ff"), 0.5))
+
+
+def script_language(text: str) -> str | None:
+    """The language a message's script points to (Chinese, Japanese, Korean, Russian), else None."""
+    letters = [c for c in text if c.isalpha()] or [" "]
+    for name, (lo, hi), share in SCRIPTS:
+        if sum(lo <= c <= hi for c in letters) / len(letters) > share:
+            return name
+    return None
+
+
 class ClaudeTranslator:
     def __init__(self, model: str, timeout_s: float = 5.0, client: anthropic.Anthropic | None = None):
         self.model = model

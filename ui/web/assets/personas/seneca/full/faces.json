@@ -1,0 +1,96 @@
+{
+  "grid": [
+    143,
+    256
+  ],
+  "patch": {
+    "x": 60,
+    "y": 52,
+    "w": 22,
+    "h": 34
+  },
+  "moods": [
+    "attentive",
+    "curious",
+    "amused",
+    "skeptical",
+    "pondering",
+    "pleased"
+  ],
+  "frames": [
+    "open",
+    "half",
+    "closed",
+    "talk1",
+    "talk2"
+  ],
+  "anchor": {
+    "face": [
+      70,
+      60
+    ],
+    "head": [
+      56,
+      38,
+      85,
+      78
+    ]
+  },
+  "source": "seneca_restyled_gen.jpg",
+  "palette": 48,
+  "timing_ms": {
+    "half": 55,
+    "closed": 85,
+    "blink_every": [
+      2800,
+      6500
+    ],
+    "talk": [
+      90,
+      150
+    ],
+    "breath": [
+      1500,
+      1700
+    ],
+    "nod_every": [
+      1800,
+      4200
+    ],
+    "nod": 260
+  },
+  "poses": {
+    "in": {
+      "src": "scene_in.png",
+      "dy": -1
+    },
+    "nod": {
+      "src": "scene_nod.png",
+      "dy": 1
+    }
+  },
+  "ambient": [
+    {
+      "x": 121,
+      "y": 89,
+      "w": 7,
+      "h": 13,
+      "sy": 0,
+      "frames": 4,
+      "kind": "flame",
+      "mode": "flicker",
+      "ms": [
+        110,
+        260
+      ]
+    }
+  ],
+  "particles": {
+    "dust": {
+      "x": 94.5,
+      "y": 30,
+      "spread": 16,
+      "depth": 44
+    }
+  }
+}

@@ -108,3 +108,15 @@ def test_a_second_pause_starts_its_own_window():
     assert voice_of(turn(graph, "TEST_TIER3 again")) == "system"
     assert voice_of(turn(graph, "TEST_TIER3 still")) == "system"     # said after the pause: counts
     assert voice_of(turn(graph, "I'm safe right now.", intent="return")) == "system"
+
+
+def test_no_thinking_on_the_way_back_from_support_mode():
+    from app.thinking import Thought                  # 7.8 / FR-36
+    voice = FakeVoice([Thought("Let me be gentle with them. "), "Welcome back."])
+    graph = build_graph(fake_deps(generate=voice))
+    turn(graph, "TEST_TIER3")
+    events = turn(graph, "TEST_COME_BACK please")
+    assert voice_of(events) == "persona"
+    assert not [e for e in events if e["type"] == "thinking"]
+    events = turn(graph, "is virtue teachable")       # an ordinary turn shows it again
+    assert [e["data"]["text"] for e in events if e["type"] == "thinking"] == ["Let me be gentle with them."]

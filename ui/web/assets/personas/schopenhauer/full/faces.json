@@ -1,0 +1,167 @@
+{
+  "grid": [
+    143,
+    256
+  ],
+  "patch": {
+    "x": 60,
+    "y": 53,
+    "w": 22,
+    "h": 27
+  },
+  "moods": [
+    "attentive",
+    "curious",
+    "amused",
+    "skeptical",
+    "pondering",
+    "pleased"
+  ],
+  "frames": [
+    "open",
+    "half",
+    "closed",
+    "talk1",
+    "talk2"
+  ],
+  "anchor": {
+    "face": [
+      70,
+      61
+    ],
+    "head": [
+      56,
+      39,
+      85,
+      78
+    ]
+  },
+  "source": "schopenhauer_seated_gen.jpg",
+  "palette": 48,
+  "timing_ms": {
+    "half": 55,
+    "closed": 85,
+    "blink_every": [
+      2800,
+      6500
+    ],
+    "talk": [
+      90,
+      150
+    ],
+    "breath": [
+      1500,
+      1700
+    ],
+    "nod_every": [
+      1800,
+      4200
+    ],
+    "nod": 260
+  },
+  "poses": {
+    "in": {
+      "src": "scene_in.png",
+      "dy": -1
+    },
+    "nod": {
+      "src": "scene_nod.png",
+      "dy": 1
+    }
+  },
+  "ambient": [
+    {
+      "x": 0,
+      "y": 64,
+      "w": 32,
+      "h": 61,
+      "sy": 0,
+      "frames": 3,
+      "kind": "sway",
+      "mode": "pingpong",
+      "seq": [
+        0,
+        1,
+        0,
+        2
+      ],
+      "ms": [
+        1100,
+        1700
+      ]
+    },
+    {
+      "x": 4,
+      "y": 162,
+      "w": 51,
+      "h": 68,
+      "sy": 61,
+      "frames": 2,
+      "kind": "breathe",
+      "mode": "pingpong",
+      "seq": [
+        0,
+        1
+      ],
+      "ms": [
+        1300,
+        1600
+      ]
+    },
+    {
+      "x": 4,
+      "y": 162,
+      "w": 51,
+      "h": 68,
+      "sy": 129,
+      "frames": 2,
+      "kind": "perk",
+      "mode": "once",
+      "on": [
+        "reply"
+      ],
+      "seq": [
+        1,
+        0
+      ],
+      "ms": [
+        900,
+        0
+      ]
+    },
+    {
+      "x": 0,
+      "y": 200,
+      "w": 17,
+      "h": 21,
+      "sy": 197,
+      "frames": 3,
+      "kind": "wag",
+      "mode": "once",
+      "on": [
+        "reply"
+      ],
+      "seq": [
+        1,
+        2,
+        1,
+        2,
+        1,
+        2,
+        0
+      ],
+      "ms": [
+        130,
+        0
+      ]
+    }
+  ],
+  "particles": {
+    "dust": {
+      "x": 38.5,
+      "y": 29,
+      "spread": 16,
+      "depth": 44
+    }
+  }
+}

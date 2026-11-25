@@ -1,0 +1,106 @@
+{
+  "grid": [
+    143,
+    256
+  ],
+  "patch": {
+    "x": 60,
+    "y": 52,
+    "w": 21,
+    "h": 36
+  },
+  "moods": [
+    "attentive",
+    "curious",
+    "amused",
+    "skeptical",
+    "pondering",
+    "pleased"
+  ],
+  "frames": [
+    "open",
+    "half",
+    "closed",
+    "talk1",
+    "talk2"
+  ],
+  "anchor": {
+    "face": [
+      70,
+      60
+    ],
+    "head": [
+      56,
+      38,
+      84,
+      78
+    ]
+  },
+  "source": "socrates_restyled_gen.jpg",
+  "palette": 48,
+  "timing_ms": {
+    "half": 55,
+    "closed": 85,
+    "blink_every": [
+      2800,
+      6500
+    ],
+    "talk": [
+      90,
+      150
+    ],
+    "breath": [
+      1500,
+      1700
+    ],
+    "nod_every": [
+      1800,
+      4200
+    ],
+    "nod": 260
+  },
+  "poses": {
+    "in": {
+      "src": "scene_in.png",
+      "dy": -1
+    },
+    "nod": {
+      "src": "scene_nod.png",
+      "dy": 1
+    }
+  },
+  "ambient": [
+    {
+      "x": 117,
+      "y": 48,
+      "w": 26,
+      "h": 53,
+      "sy": 0,
+      "frames": 3,
+      "kind": "sway",
+      "mode": "pingpong",
+      "seq": [
+        0,
+        1,
+        0,
+        2
+      ],
+      "ms": [
+        1100,
+        1700
+      ]
+    }
+  ],
+  "particles": {
+    "dust": {
+      "x": 122.5,
+      "y": 29,
+      "spread": 16,
+      "depth": 44
+    },
+    "steam": [
+      122,
+      103
+    ]
+  }
+}

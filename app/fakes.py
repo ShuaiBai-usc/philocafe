@@ -23,10 +23,15 @@ FAKE_CHUNKS = [
                "if they are intemperate and unjust?",
           source_url="https://example.invalid/meno", score=0.7),
 ]
-FAKE_REPLY = ["Tell ", "me, ", "what ", "do ", "you ", "mean ", "by ", "that?"]
+FAKE_REPLY = ['<mood label="cur', 'ious" intensity="0.6"/> ', "Tell ", "me, ", "what ", "do ", "you ", "mean ", "by ", "that?"]
 # For the offline UI demo: quotes FAKE_CHUNKS so a source card shows.
-FAKE_QUOTING_REPLY = ('A fair question. I once asked Meno: <q id="socrates-meno-00000000">can either a young '
-                      'man or an elder one be good</q>, if he is unjust? So what do you think makes a person good?')
+FAKE_QUOTING_REPLY = ('<mood label="pondering" intensity="0.7"/> A fair question. I once asked Meno: <q id="socrates-meno-00000000">can either a young '
+                      'man or an elder one be good</q>, if he is unjust? So what do you think makes a person good?'
+                      '\n<next>\nCan a bad person become good?\nIs being good the same as being kind?\n</next>')
+# 7.8: a thinking summary for the offline demo, streamed word by word before the reply.
+FAKE_THINKING = ("They talk about being good, but what do they take goodness to be? "
+                 "Before I offer anything, I should let them test their own answer. "
+                 "Meno asked me something close to this once; that might help.")
 
 
 class FakeSafetyModel:

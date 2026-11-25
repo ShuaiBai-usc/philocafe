@@ -26,3 +26,14 @@ retrieval:
   # Non-English questions are translated into English before retrieval (the corpus is English).
   translate_model: claude-haiku-5-5
   translate_timeout_s: 5.0
+
+voice:
+  # Voice conversation (design doc 7.6): speech-to-text in, text-to-speech out.
+  # provider: openai (OPENAI_API_KEY) or elevenlabs (ELEVENLABS_API_KEY); PHILOCAFE_VOICE_PROVIDER overrides it.
+  provider: elevenlabs
+  # OpenAI: both announced for shutdown in early 2027 (after the course).
+  transcribe_model: gpt-4o-mini-transcribe
+  speech_model: gpt-4o-mini-tts
+  # ElevenLabs: Flash is the fast, cheaper voice model; eleven_multilingual_v2 sounds richer at twice the credits.
+  elevenlabs_tts_model: eleven_flash_v2_5
+  elevenlabs_stt_model: scribe_v2

@@ -1,0 +1,100 @@
+{
+  "grid": [
+    143,
+    256
+  ],
+  "patch": {
+    "x": 61,
+    "y": 55,
+    "w": 21,
+    "h": 25
+  },
+  "moods": [
+    "attentive",
+    "curious",
+    "amused",
+    "skeptical",
+    "pondering",
+    "pleased"
+  ],
+  "frames": [
+    "open",
+    "half",
+    "closed",
+    "talk1",
+    "talk2"
+  ],
+  "anchor": {
+    "face": [
+      71,
+      63
+    ],
+    "head": [
+      57,
+      41,
+      85,
+      79
+    ]
+  },
+  "source": "montaigne_restyled_gen.jpg",
+  "palette": 48,
+  "timing_ms": {
+    "half": 55,
+    "closed": 85,
+    "blink_every": [
+      2800,
+      6500
+    ],
+    "talk": [
+      90,
+      150
+    ],
+    "breath": [
+      1500,
+      1700
+    ],
+    "nod_every": [
+      1800,
+      4200
+    ],
+    "nod": 260
+  },
+  "poses": {
+    "in": {
+      "src": "scene_in.png",
+      "dy": -1
+    },
+    "nod": {
+      "src": "scene_nod.png",
+      "dy": 1
+    }
+  },
+  "ambient": [
+    {
+      "x": 10,
+      "y": 197,
+      "w": 55,
+      "h": 42,
+      "sy": 0,
+      "frames": 2,
+      "kind": "breathe",
+      "mode": "pingpong",
+      "seq": [
+        0,
+        1
+      ],
+      "ms": [
+        1300,
+        1600
+      ]
+    }
+  ],
+  "particles": {
+    "dust": {
+      "x": 92.5,
+      "y": 33,
+      "spread": 16,
+      "depth": 44
+    }
+  }
+}
