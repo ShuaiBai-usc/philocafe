@@ -98,7 +98,15 @@ p { margin: 0; }
 
 /* ---------- 02 Meet ---------- */
 #meet .body { gap: 16px; }
-.backlink { display: flex; gap: 8px; align-items: center; align-self: flex-start; font-size: 16px; line-height: 21px; min-height: 32px; }
+.meethead { position: absolute; top: 0; left: 0; z-index: 3; padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 0; }
+.meethead .back { margin-left: -6px; }
+.meethead .ico { filter: drop-shadow(1px 0 0 var(--paper)) drop-shadow(-1px 0 0 var(--paper)) drop-shadow(0 1px 0 var(--paper)) drop-shadow(0 -1px 0 var(--paper)); }
+#meet .body { padding-top: 0; }
+/* The bust: a window onto his chat scene, where his head will be when the conversation opens. */
+.bust { position: relative; flex: none; align-self: flex-start; overflow: hidden; visibility: hidden; width: 204px; height: 230px;
+  outline: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); background: #8a6440; }
+.bust img { position: absolute; max-width: none; image-rendering: pixelated; }
+.reveal-frame { position: absolute; z-index: 4; pointer-events: none; outline: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); }
 .portrait { width: 204px; height: 230px; flex: none; align-self: center; border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); object-fit: cover; }
 .intro { display: flex; flex-direction: column; gap: 3px; }
 .foot { flex: none; padding: 10px max(24px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px)); }
@@ -832,13 +840,37 @@ new ResizeObserver(layoutHome).observe(cafe);
 });
 
 /* ---------- 02 Meet ---------- */
+// The bust is a window onto his chat scene: the same picture at the same scale and place it will have
+// when the conversation opens (fullScene's layout), cut round his head and shoulders. Taking a seat
+// grows that window until the whole conversation shows (revealChat).
+const sceneMeta = {};
+const loadMeta = id => sceneMeta[id] ||= fetch(FULL[id] + "faces.json").then(r => r.json());
+function bustGeo(meta, W, H) {
+  const [GW, GH] = meta.grid, k = Math.max(W / GW, H / GH), w = GW * k;
+  const left = Math.min(0, Math.max(W - w, W / 2 - meta.anchor.face[0] * k));
+  const [hx0, hy0, hx1] = meta.anchor.head, bw = Math.min(204, W - 48), bh = Math.round(bw * 230 / 204);
+  const x = Math.round(Math.min(W - 24 - bw, Math.max(24, left + (hx0 + hx1) / 2 * k - bw / 2)));
+  return { k, left, w, h: GH * k, x, y: Math.round(Math.max(64, hy0 * k - 18)), bw, bh };
+}
+function placeBust(m) {
+  const bust = $(".bust", m), body = $(".body", m);
+  if (!bust?._meta || !m.clientWidth) return;
+  const g = bustGeo(bust._meta, m.clientWidth, m.clientHeight), img = $("img", bust);
+  body.scrollTop = 0;
+  bust.style.margin = "0";
+  const r = bust.getBoundingClientRect(), o = m.getBoundingClientRect();
+  Object.assign(bust.style, { width: g.bw + "px", height: g.bh + "px", marginLeft: g.x - (r.left - o.left) + "px", marginTop: g.y - (r.top - o.top) + "px" });
+  Object.assign(img.style, { width: g.w + "px", height: g.h + "px", left: g.left - g.x + "px", top: -g.y + "px" });
+  bust.style.visibility = "visible";
+}
 function openMeet(id) {
   const p = PH[id];
   const open = backend.available(id);
   const m = $("#meet");
-  m.innerHTML = `<div class="body">
-      <button class="backlink"><span data-icon="back"></span>${t("The café")}</button>
-      <img class="portrait px" src="${A}portrait_${id}.png" alt="${t("Pixel portrait of {name}", { name: p.name })}">
+  m.innerHTML = `<div class="meethead"><button class="back" aria-label="${t("Back to the café")}">${icon("backBold", "ink", 30)}</button></div>
+    <div class="body">
+      ${FULL[id] ? `<div class="bust" role="img" aria-label="${t("Pixel portrait of {name}", { name: p.name })}"><img class="px" src="${FULL[id]}scene.png" alt=""></div>`
+                 : `<img class="portrait px" src="${A}portrait_${id}.png" alt="${t("Pixel portrait of {name}", { name: p.name })}">`}
       <div class="intro"><p class="t28">${p.name}</p><p class="t16 muted">${p.tagline}</p></div>
       <p class="t20">${t("A conversation with me")}</p>
       <p class="t16">${p.about}</p>
@@ -847,19 +879,49 @@ function openMeet(id) {
     </div>
     <div class="foot"><button class="primary"${open ? "" : " disabled"}>${open ? t("Take a seat with {name}", { name: p.name }) : t("Coming at the final")}</button>
       ${open ? "" : `<p class="t11 muted coming">${t("{name} joins the café at the final showcase.", { name: p.name })}</p>`}</div>`;
-  paintIcons(m);
-  $(".backlink", m).onclick = () => show("home");
+  $(".back", m).onclick = () => show("home");
   $(".primary", m).onclick = () => takeSeat(id);
   show("meet");
+  if (FULL[id]) loadMeta(id).then(meta => { const b = $(".bust", m); if (b) { b._meta = meta; placeBust(m); } }).catch(() => {});
+}
+new ResizeObserver(() => { if (screen === "meet") placeBust($("#meet")); }).observe($("#meet"));
+
+// From the bust to the conversation: the chat screen opens clipped to the bust's frame, over Meet, and
+// the frame grows to the whole screen. The scene is drawn first, so the head never jumps or flashes.
+async function revealChat(from) {
+  const meet = $("#meet"), frame = el("div", "reveal-frame");
+  if (!from || reduce || screen !== "chat" || !isFull()) return;
+  chat.style.visibility = "hidden";
+  meet.hidden = false;
+  await Promise.race([stage.ready, new Promise(r => setTimeout(r, 900))]);
+  const c = chat.getBoundingClientRect(), r = from;
+  const inset = `inset(${r.top - c.top}px ${c.right - r.right}px ${c.bottom - r.bottom}px ${r.left - c.left}px)`;
+  Object.assign(chat.style, { zIndex: 3, clipPath: inset, transition: "none", visibility: "visible" });
+  Object.assign(frame.style, { left: r.left - c.left + "px", top: r.top - c.top + "px", width: r.width + "px", height: r.height + "px" });
+  $(".screens").append(frame);
+  void chat.offsetWidth;
+  const ms = 620, ease = "cubic-bezier(.6,0,.2,1)";
+  chat.style.transition = `clip-path ${ms}ms ${ease}`;
+  frame.style.transition = ["left", "top", "width", "height"].map(k => `${k} ${ms}ms ${ease}`).join(", ") + `, opacity 160ms linear ${ms - 120}ms`;
+  chat.style.clipPath = "inset(0px 0px 0px 0px)";
+  Object.assign(frame.style, { left: "0px", top: "0px", width: c.width + "px", height: c.height + "px", opacity: 0 });
+  await new Promise(res => setTimeout(res, ms + 60));
+  frame.remove();
+  Object.assign(chat.style, { zIndex: "", clipPath: "", transition: "" });
+  if (screen === "chat") meet.hidden = true;
 }
 
 // Taking a seat: with earlier conversations with this philosopher, offer them beside a new one;
 // without any, the new conversation starts at once (no "sit down?" question).
 async function takeSeat(id) {
-  if (!backend.live || !backend.me || (isPaused() && paused?.id === id)) return openChat(id);
+  const bust = $("#meet .bust");
+  if (bust) { $("#meet .body").scrollTop = 0; placeBust($("#meet")); }
+  const from = bust?.getBoundingClientRect();
+  const go = async open => { await open(); revealChat(from); };
+  if (!backend.live || !backend.me || (isPaused() && paused?.id === id)) return go(() => openChat(id));
   let rows = [];
   try { rows = (await backend.threads()).filter(r => r.persona_id === id); } catch {}
-  if (!rows.length) return openChat(id);
+  if (!rows.length) return go(() => openChat(id));
   const p = PH[id];
   const veil = el("div", "veil");
   veil.innerHTML = `<div class="pop card seat" role="dialog" aria-label="${t("Your table with {name}", { name: p.name })}">
@@ -872,8 +934,8 @@ async function takeSeat(id) {
   const close = () => veil.remove();
   veil.querySelector(".x").onclick = close;
   veil.onclick = e => { if (e.target === veil) close(); };
-  veil.querySelector('[data-a="new"]').onclick = () => { close(); openChat(id); };
-  veil.querySelectorAll(".ccard").forEach(b => b.onclick = () => { close(); openThread(rows.find(r => r.thread_id === b.dataset.t), "home"); });
+  veil.querySelector('[data-a="new"]').onclick = () => { close(); go(() => openChat(id)); };
+  veil.querySelectorAll(".ccard").forEach(b => b.onclick = () => { close(); go(() => openThread(rows.find(r => r.thread_id === b.dataset.t), "home")); });
   $(".screens").append(veil);
   veil.querySelector('[data-a="new"]').focus();
 }
