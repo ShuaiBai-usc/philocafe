@@ -310,6 +310,26 @@ def refine_head(base, m, P, rail):
     return layers.keep_component((full & ~below) | opened, seed)
 
 
+def person_from_plate(base, plate_src, grid, P):
+    """sources/<id>_plate_gen.jpg is an ElevenLabs edit of the scene with the armchair empty (same framing
+    and pixels elsewhere). Read on the scene's own grid and palette, the cells that differ are the
+    philosopher; the plate is what is behind him. Cells where he and the plate agree are plate either way."""
+    import cv2
+    nw, nh, ox, oy = grid
+    src = np.asarray(Image.open(plate_src).convert("RGB")).astype(float)
+    plate_px = layers.palette_snap(np.asarray(sample(src, nw, nh, ox, oy)).astype(np.uint8), base)
+    d = np.abs(base.astype(int) - plate_px.astype(int)).sum(2)
+    seed = (P["x"] + P["w"] // 2, P["y"] + P["h"] // 2)
+    m = layers.keep_component(d > 28, seed)         # stray cells elsewhere are not joined to him
+    grown = cv2.dilate(m.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+    m |= grown & (d > 12)                            # his outline's softer cells, so no ring is left behind
+    m = cv2.morphologyEx(m.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
+    m = layers.fill_holes(m)
+    back = base.copy()
+    back[m] = plate_px[m]
+    return m, back
+
+
 def pose(base, m, top, bottom, dy):
     """the masked cells of rows top..bottom moved dy rows (dy = -1 up, +1 down)"""
     out = base.copy()
@@ -336,14 +356,22 @@ def build(pid):
     P = {"x": x0, "y": y0, "w": w, "h": h}
     # the philosopher on his own layer
     Pm = {"x": x0, "y": y0, "w": w, "h": f["mouth"][0] + 3 - y0 + 1}      # brows to mouth: the seeds
-    M = refine_head(base, person_mask(base, Pm), Pm, f["rail"])
-    back = layers.plate(base, M)
+    plate_src = HERE / "sources" / f"{pid}_plate_gen.jpg"
+    if plate_src.exists():                     # the same scene with the chair empty: he is what differs
+        M, back = person_from_plate(base, plate_src, (nw, nh, ox, oy), Pm)
+    else:                                      # no plate: guess him (GrabCut) and paint him out
+        M = refine_head(base, person_mask(base, Pm), Pm, f["rail"])
+        back = layers.plate(base, M)
     top = int(np.nonzero(M.any(1))[0].min())
     out = ROOT / f"ui/web/assets/personas/{pid}/full"
     out.mkdir(parents=True, exist_ok=True)
     Image.fromarray(base).save(out / "scene.png", optimize=True)
     breath_in = layers.compose(base, back, M, ambient.rise(M, top, f["breath"]))
-    nod = layers.compose(base, back, M, [(layers.rows(M, top, f["chin"]), 0, 1)])
+    head = layers.rows(M, top, f["chin"])
+    head[:, :x0 - 6] = False                         # the head and beard, not the shoulders beside them
+    head[:, x1 + 7:] = False
+    head = layers.keep_component(head, (x0 + w // 2, y0 + 4))
+    nod = layers.compose(base, back, M, [(head, 0, 1)])
     Image.fromarray(breath_in).save(out / "scene_in.png", optimize=True)
     Image.fromarray(nod).save(out / "scene_nod.png", optimize=True)
     for old in ("scene_left.png", "scene_right.png", "scene_look.png"):
