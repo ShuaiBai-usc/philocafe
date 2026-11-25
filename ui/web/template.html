@@ -87,7 +87,7 @@ p { margin: 0; }
 /* The café panorama covers the screen; the pixel wordmark floats over the wall at the top. */
 .cafe { position: absolute; inset: 0; overflow: hidden; background: #b88a5e; }
 .pano { position: absolute; }
-.pano > img.bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pano > .bg { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
 .logo { position: absolute; z-index: 3; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 18px); margin: 0; display: flex; justify-content: center; pointer-events: none;
   animation: bob 3.2s steps(2) infinite; }
 .logo img { width: 348px; height: 72px; image-rendering: pixelated; }
@@ -386,7 +386,7 @@ html[lang="zh-CN"] .composer .rec .hint { font-size: 12px; line-height: 16px; le
     <div class="status" aria-hidden="true"><span>9:41</span><span>●&nbsp;&nbsp;▰</span></div>
     <div class="screens">
       <section class="screen" id="home" aria-label="The café">
-        <div class="cafe" id="cafe"><div class="pano" id="pano"><img class="bg px" src="assets/home_pano.png" alt=""></div>
+        <div class="cafe" id="cafe"><div class="pano" id="pano"></div>
           <h1 class="logo"><img class="px" id="logo" src="assets/logo_philocafe.png" alt="Philocafé"></h1></div>
       </section>
       <section class="screen" id="meet" hidden></section>
@@ -721,7 +721,7 @@ const TAIL = {
 const paintIcons = (root = document) => root.querySelectorAll("[data-icon]").forEach(s => { s.outerHTML = icon(s.dataset.icon, s.dataset.color || "ink"); });
 
 // preload every frame so swaps never flash
-Object.values(DATA).forEach(d => d.frames.forEach(f => { new Image().src = A + f; }));
+Object.entries(DATA).forEach(([k, d]) => k.startsWith("home_") || d.frames.forEach(f => { new Image().src = A + f; }));
 
 // An actor is one <img> that steps through the timeline recovered from the GIF exports.
 function actor(key, W, H) {
@@ -807,35 +807,113 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
 });
 
 /* ---------- 01 Home ---------- */
-// The café (assets/home_pano.png, tools/art/home_pano.py) covers the screen. Each philosopher sits in his
-// own nook, furnished like his chat scene; HOME_SEATS puts the team's sprites on those armchairs
-// (x0 = 10 mod 12, 11 when flipped, y0 = 0 mod 12: the sprites' 12 px grid on the café's).
-const cafe = $("#cafe"), pano = $("#pano");
-const HOME_W = 1152, HOME_H = 2184;
-const HOME_SEATS = {
-  socrates: [214, 576, 589, 948], montaigne: [766, 576, 1141, 948], seneca: [178, 1068, 553, 1440],
-  schopenhauer: [623, 1068, 998, 1440, "flip"], epictetus: [430, 1572, 865, 1944]
-};
-for (const [id, [x0, y0, x1, y1, flip]] of Object.entries(HOME_SEATS)) Object.assign(DATA[PH[id].home], { box: [x0, y0, x1, y1], flip: !!flip });
-// Cover the screen, philosophers kept in view; the wordmark is drawn at the panorama's own pixel size.
+// The café (assets/home/, tools/art/home_scene.py) covers the screen: one flat, front-view picture with
+// each philosopher in his own nook, drawn in the chat scenes' style. Each one is on his own layer over
+// his empty armchair, so he breathes, blinks and now and then nods without anything behind him moving;
+// the room has its own motion (home.json "ambient": leaves, the cat and the poodle, two small flames)
+// and loose pixels (dust under the lamps, steam off Socrates' cup). A tap on a philosopher opens Meet.
+const cafe = $("#cafe"), pano = $("#pano"), HA = "assets/home/";
+let HOME_W = 143, HOME_H = 266;
+const home = { meta: null, cafe: null, people: null, amb: null, st: {}, els: [], motes: [], puffs: [] };
+const homeCv = el("canvas", "bg px"); homeCv.setAttribute("aria-hidden", "true");
+pano.querySelector("img.bg")?.remove();
+pano.prepend(homeCv);
+const hg = homeCv.getContext("2d");
+// Cover the screen (a little more of the floor than the wall is cut when it must be); the wordmark is
+// drawn at the café's own pixel size when it fits.
 function layoutHome() {
   const W = cafe.clientWidth, H = cafe.clientHeight;
   if (!W || !H) return;
   const k = Math.max(W / HOME_W, H / HOME_H), w = HOME_W * k, h = HOME_H * k;
-  Object.assign(pano.style, { width: w + "px", height: h + "px", left: (W - w) / 2 + "px", top: (H - h) / 2 + "px" });
-  const px = Math.max(2, Math.min(12 * k, (W - 24) / 116));       // the logo is 116 cells wide
+  Object.assign(pano.style, { width: w + "px", height: h + "px", left: (W - w) / 2 + "px", top: (H - h) * .3 + "px" });
+  const px = Math.max(2, Math.min(k, (W - 24) / 116));            // the logo is 116 cells wide
   Object.assign($("#logo").style, { width: 116 * px + "px", height: 24 * px + "px" });
+  pano.querySelectorAll(".seat").forEach(b => {
+    const [x0, y0, x1, y1] = JSON.parse(b.dataset.box);
+    Object.assign(b.style, { left: x0 / HOME_W * 100 + "%", top: y0 / HOME_H * 100 + "%", width: (x1 - x0 + 1) / HOME_W * 100 + "%", height: (y1 - y0 + 1) / HOME_H * 100 + "%" });
+  });
 }
 addEventListener("resize", layoutHome);
 new ResizeObserver(layoutHome).observe(cafe);
-["socrates", "schopenhauer", "montaigne", "seneca", "epictetus"].forEach(id => {
-  const a = actor(PH[id].home, HOME_W, HOME_H);
-  const seat = el("button", "seat");
-  seat.setAttribute("aria-label", t("Meet {name}", { name: PH[id].name }));
-  seat.style.cssText = a.style.cssText;
-  seat.onclick = () => openMeet(id);
-  pano.append(seat, a);
-});
+function drawHome() {
+  const m = home.meta;
+  if (!m || !home.cafe) return;
+  hg.drawImage(home.cafe, 0, 0);
+  if (home.people) for (const [id, p] of Object.entries(m.people)) {
+    const s = home.st[id], col = s.nod ? 1 : s.blink ? (s.inn ? 3 : 2) : s.inn ? 0 : -1;
+    if (col >= 0) hg.drawImage(home.people, col * p.w, p.sy, p.w, p.h, p.x, p.y, p.w, p.h);
+  }
+  if (home.amb) for (const e of home.els) {
+    const f = e.mode === "once" ? (e.playing ? e.seq[e.i] : 0) : e.mode === "flicker" ? e.f : e.seq[e.i];
+    if (f) hg.drawImage(home.amb, f * e.w, e.sy, e.w, e.h, e.x, e.y, e.w, e.h);
+  }
+  for (const d of home.motes) {
+    hg.globalAlpha = d.a * (0.6 + 0.4 * Math.sin(d.t)); hg.fillStyle = "#fffdf2"; hg.fillRect(Math.round(d.x), Math.round(d.y), 1, 1);
+  }
+  for (const q of home.puffs) { hg.globalAlpha = q.a; hg.fillStyle = "#f6f1e8"; hg.fillRect(Math.round(q.x), Math.round(q.y), 1, 1); }
+  hg.globalAlpha = 1;
+}
+function homeTick(now) {                                            // 12 times a second while the café shows
+  const m = home.meta, T = m.timing_ms, rnd = ([a, b]) => a + Math.random() * (b - a);
+  for (const [id, s] of Object.entries(home.st)) {
+    if (now >= s.breathAt) { s.inn = !s.inn; s.breathAt = now + rnd(T.breath); }
+    if (s.blink && now >= s.blinkEnd) s.blink = false;
+    if (now >= s.blinkAt) { s.blink = true; s.blinkEnd = now + T.blink; s.blinkAt = now + rnd(T.blink_every); }
+    if (s.nod && now >= s.nodEnd) s.nod = false;
+    if (now >= s.nodAt) { s.nod = true; s.nodEnd = now + T.nod; s.nodAt = now + rnd(T.nod_every); }
+  }
+  if (now >= home.petAt) {                                          // the poodle perks up and wags now and then
+    for (const e of home.els) if (e.mode === "once") { e.playing = true; e.i = 0; e.next = now + e.ms[0]; }
+    home.petAt = now + rnd(T.pet_every);
+  }
+  for (const e of home.els) {
+    if (now < e.next) continue;
+    if (e.mode === "flicker") { e.f = Math.floor(Math.random() * e.frames); e.next = now + rnd(e.ms); }
+    else if (e.mode === "once") {
+      if (!e.playing) continue;
+      if (++e.i >= e.seq.length) { e.playing = false; e.i = 0; } else e.next = now + (e.ms[1] || e.ms[0]);
+    } else { e.i = (e.i + 1) % e.seq.length; e.next = now + rnd(e.ms); }
+  }
+  for (const D of m.particles.dust) {
+    const mine = home.motes.filter(d => d.src === D);
+    for (let n = mine.length; n < 6; n++) {
+      const k = Math.random();
+      home.motes.push({ src: D, x: D.x + (Math.random() - .5) * D.spread * (.3 + k), y: D.y + k * D.depth, vx: (Math.random() - .5) * .05,
+                        vy: .012 + Math.random() * .025, a: .5 + Math.random() * .4, t: Math.random() * 6, life: 120 + Math.random() * 200 });
+    }
+  }
+  home.motes = home.motes.filter(d => (d.x += d.vx + Math.sin(d.t) * .02, d.y += d.vy, d.t += .15, --d.life > 0 && d.y < d.src.y + d.src.depth + 4));
+  const S = m.particles.steam;
+  if (S) {
+    if (Math.random() < .18) home.puffs.push({ x: S[0] + Math.round((Math.random() - .5) * 2), y: S[1], a: .5, t: Math.random() * 6 });
+    home.puffs = home.puffs.filter(q => (q.y -= .1, q.x += Math.sin(q.t += .3) * .07, q.a -= .02, q.a > 0));
+  }
+  drawHome();
+}
+(async () => {
+  const load = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = HA + src; });
+  home.meta = await (await fetch(HA + "home.json")).json();
+  [HOME_W, HOME_H] = home.meta.grid;
+  homeCv.width = HOME_W; homeCv.height = HOME_H;
+  home.cafe = await load("cafe.png");
+  const now = performance.now(), T = home.meta.timing_ms, rnd = ([a, b]) => a + Math.random() * (b - a);
+  for (const id of Object.keys(home.meta.people))
+    home.st[id] = { inn: Math.random() < .5, blink: false, nod: false, breathAt: now + rnd(T.breath), blinkAt: now + rnd(T.blink_every), nodAt: now + rnd(T.nod_every) };
+  home.els = home.meta.ambient.map(e => ({ ...e, i: 0, f: 0, playing: false, next: now + rnd(e.ms[1] ? e.ms : [e.ms[0], e.ms[0]]) }));
+  home.petAt = now + rnd(T.pet_every);
+  for (const [id, p] of Object.entries(home.meta.people)) {
+    const seat = el("button", "seat");
+    seat.dataset.box = JSON.stringify(p.tap);
+    seat.setAttribute("aria-label", t("Meet {name}", { name: PH[id].name }));
+    seat.onclick = () => openMeet(id);
+    pano.append(seat);
+  }
+  layoutHome(); drawHome();
+  if (reduce) return;
+  [home.people, home.amb] = await Promise.all([load("people.png"), load("ambient.png")]);
+  setInterval(() => { if (!document.hidden && screen === "home") homeTick(performance.now()); }, 83);
+})().catch(() => {});
+
 
 /* ---------- 02 Meet ---------- */
 function openMeet(id) {
