@@ -98,8 +98,15 @@ p { margin: 0; }
 
 /* ---------- 02 Meet ---------- */
 #meet .body { gap: 16px; }
-.meethead { position: absolute; top: 0; left: 0; z-index: 3; padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 0; }
+/* Meet's header is the chat's: back, name, and the read-aloud switch where the chat has it. */
+.meethead { position: absolute; top: 0; left: 0; right: 0; z-index: 3; display: flex; align-items: center; gap: 8px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 0; }
 .meethead .back { margin-left: -6px; }
+.meethead h1 { margin: 0; font: 500 20px/44px var(--f-display); }
+.meethead .tools { margin-top: 0; align-self: center; }
+#meet .tag { text-align: center; text-wrap: balance; }
+#meet .foot { padding: 0 10px max(env(safe-area-inset-bottom, 0px), 10px); }
+#meet .primary { height: 62px; box-shadow: 2px 3px 0 rgba(0,0,0,.25); }
 .meethead .ico { filter: drop-shadow(1px 0 0 var(--paper)) drop-shadow(-1px 0 0 var(--paper)) drop-shadow(0 1px 0 var(--paper)) drop-shadow(0 -1px 0 var(--paper)); }
 #meet .body { padding-top: 0; }
 /* The bust: a window onto his chat scene, where his head will be when the conversation opens. */
@@ -857,6 +864,14 @@ function placeBust(m) {
   const g = bustGeo(bust._meta, m.clientWidth, m.clientHeight), img = $("img", bust);
   body.scrollTop = 0;
   bust.style.margin = "0";
+  const tag = $(".tag", m);
+  if (tag) {
+    if (tag.nextElementSibling !== bust) bust.before(tag);
+    tag.style.marginTop = "";
+    const head = $(".meethead", m).getBoundingClientRect().bottom - m.getBoundingClientRect().top;
+    tag.style.marginTop = Math.max(0, head + 2 - (tag.getBoundingClientRect().top - m.getBoundingClientRect().top)) + "px";
+    if (tag.getBoundingClientRect().bottom - m.getBoundingClientRect().top > g.y - 6) { bust.after(tag); tag.style.marginTop = ""; }
+  }
   const r = bust.getBoundingClientRect(), o = m.getBoundingClientRect();
   Object.assign(bust.style, { width: g.bw + "px", height: g.bh + "px", marginLeft: g.x - (r.left - o.left) + "px", marginTop: g.y - (r.top - o.top) + "px" });
   Object.assign(img.style, { width: g.w + "px", height: g.h + "px", left: g.left - g.x + "px", top: -g.y + "px" });
@@ -866,11 +881,12 @@ function openMeet(id) {
   const p = PH[id];
   const open = backend.available(id);
   const m = $("#meet");
-  m.innerHTML = `<div class="meethead"><button class="back" aria-label="${t("Back to the café")}">${icon("backBold", "ink", 30)}</button></div>
+  m.innerHTML = `<header class="meethead"><button class="back" aria-label="${t("Back to the café")}">${icon("backBold", "ink", 30)}</button>
+      <h1>${p.name}</h1><span class="tools"><button class="tool aloud" hidden></button></span></header>
     <div class="body">
+      <p class="t16 muted tag">${p.tagline}</p>
       ${FULL[id] ? `<div class="bust" role="img" aria-label="${t("Pixel portrait of {name}", { name: p.name })}"><img class="px" src="${FULL[id]}scene.png" alt=""></div>`
                  : `<img class="portrait px" src="${A}portrait_${id}.png" alt="${t("Pixel portrait of {name}", { name: p.name })}">`}
-      <div class="intro"><p class="t28">${p.name}</p><p class="t16 muted">${p.tagline}</p></div>
       <p class="t20">${t("A conversation with me")}</p>
       <p class="t16">${p.about}</p>
       <div class="card"><div class="titlebar">${t("Inspired by")}</div>
@@ -878,9 +894,11 @@ function openMeet(id) {
     </div>
     <div class="foot"><button class="primary"${open ? "" : " disabled"}>${open ? t("Take a seat with {name}", { name: p.name }) : t("Coming at the final")}</button>
       ${open ? "" : `<p class="t11 muted coming">${t("{name} joins the café at the final showcase.", { name: p.name })}</p>`}</div>`;
-  $(".back", m).onclick = () => show("home");
-  $(".primary", m).onclick = () => takeSeat(id);
+  $(".back", m).onclick = () => { stopSpeaking(); show("home"); };
+  $(".aloud", m).onclick = toggleAloud;
+  $(".primary", m).onclick = () => { unlockAudio(); takeSeat(id); };
   show("meet");
+  paintAloud();
   if (FULL[id]) loadMeta(id).then(meta => { const b = $(".bust", m); if (b) { b._meta = meta; placeBust(m); } }).catch(() => {});
 }
 new ResizeObserver(() => { if (screen === "meet") placeBust($("#meet")); }).observe($("#meet"));
@@ -1551,17 +1569,18 @@ function header(id, sub) {
       <button class="tool aloud" hidden></button></span>`;
   $(".back", head).onclick = leaveChat;
   $(".copychat", head).onclick = () => copyChat();
-  $(".aloud", head).onclick = () => {
-    unlockAudio(); readAloud.set(!readAloud.get());
-    if (!readAloud.get()) stopSpeaking();
-    paintAloud();
-    toast(readAloud.get() ? t("Replies will be read aloud") : t("Reading aloud is off"));
-  };
+  $(".aloud", head).onclick = toggleAloud;
   return head;
+}
+function toggleAloud() {
+  unlockAudio(); readAloud.set(!readAloud.get());
+  if (!readAloud.get()) stopSpeaking();
+  paintAloud();
+  toast(readAloud.get() ? t("Replies will be read aloud") : t("Reading aloud is off"));
 }
 // The read-aloud switch (FR-09): shown when the server has voice; the speaker is crossed out when off.
 function paintAloud() {
-  document.querySelectorAll(".convhead .aloud").forEach(b => {
+  document.querySelectorAll(".convhead .aloud, .meethead .aloud").forEach(b => {
     const on = readAloud.get();
     b.hidden = !voiceOn();
     b.setAttribute("aria-pressed", on);
@@ -1613,7 +1632,23 @@ function openChat(id) {
   const p = buildChat(id);
   backTo = "home";
   if (isPaused()) return enterSupport(p);
-  typeInto($("#say"), p.greet);
+  const voice = readAloud.get() && voiceOn() && FULL[id] && GREET_S[id];
+  typeInto($("#say"), p.greet, null, voice ? Math.max(24, GREET_S[id][LANG] * 1000 / p.greet.length) : 24);
+  if (voice) greetAloud(id);
+}
+// The greetings, recorded once in each philosopher's own voice (personas/<id>.yaml voice, Flash v2.5):
+// assets/personas/<id>/full/greet_<lang>.mp3; their lengths in seconds pace the typing.
+const GREET_S = { socrates: { en: 2.51, zh: 3.11 }, montaigne: { en: 4.69, zh: 6.22 }, schopenhauer: { en: 2.79, zh: 3.67 },
+                  seneca: { en: 4.92, zh: 4.74 }, epictetus: { en: 6.18, zh: 5.2 } };
+async function greetAloud(id) {
+  stopSpeaking();
+  let stopped = false;
+  speaking = { acts: null, stop: () => { stopped = true; try { clipSource?.stop(); } catch {} player.pause(); player.removeAttribute("src"); } };
+  try {
+    const blob = await (await fetch(`${FULL[id]}greet_${LANG}.mp3`)).blob();
+    if (!stopped) await playClip(blob);
+  } catch {}
+  if (!stopped) speaking = null;
 }
 
 function stopChat() { pauseScene(); clearInterval(typer); stopSpeaking(); cur = null; curId = null; }
@@ -1647,7 +1682,7 @@ function noChatYet() {
   $(".btn", veil).focus();
 }
 
-function typeInto(node, text, done) {
+function typeInto(node, text, done, ms = 24) {
   clearInterval(typer);
   if (reduce) { node.textContent = text; done?.(); return; }
   const talking = isFull() && chat.contains(node);
@@ -1656,7 +1691,7 @@ function typeInto(node, text, done) {
   typer = setInterval(() => {
     i += 1; node.textContent = text.slice(0, i); if (chat.classList.contains("convo") || talking) scrollDown();
     if (i >= text.length) { clearInterval(typer); node.classList.remove("typing"); if (talking) stage?.talk(false); done?.(); }
-  }, 24);
+  }, ms);
 }
 const scrollDown = () => { const s = $("#scroll"); if (s) s.scrollTop = s.scrollHeight; };
 
@@ -1791,8 +1826,25 @@ async function checkIn(p, safe) {
 }
 
 // Reads one turn's events into bubble `b` (7.2); shared by a new message and Regenerate.
+// Every line of his is typed out like the greeting: streamed text queues up and the bubble shows it a
+// character at a time (a little faster when the queue runs long), so a reply never lands in chunks.
+function typewriter(node) {
+  let queue = "", timer = null, ended = null;
+  const tick = () => {
+    if (!queue) { clearInterval(timer); timer = null; ended?.(); return; }
+    const n = queue.length > 240 ? 4 : queue.length > 120 ? 2 : 1;
+    const cut = [...queue.slice(0, n + 1)].slice(0, n).join("").length;      // never split a surrogate pair
+    node.textContent += queue.slice(0, cut); queue = queue.slice(cut);
+    if (isFull() || chat.classList.contains("convo")) scrollDown();
+  };
+  return {
+    push(t) { if (reduce) { node.textContent += t; return; } queue += t; if (!timer) timer = setInterval(tick, 24); },
+    end() { return new Promise(r => { if (!queue && !timer) return r(); ended = r; }); },
+  };
+}
 async function streamInto(b, events) {
   const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null, messageId: null, mood: null, suggestions: [], thinking: [] };
+  const tw = typewriter(b);
   thinkingPose();
   try {
     for await (const ev of events) {
@@ -1811,16 +1863,17 @@ async function streamInto(b, events) {
       } else if (ev.type === "token") {
         if (out.voice === "persona" && !out.said && stage) { stage.think(null); reveal(b); stage.talk(true); }
         out.said += d.text;
-        if (out.voice === "persona") { b.textContent += d.text; scrollDown(); }
+        if (out.voice === "persona") tw.push(d.text);
       } else if (ev.type === "citation" && out.voice === "persona") {
         citations.push(d); out.cites.push({ ...d, n: citations.length });
-        b.textContent += ` [${citations.length}]`;     // matches the numbered entry in "From the source"
+        tw.push(` [${citations.length}]`);             // matches the numbered entry in "From the source"
       } else if (ev.type === "exit") { out.resources = d.resources; out.reason = d.reason; }
       else if (ev.type === "error") out.failed = d;
       else if (ev.type === "done") out.messageId = d.message_id || null;
       if (DEBUG && (ev.type === "safety" || ev.type === "trace")) debugShow(ev);
     }
   } catch (e) { out.failed = { code: "network", message: String(e) }; }
+  if (out.voice === "persona") await tw.end();
   stage?.think(null); stage?.talk(false);
   showMood(null, MOOD_HOLD_MS);                // hold the pose a while, then back to idle (still when locked)
   return out;
