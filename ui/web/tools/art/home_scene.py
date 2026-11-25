@@ -1,11 +1,11 @@
 """The café for the full-screen home (assets/home/: cafe.png, <id>.png strips, ambient.png, home.json).
 
-Background: sources/home_plate_gen.jpg, an ElevenLabs edit (Nano Banana 2) of one flat, front-view
-Stardew-style café with the five armchairs empty (square side tables drawn straight from the front, so no
-surface shows a top in perspective). It is read on the team sprites' grid (96 cells across, 8 source px a
-cell), reduced to 44 colours, with ten rows of plain wall in the top band for the wordmark. The rugs,
-drawn a little wider at the bottom, are made rectangles (no perspective), and Socrates' generated cup
-goes: his sprite brings its own.
+Background: sources/home_natural_gen.jpg, an ElevenLabs edit (Nano Banana 2) of the first café
+(sources/home_cafe_gen.jpg: five empty armchairs set about unevenly, rugs off-centre or missing) with its
+round side tables made square and drawn straight from the front, and its rugs made rectangles, so nothing
+shows a top in perspective. It is read on the team sprites' grid (96 cells across, 8 source px a
+cell), reduced to 44 colours, with ten rows of plain wall in the top band for the wordmark. Socrates'
+generated cup and the walking stick by Epictetus' chair go: their sprites bring their own.
 
 People: the team's home sprites (data.json home_*, 12 px cells) with their motions fitted to the room:
     seated     the thigh rows are taken out, so each sits in his armchair (hands on its arms, feet on the
@@ -43,23 +43,18 @@ WALL = (12, 8, 18)                 # rows 8..17 again at row 12: the wordmark's 
 # cup: (left column, bottom row) of the resting cup on the nook's surface, or None (kept in hand);
 # stick: Epictetus' walking stick moved this many columns right, against the armchair
 PEOPLE = {
-    "socrates":     {"x": 17, "y": 51, "cut": (19, 5), "cup": (42, 64)},
+    "socrates":     {"x": 18, "y": 51, "cut": (19, 5), "cup": (36, 65)},
     "montaigne":    {"x": 64, "y": 49, "cut": (19, 4), "cup": (89, 62)},
     "seneca":       {"x": 15, "y": 90, "cut": (20, 5), "cup": (34, 108)},
     "schopenhauer": {"x": 66, "y": 91, "cut": (19, 5), "cup": None},
-    "epictetus":    {"x": 33, "y": 132, "cut": (19, 5), "cup": (64, 149), "stick": 2},
+    "epictetus":    {"x": 34, "y": 132, "cut": (19, 5), "cup": (64, 149), "stick": 2},
 }
-RUGS = [                           # (window, cells to leave alone): each rug made a rectangle
-    ((2, 76, 50, 94), ()),
-    ((50, 76, 95, 94), ()),
-    ((0, 115, 48, 133), [(3, 108, 13, 119), (29, 108, 44, 128)]),           # the hourglass stool, Seneca's table
-    ((48, 115, 95, 133), [(80, 108, 92, 119), (58, 111, 71, 128)]),         # the music stand, the poodle
-]
-ERASE_CUP = (38, 41, 62, 64)       # Socrates' generated cup on his side table (cells x0..x1, rows y0..y1)
+ERASE_CUP = (37, 41, 63, 65)       # Socrates' generated cup on his side table (cells x0..x1, rows y0..y1)
+ERASE_STICK = (34, 38, 141, 160)   # the generated walking stick by Epictetus' chair: his sprite has its own
 AMBIENT = [
-    ("sway", (37, 47, 47, 56)),                      # Socrates' plant
+    ("sway", (38, 47, 47, 58)),                      # the plant on Socrates' side table
     ("sway", (53, 94, 65, 108)),                     # Schopenhauer's fern
-    ("breathe", (58, 78, 73, 89)),                   # Montaigne's cat
+    ("breathe", (58, 79, 74, 90)),                   # Montaigne's cat
     ("breathe", (58, 111, 72, 128)),                 # the poodle
     ("perk", (58, 111, 72, 128), (60, 111, 72, 119)),
     ("wag", (58, 111, 72, 128), (58, 120, 62, 127)),
@@ -71,7 +66,7 @@ LAMPS = [(22, 44), (40, 44), (73, 44)]
 
 
 def pano():
-    src = np.asarray(Image.open(HERE / "sources/home_plate_gen.jpg").convert("RGB")).astype(float)
+    src = np.asarray(Image.open(HERE / "sources/home_natural_gen.jpg").convert("RGB")).astype(float)
     cell = src.shape[1] / G
     ny = int(round(src.shape[0] / cell))
     cells_ = np.zeros((ny, G, 3))
@@ -97,67 +92,17 @@ def pano():
     return np.concatenate([a[:at], a[a0:a1], a[at:]])
 
 
+def erase(a, box, dx):
+    """cells x0..x1, rows y0..y1 take the cells dx columns over (the floor runs in horizontal bands)"""
+    x0, x1, y0, y1 = box
+    a[y0:y1 + 1, x0:x1 + 1] = a[y0:y1 + 1, x0 + dx:x1 + 1 + dx].copy()
+
+
 def erase_cup(a):
     """the generated cup: its cells take the row just above it (what is behind the table top)"""
     x0, x1, y0, y1 = ERASE_CUP
     for y in range(y0, y1 + 1):
         a[y, x0:x1 + 1] = a[y0 - 1, x0:x1 + 1]
-
-
-def floorlike(c):
-    c = c.astype(int)
-    return (c[..., 0] > c[..., 1] + 22) & (c[..., 0] > c[..., 2] + 45)
-
-
-def square_rug(a, win, protect=(), e=3, eb=2):
-    """The generated rugs widen toward the bottom (a trapezoid, a hint of perspective). Each becomes a
-    rectangle as wide as its median row: per row, the side borders (e cells) move to the rectangle's edges,
-    a gap inside is filled from the nearest interior row (same parity, so the pattern keeps its rhythm) or,
-    in the top and bottom border bands, from the band itself, and rug cells outside it become the nearest
-    floor cell of the same row. Cells in `protect` (furniture standing on the rug's edge) are left alone."""
-    x0, y0, x1, y1 = win
-    old = a.copy()
-    ext = {}
-    for y in range(y0, y1 + 1):
-        xs = np.nonzero(~floorlike(old[y, x0:x1 + 1]))[0]
-        if len(xs) >= 8:
-            ext[y] = (x0 + int(xs.min()), x0 + int(xs.max()))
-    ys = sorted(ext)
-    top, bot = ys[0], ys[-1]
-    L, R = int(np.median([ext[y][0] for y in ys])), int(np.median([ext[y][1] for y in ys]))
-    prot = np.zeros(a.shape[:2], bool)
-    for px0, py0, px1, py1 in protect:
-        prot[py0:py1 + 1, px0:px1 + 1] = True
-
-    def interior(x, y):
-        cand = [yy for yy in ys if top + eb <= yy <= bot - eb and ext[yy][0] + e <= x <= ext[yy][1] - e]
-        if not cand:
-            return None
-        yy = min(cand, key=lambda yy: abs(yy - y) + (0 if (yy - y) % 2 == 0 else 100))
-        return old[yy, x]
-
-    for y in ys:
-        l, r = ext[y]
-        band = y < top + eb or y > bot - eb
-        for x in range(min(l, L), max(r, R) + 1):
-            if prot[y, x]:
-                continue
-            if L <= x <= R:
-                if x < L + e:
-                    a[y, x] = old[y, l + (x - L)]
-                elif x > R - e:
-                    a[y, x] = old[y, r - (R - x)]
-                elif not (l + e <= x <= r - e):
-                    if band:
-                        xx = x + (l - L) if x < l + e else x - (R - r)
-                        a[y, x] = old[y, min(max(xx, l + e), r - e)]
-                    else:
-                        c = interior(x, y)
-                        if c is not None:
-                            a[y, x] = c
-            else:
-                fl = [c for c in range(a.shape[1]) if (c < l or c > r) and floorlike(old[y, c])]
-                a[y, x] = old[y, min(fl, key=lambda c: abs(c - x) + (0 if (c - x) % 2 == 0 else 1))]
 
 
 def cells(path):
@@ -313,8 +258,7 @@ def build():
     (OUT / "people.png").unlink(missing_ok=True)
     base = pano()
     erase_cup(base)
-    for win, protect in RUGS:
-        square_rug(base, win, protect)
+    erase(base, ERASE_STICK, -3)
     H, W = base.shape[:2]
     people = {}
     for pid, P in PEOPLE.items():
@@ -347,7 +291,7 @@ def build():
     Image.fromarray(base).save(OUT / "cafe.png", optimize=True)
     meta = {"grid": [W, H], "people": people, "ambient": amb, "timing_ms": {"pet_every": [9000, 18000]},
             "particles": {"dust": [{"x": x, "y": y, "spread": 8, "depth": 12} for x, y in LAMPS]},
-            "source": "home_plate_gen.jpg + data.json home_* sprites", "palette": K}
+            "source": "home_natural_gen.jpg + data.json home_* sprites", "palette": K}
     (OUT / "home.json").write_text(json.dumps(meta, indent=1) + "\n")
     print("cafe", W, "x", H, {k: (v["x"], v["y"], v["w"], v["h"], v["frames"]) for k, v in people.items()})
     return base, people

@@ -5,7 +5,7 @@
  ],
  "people": {
   "socrates": {
-   "x": 17,
+   "x": 18,
    "y": 51,
    "w": 31,
    "h": 26,
@@ -97,9 +97,9 @@
     ]
    ],
    "tap": [
-    17,
+    18,
     51,
-    46,
+    40,
     76
    ]
   },
@@ -397,7 +397,7 @@
    ]
   },
   "epictetus": {
-   "x": 33,
+   "x": 34,
    "y": 132,
    "w": 36,
    "h": 26,
@@ -513,7 +513,7 @@
     ]
    ],
    "tap": [
-    35,
+    36,
     132,
     68,
     157
@@ -522,10 +522,10 @@
  },
  "ambient": [
   {
-   "x": 36,
+   "x": 37,
    "y": 47,
-   "w": 13,
-   "h": 10,
+   "w": 12,
+   "h": 12,
    "sy": 0,
    "frames": 3,
    "front": false,
@@ -547,7 +547,7 @@
    "y": 94,
    "w": 15,
    "h": 15,
-   "sy": 10,
+   "sy": 12,
    "frames": 3,
    "front": false,
    "kind": "sway",
@@ -565,10 +565,10 @@
   },
   {
    "x": 58,
-   "y": 77,
-   "w": 16,
+   "y": 78,
+   "w": 17,
    "h": 13,
-   "sy": 25,
+   "sy": 27,
    "frames": 2,
    "front": false,
    "kind": "breathe",
@@ -587,7 +587,7 @@
    "y": 110,
    "w": 15,
    "h": 19,
-   "sy": 38,
+   "sy": 40,
    "frames": 2,
    "front": true,
    "kind": "breathe",
@@ -606,7 +606,7 @@
    "y": 110,
    "w": 15,
    "h": 19,
-   "sy": 57,
+   "sy": 59,
    "frames": 2,
    "front": true,
    "kind": "perk",
@@ -628,7 +628,7 @@
    "y": 120,
    "w": 9,
    "h": 8,
-   "sy": 76,
+   "sy": 78,
    "frames": 3,
    "front": true,
    "kind": "wag",
@@ -655,7 +655,7 @@
    "y": 103,
    "w": 9,
    "h": 9,
-   "sy": 84,
+   "sy": 86,
    "frames": 4,
    "front": false,
    "kind": "flame",
@@ -670,7 +670,7 @@
    "y": 142,
    "w": 8,
    "h": 9,
-   "sy": 93,
+   "sy": 95,
    "frames": 4,
    "front": false,
    "kind": "flame",
@@ -709,6 +709,6 @@
    }
   ]
  },
- "source": "home_plate_gen.jpg + data.json home_* sprites",
+ "source": "home_natural_gen.jpg + data.json home_* sprites",
  "palette": 44
 }
