@@ -228,3 +228,35 @@ def test_chinese_reply_reads_when_the_browser_joins_sentences():
     assert c.post(f"/threads/{t}/speech", json={"text": "好问题。你觉得美德能教吗？"}).status_code == 200
     assert c.post(f"/threads/{t}/speech", json={"text": "好问题。 你觉得美德能教吗？"}).status_code == 200
     assert c.post(f"/threads/{t}/speech", json={"text": "别的话"}).status_code == 400
+
+
+def test_the_reply_is_marked_for_reading_as_it_streams():
+    from app.livespeech import Splitter
+    c, io = make()
+    evs = send(c, "a", "is virtue teachable", persona="socrates")
+    t = tid(c, "a")
+    kinds = [k for k, _ in evs]
+    pieces = [d for k, d in evs if k == "speakable"]
+    assert pieces and kinds.index("speakable") < kinds.index("done")
+    first_token = kinds.index("token")
+    assert kinds.index("speakable") < len(kinds) - 1 and kinds.index("speakable") > first_token
+    assert " ".join(p["text"] for p in pieces).split() == "".join(d["text"] for k, d in evs if k == "token").split()
+    r = c.post(f"/threads/{t}/speech", json={"text": pieces[0]["text"], "sig": pieces[0]["sig"], "mood": {"label": "curious", "intensity": 0.7}})
+    assert r.status_code == 200 and io.spoken[-1][0] == pieces[0]["text"] and io.spoken[-1][3]["label"] == "curious"
+    bad = c.post(f"/threads/{t}/speech", json={"text": "Anything I like.", "sig": pieces[0]["sig"]})
+    assert bad.status_code == 400 and bad.json()["error"]["code"] == "bad_sig"
+    other = tid(c, "b")                                    # a piece marked for one conversation reads in no other
+    assert c.post(f"/threads/{other}/speech", json={"text": pieces[0]["text"], "sig": pieces[0]["sig"]}).status_code == 400
+    # the first piece goes out at the first sentence end; later ones join short sentences
+    s = Splitter()
+    assert s.feed("A fair ") == [] and s.feed("question. And") == ["A fair question."]
+    assert s.feed(" yet. More") == [] and s.feed(" words follow here, enough to pass forty. Next") == ["And yet. More words follow here, enough to pass forty."]
+    assert s.close() == ["Next"]
+    assert Splitter().feed("你好，朋友。今天") == ["你好，朋友。"]
+
+
+def test_no_speakable_pieces_without_voice_or_in_support_mode():
+    c, _ = make(voice=False)
+    assert not [k for k, _ in send(c, "a", "is virtue teachable") if k == "speakable"]
+    c, _ = make()
+    assert not [k for k, _ in send(c, "a", "TEST_TIER3") if k == "speakable"]
