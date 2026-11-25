@@ -40,7 +40,7 @@ class Config:
     safety: SafetyConfig = SafetyConfig()
     default_persona: str = "socrates"
     voice_model: str = "claude-sonnet-5-5"
-    voice_effort: str = "low"        # conversational replies; keeps the first token fast
+    voice_effort: str = "medium"     # low often skips thinking, and with it the thought bubble (7.8)
     notes_model: str = "claude-haiku-5-5"   # "Save thought" (FR-07)
     k: int = 5
     min_score: float | None = None   # None: the retrieval default

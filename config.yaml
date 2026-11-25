@@ -17,7 +17,9 @@ safety:
 persona:
   default: socrates
   voice_model: claude-sonnet-5-5
-  voice_effort: low
+  # Adaptive thinking (7.8): at low effort the model often skips thinking, so no thought bubble shows.
+  # Medium thinks on most real questions; the bubble covers the extra seconds (quality over speed).
+  voice_effort: medium
   notes_model: claude-haiku-5-5   # "Save thought" notes (FR-07)
 
 retrieval:

@@ -29,7 +29,7 @@ def to_api_messages(messages: Sequence[AnyMessage]) -> list[dict]:
 
 
 class ClaudeVoice:
-    def __init__(self, model: str, client: anthropic.Anthropic | None = None, max_tokens: int = 2048,
+    def __init__(self, model: str, client: anthropic.Anthropic | None = None, max_tokens: int = 8000,
                  effort: str = "low"):
         self.model = model
         self.max_tokens = max_tokens
