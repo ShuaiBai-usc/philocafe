@@ -23,7 +23,7 @@ Postgres so a thread, and its support mode, survives across function instances.
    | `PHILOCAFE_ACCESS_CODE` | the code you give the class; the app asks for it once per device |
    | `CRON_SECRET` | any long random string; guards the daily purge |
    | `PHILOCAFE_MIN_SCORE` | optional, defaults to 0.3 |
-   | `PHILOCAFE_SECRET` | any long random string; signs sign-in tokens (design doc 7.10). Changing it signs everyone out |
+   | `PHILOCAFE_SECRET` | any long random string; signs sign-in tokens (design doc 7.10). Changing it signs everyone out. Tick Production as well as Preview; if it is missing, a key derived from the database URL is used so sign-ins still hold across instances |
    | `PHILOCAFE_RETENTION_HOURS` | optional purge; 0 (keep until the user deletes it) by default since accounts |
    | `PHILOCAFE_ADMIN_TOKEN` | any long random string; needed to download the user-test submissions (below) |
 
