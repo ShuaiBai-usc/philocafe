@@ -76,6 +76,13 @@ class Tokens:
         mac = hmac.new(self._key, payload.encode(), hashlib.sha256).digest()
         return base64.urlsafe_b64encode(mac).decode().rstrip("=")
 
+    def mark(self, *parts: str) -> str:
+        """A signature over parts (not a sign-in token): the speakable pieces of a streamed reply (7.6)."""
+        return self._sig("\x1f".join(("speech", *parts)))
+
+    def check(self, sig: str, *parts: str) -> bool:
+        return hmac.compare_digest(str(sig), self.mark(*parts))
+
     def issue(self, user_id: str, days: int = TOKEN_DAYS) -> str:
         payload = f"{user_id}.{int(time.time()) + days * 86400}"
         return f"{payload}.{self._sig(payload)}"

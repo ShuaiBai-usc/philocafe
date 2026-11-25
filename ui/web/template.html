@@ -1405,10 +1405,10 @@ function fullScene(id) {
 }
 const isFull = () => chat.classList.contains("full") && !!stage;
 
-// Pixel dissolve (from kbtest). Every 4px block gets a fixed random threshold (mixed with an 8x8 Bayer
+// Pixel dissolve (from kbtest). Every 2px block gets a fixed random threshold (mixed with an 8x8 Bayer
 // value so the noise doesn't clump); a block shows once the reveal level passes its threshold. Frames
 // are clip-path polygons, applied synchronously, so iOS Safari drops none.
-const BLOCK = 4;
+const BLOCK = 2;
 const B8 = [0,32,8,40,2,34,10,42,48,16,56,24,50,18,58,26,12,44,4,36,14,46,6,38,60,28,52,20,62,30,54,22,
             3,35,11,43,1,33,9,41,51,19,59,27,49,17,57,25,15,47,7,39,13,45,5,37,63,31,55,23,61,29,53,21];
 function thresholds(cols, rows, seed) {
@@ -1456,7 +1456,7 @@ function dissolve(node, showIt, ms = 280, done, grow = false) {
 }
 // The conversation's top edge: a band whose pixels belong to the content, not the screen. A bubble
 // crumbles block by block as it scrolls up into the band and fills back in as it scrolls down.
-const BAND_ROWS = 13, NOISE_ROWS = 256;   // 52px
+const BAND_ROWS = 26, NOISE_ROWS = 512;   // 52px
 function band(scroll) {
   if (scroll._band) return scroll._band;      // one per conversation list, kept with it
   let cols = 0, t = null, raf = 0;
@@ -1842,9 +1842,29 @@ function typewriter(node) {
     end() { return new Promise(r => { if (!queue && !timer) return r(); ended = r; }); },
   };
 }
-async function streamInto(b, events) {
-  const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null, messageId: null, mood: null, suggestions: [], thinking: [] };
+// Read aloud as it streams (7.6): the server marks the reply out in signed pieces (`speakable`) while it
+// streams; each is fetched as soon as it arrives and they play in order, so his voice starts with his
+// first sentence instead of after the whole reply.
+function liveReader(thread, mood) {
+  stopSpeaking();
+  let stopped = false, chain = Promise.resolve();
+  const me = speaking = { acts: null, stop: () => { stopped = true; stage?.talk(false); try { clipSource?.stop(); } catch {} player.pause(); player.removeAttribute("src"); } };
+  const clip = p => fetch(`threads/${thread}/speech`, { method: "POST", headers: backend.headers({ "Content-Type": "application/json" }),
+                                                        body: JSON.stringify({ text: p.text, sig: p.sig, mood: mood() }) })
+    .then(r => r.ok ? r.blob() : null).catch(() => null);
+  return {
+    push(p) {
+      if (stopped) return;
+      const next = clip(p);                                   // fetched now, played in turn
+      chain = chain.then(async () => { const blob = await next; if (!blob || stopped) return; stage?.talk(true); await playClip(blob); });
+    },
+    finish() { chain.then(() => { if (!stopped) { stage?.talk(false); if (speaking === me) speaking = null; } }); },
+  };
+}
+async function streamInto(b, events, read = false, thread = curThread) {
+  const out = { voice: null, said: "", cites: [], resources: null, reason: null, failed: null, messageId: null, mood: null, suggestions: [], thinking: [], spokeLive: false };
   const tw = typewriter(b);
+  let live = null;
   thinkingPose();
   try {
     for await (const ev of events) {
@@ -1858,6 +1878,8 @@ async function streamInto(b, events) {
         if (out.voice === "persona" && !out.said && stage) { stage.think(out.thinking); if (!curMood?.locked) stage.mood("pondering"); }
       } else if (ev.type === "suggestions") {
         out.suggestions = d.items || [];
+      } else if (ev.type === "speakable") {
+        if (read && out.voice === "persona") { live ||= liveReader(thread, () => out.mood); live.push(d); out.spokeLive = true; }
       } else if (ev.type === "mood") {
         out.mood = d; showMood(d);
       } else if (ev.type === "token") {
@@ -1874,7 +1896,8 @@ async function streamInto(b, events) {
     }
   } catch (e) { out.failed = { code: "network", message: String(e) }; }
   if (out.voice === "persona") await tw.end();
-  stage?.think(null); stage?.talk(false);
+  stage?.think(null);
+  if (live) live.finish(); else stage?.talk(false);           // with live reading the mouth stops with the voice
   showMood(null, MOOD_HOLD_MS);                // hold the pose a while, then back to idle (still when locked)
   return out;
 }
@@ -1891,7 +1914,7 @@ async function sendLive(text, intent = null) {
   let r;
   try {
     if (!curThread) curThread = await backend.newThread(id);       // the first message makes the conversation
-    r = await streamInto(b, backend.turn(curThread, text, intent));
+    r = await streamInto(b, backend.turn(curThread, text, intent), (readAloud.get() || spoken) && voiceOn());
   } catch (e) { r = { failed: { code: e.code || "network" } }; }
   busy = false; $(".send").disabled = false;
   if (r.voice === "system") {
@@ -1911,7 +1934,7 @@ async function sendLive(text, intent = null) {
   const acts = addActions(b, { who: id, you: text, them: b.textContent, cites: r.cites, thread: curThread, messageId: r.messageId });
   showNexts(acts, r.suggestions);
   scrollDown();
-  if ((readAloud.get() || spoken) && voiceOn() && r.messageId) speak(acts);    // a spoken message always gets a spoken reply
+  if (!r.spokeLive && (readAloud.get() || spoken) && voiceOn() && r.messageId) speak(acts);    // a spoken message always gets a spoken reply
 }
 
 /* ---------- Composer and voice (7.6, FR-08, FR-09) ---------- */
@@ -2243,7 +2266,7 @@ async function regenerate(acts) {
   clearNexts();
   let said = null, cites = [], nexts = [];
   if (backend.live) {
-    const r = await streamInto(b, backend.turn(ex.thread, null, null, true));
+    const r = await streamInto(b, backend.turn(ex.thread, null, null, true), readAloud.get() && voiceOn(), ex.thread);
     if (r.voice === "system") {                      // the safety node decides again; it may pause
       busy = false; $(".send").disabled = false;
       row.remove(); acts.remove(); history.pop();

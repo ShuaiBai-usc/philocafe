@@ -283,7 +283,11 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
                              "messages": out, "paused": bool(user["paused"])})
 
     def run_and_record(user: dict, thread_id: str, events, first_line: str):
-        """Stream the turn, then keep the conversation row and the user's pause up to date (7.10)."""
+        """Stream the turn, then keep the conversation row and the user's pause up to date (7.10).
+        With voice on, the persona's reply is marked out in speakable pieces as it streams (7.6)."""
+        if deps.voice_io is not None:
+            from app.livespeech import with_speakable
+            events = with_speakable(events, lambda text: tokens.mark(thread_id, text))
         yield from events
         state = thread_state(thread_id)
         messages = state.get("messages") or []
@@ -365,8 +369,9 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
 
     async def speech(request: Request):
         """FR-09: one sentence of a persona reply in this conversation, in that persona's voice.
-        Only text from those replies is spoken, so this is no general text-to-speech service, and
-        handover or support-mode text is never spoken in a persona voice (FR-35)."""
+        Only text from those replies is spoken: a stored reply, or a piece this server marked while
+        the reply streamed (`sig`, app/livespeech.py). So this is no general text-to-speech service,
+        and handover or support-mode text is never spoken in a persona voice (FR-35)."""
         user, denied = signed_in(request)
         if denied:
             return denied
@@ -382,6 +387,25 @@ def create_app(deps: Deps | None = None, checkpointer=None, access_code: str | N
         text = " ".join(str((body or {}).get("text") or "").split())
         if not text or len(text) > MAX_SPEECH_CHARS:
             return error(400, "bad_text", f"Send one sentence of up to {MAX_SPEECH_CHARS} characters.")
+        if (body or {}).get("sig") is not None:
+            # A piece marked while the reply streamed (speakable event): this server wrote it for this
+            # conversation, so it is read without waiting for the reply to be stored.
+            if not tokens.check(str(body["sig"]), thread_id, text):
+                return error(400, "bad_sig", "That text was not marked for reading in this conversation.")
+            persona = deps.personas.get(c["persona_id"])
+            if persona is None:
+                return error(404, "unknown_persona", "No such persona.")
+            m = body.get("mood") if isinstance(body.get("mood"), dict) else None
+            mood = None
+            if m and m.get("label") in persona.moods:
+                try:
+                    mood = {"label": m["label"], "intensity": min(1.0, max(0.0, float(m.get("intensity", 0.5)))),
+                            "locked": bool(m.get("locked"))}
+                except (TypeError, ValueError):
+                    mood = None
+            audio = deps.voice_io.speak(text, persona, mood)
+            return StreamingResponse(audio, media_type=getattr(deps.voice_io, "media_type", "audio/mpeg"),
+                                     headers={"Cache-Control": "no-store"})
         msgs = (await run_in_threadpool(thread_state, thread_id)).get("messages") or []
         # Compared without whitespace: the browser joins short sentences with a space, which
         # Chinese text does not have between sentences.
