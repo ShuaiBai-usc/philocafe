@@ -106,7 +106,6 @@ p { margin: 0; }
 .bust { position: relative; flex: none; align-self: flex-start; overflow: hidden; visibility: hidden; width: 204px; height: 230px;
   outline: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); background: #8a6440; }
 .bust img { position: absolute; max-width: none; image-rendering: pixelated; }
-.reveal-frame { position: absolute; z-index: 4; pointer-events: none; outline: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); }
 .portrait { width: 204px; height: 230px; flex: none; align-self: center; border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); object-fit: cover; }
 .intro { display: flex; flex-direction: column; gap: 3px; }
 .foot { flex: none; padding: 10px max(24px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px)); }
@@ -886,28 +885,55 @@ function openMeet(id) {
 }
 new ResizeObserver(() => { if (screen === "meet") placeBust($("#meet")); }).observe($("#meet"));
 
-// From the bust to the conversation: the chat screen opens clipped to the bust's frame, over Meet, and
-// the frame grows to the whole screen. The scene is drawn first, so the head never jumps or flashes.
+// From the bust to the conversation: the chat screen opens over Meet showing only the bust's window,
+// and the rest of it dissolves in block by block, spreading out from the bust (each 8px block's turn is
+// its distance from the bust plus a little noise, as in `dissolve`). The scene is drawn first, so the
+// head never jumps or flashes.
 async function revealChat(from) {
-  const meet = $("#meet"), frame = el("div", "reveal-frame");
-  if (!from || reduce || screen !== "chat" || !isFull()) return;
+  const meet = $("#meet");
+  if (!from || reduce || !CLIP || screen !== "chat" || !isFull()) return;
   chat.style.visibility = "hidden";
   meet.hidden = false;
   await Promise.race([stage.ready, new Promise(r => setTimeout(r, 900))]);
-  const c = chat.getBoundingClientRect(), r = from;
-  const inset = `inset(${r.top - c.top}px ${c.right - r.right}px ${c.bottom - r.bottom}px ${r.left - c.left}px)`;
-  Object.assign(chat.style, { zIndex: 3, clipPath: inset, transition: "none", visibility: "visible" });
-  Object.assign(frame.style, { left: r.left - c.left + "px", top: r.top - c.top + "px", width: r.width + "px", height: r.height + "px" });
-  $(".screens").append(frame);
-  void chat.offsetWidth;
-  const ms = 620, ease = "cubic-bezier(.6,0,.2,1)";
-  chat.style.transition = `clip-path ${ms}ms ${ease}`;
-  frame.style.transition = ["left", "top", "width", "height"].map(k => `${k} ${ms}ms ${ease}`).join(", ") + `, opacity 160ms linear ${ms - 120}ms`;
-  chat.style.clipPath = "inset(0px 0px 0px 0px)";
-  Object.assign(frame.style, { left: "0px", top: "0px", width: c.width + "px", height: c.height + "px", opacity: 0 });
-  await new Promise(res => setTimeout(res, ms + 60));
-  frame.remove();
-  Object.assign(chat.style, { zIndex: "", clipPath: "", transition: "" });
+  const c = chat.getBoundingClientRect(), Bk = 8;
+  const cols = Math.ceil(c.width / Bk), rows = Math.ceil(c.height / Bk);
+  const x0 = from.left - c.left, y0 = from.top - c.top, x1 = from.right - c.left, y1 = from.bottom - c.top;
+  const far = Math.hypot(Math.max(x0, c.width - x1), Math.max(y0, c.height - y1)) || 1;
+  const noise = thresholds(cols, rows, seedN++ * 2654435761), turn = new Float32Array(cols * rows);
+  for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) {
+    const cx = k * Bk + Bk / 2, cy = r * Bk + Bk / 2;
+    const d = Math.hypot(Math.max(x0 - cx, 0, cx - x1), Math.max(y0 - cy, 0, cy - y1)) / far;
+    turn[r * cols + k] = d <= 0 ? -1 : 0.78 * d + 0.22 * noise[r * cols + k];
+  }
+  const path = lv => {
+    let d = "";
+    for (let r = 0; r < rows; r++) {
+      let k = 0;
+      while (k < cols) {
+        if (turn[r * cols + k] >= lv) { k++; continue; }
+        const k0 = k; while (k < cols && turn[r * cols + k] < lv) k++;
+        d += `M${k0 * Bk} ${r * Bk}h${(k - k0) * Bk}v${Bk}h${-(k - k0) * Bk}z`;
+      }
+    }
+    return `path("${d || "M0 0z"}")`;
+  };
+  const STEPS = 30, ms = 720, frames = [];
+  for (let i = 0; i <= STEPS; i++) frames.push(path(i === 0 ? 0 : 1.0001 * Math.pow(i / STEPS, 0.85)));
+  const paint = i => { chat.style.clipPath = chat.style.webkitClipPath = frames[i]; };
+  chat.style.zIndex = 3;
+  paint(0);
+  chat.style.visibility = "visible";
+  await new Promise(res => {
+    const t0 = performance.now(); let last = 0;
+    const step = now => {
+      const f = Math.min(1, (now - t0) / ms), i = Math.round(f * STEPS);
+      if (i !== last) { last = i; paint(i); }
+      if (f < 1) requestAnimationFrame(step); else res();
+    };
+    requestAnimationFrame(step);
+  });
+  chat.style.clipPath = chat.style.webkitClipPath = "";
+  chat.style.zIndex = "";
   if (screen === "chat") meet.hidden = true;
 }
 
