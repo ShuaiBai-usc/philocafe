@@ -84,7 +84,7 @@ p { margin: 0; }
 .tab:active { transform: translate(1px, 1px); }
 
 /* ---------- 01 The Café ---------- */
-/* The café panorama covers the screen; the pixel wordmark floats over the wall at the top. */
+/* The team's café covers the screen; the pixel wordmark floats over the wall at the top. */
 .cafe { position: absolute; inset: 0; overflow: hidden; background: #b88a5e; }
 .pano { position: absolute; }
 .pano > img.bg { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -386,7 +386,7 @@ html[lang="zh-CN"] .composer .rec .hint { font-size: 12px; line-height: 16px; le
     <div class="status" aria-hidden="true"><span>9:41</span><span>●&nbsp;&nbsp;▰</span></div>
     <div class="screens">
       <section class="screen" id="home" aria-label="The café">
-        <div class="cafe" id="cafe"><div class="pano" id="pano"><img class="bg px" src="assets/home_pano.png" alt=""></div>
+        <div class="cafe" id="cafe"><div class="pano" id="pano"><img class="bg px" src="assets/home_bg.png" alt=""></div>
           <h1 class="logo"><img class="px" id="logo" src="assets/logo_philocafe.png" alt="Philocafé"></h1></div>
       </section>
       <section class="screen" id="meet" hidden></section>
@@ -807,17 +807,11 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
 });
 
 /* ---------- 01 Home ---------- */
-// The team's café, widened into a flat full-screen room (assets/home_pano.png, tools/art/home_pano.py: the
-// wall, wainscot and floor run on to both edges, no side walls). The original café sits inside it at
-// CAFE_AT, unchanged, so each of the team's sprite boxes moves by that much. It has no tie to the chat scenes.
+// The team's café (assets/home_bg.png) with its sprites, unchanged, made to cover the screen. The café is
+// a little taller than most phones, so it fills the width and the plain wall at the top gives way first;
+// the wordmark floats over that wall.
 const cafe = $("#cafe"), pano = $("#pano");
-const HOME_W = 1707, HOME_H = 3276, CAFE_AT = [264, 432];
-for (const id of ["socrates", "schopenhauer", "montaigne", "seneca", "epictetus"]) {
-  const box = DATA[PH[id].home].box;
-  if (!box._moved) { box[0] += CAFE_AT[0]; box[2] += CAFE_AT[0]; box[1] += CAFE_AT[1]; box[3] += CAFE_AT[1]; box._moved = true; }
-}
-// Cover the screen, the bottom kept (the wall at the top gives way first); the wordmark is drawn at the
-// panorama's own pixel size when it fits.
+const HOME_W = 1179, HOME_H = 2556;
 function layoutHome() {
   const W = cafe.clientWidth, H = cafe.clientHeight;
   if (!W || !H) return;
