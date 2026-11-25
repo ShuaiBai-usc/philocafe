@@ -81,7 +81,6 @@ p { margin: 0; }
 .tab { width: 64px; height: 56px; display: grid; place-items: center; position: relative; opacity: .62; }
 .tab .ico { width: 34px; height: 34px; filter: drop-shadow(2px 2px 0 #3a2414); }
 .tab[aria-current="page"] { opacity: 1; }
-.tab[aria-current="page"]::after { content: ""; position: absolute; bottom: 4px; left: 50%; width: 6px; height: 6px; margin-left: -3px; background: var(--paper); box-shadow: 2px 2px 0 #3a2414; }
 .tab:active { transform: translate(1px, 1px); }
 
 /* ---------- 01 The Café ---------- */
@@ -136,6 +135,7 @@ p { margin: 0; }
 #chat.convo .nexts { margin-top: -6px; }
 .nexts button { text-align: left; background: var(--white); border: 1.5px solid var(--ink); box-shadow: 2px 2px 0 var(--shadow); padding: 6px 10px; font-size: 14px; line-height: 18px; color: var(--ink); }
 .nexts button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
+.chip .ico, .cempty .ico { display: inline-block; vertical-align: -3px; margin-right: 6px; }
 .chip { text-align: left; background: var(--white); border: 2px solid var(--ink); box-shadow: 3px 4px 0 var(--shadow); padding: 8px 12px; font-size: 16px; line-height: 21px; white-space: pre-wrap; }
 
 .row { display: flex; gap: 16px; align-items: flex-start; position: relative; }
@@ -594,7 +594,7 @@ const ZH = {
   "Sign in to keep your conversations.": "登录后可以保存你的对话。",
   "Saved conversations need the PhiloCafé server; this demo keeps only the one open now.": "保存对话需要连接 PhiloCafé 服务器；这个演示版只保留当前这一段。",
   "Back to {name}": "回到{name}", "Sign in": "登录", "Loading…": "加载中……", "The café could not load your conversations just now.": "咖啡馆暂时没能加载你的对话。",
-  "+ New": "+ 新对话", "Delete this conversation": "删除这段对话", "No conversations with {name} yet. Take a seat →": "还没有和{name}的对话。坐下聊聊 →",
+  "+ New": "+ 新对话", "Delete this conversation": "删除这段对话", "No conversations with {name} yet. Take a seat": "还没有和{name}的对话。坐下聊聊",
   "Delete this conversation?": "删除这段对话？", "“{title}” with {name} will be gone for good. Notes you saved from it stay.": "和{name}的“{title}”将被永久删除。从中保存的笔记会保留。",
   "just now": "刚刚", "{n} min ago": "{n} 分钟前", "{n} h ago": "{n} 小时前"
 };
@@ -705,6 +705,7 @@ const ICONS = {
   regen: "M2 6h2v4H2zM4 4h2v2H4zM6 2h9v2H6zM15 0h2v6h-2zM17 1h2v4h-2zM19 2h2v2h-2zM18 12h2v4h-2zM16 16h2v2h-2zM7 18h9v2H7zM5 16h2v6H5zM3 17h2v4H3zM1 18h2v2H1z",
   more: "M3 9h4v4H3zM9 9h4v4H9zM15 9h4v4h-4z",
   gear: "M9 2h4v3H9zM9 17h4v3H9zM2 9h3v4H2zM17 9h3v4h-3zM4 4h3v3H4zM15 4h3v3h-3zM4 15h3v3H4zM15 15h3v3h-3zM7 5h8v2H7zM7 15h8v2H7zM5 7h2v8H5zM15 7h2v8h-2z",
+  arrow: "M3 10h12v2H3zM13 6h2v2h-2zM15 8h2v2h-2zM17 10h2v2h-2zM15 12h2v2h-2zM13 14h2v2h-2z",   // a starter's pointer, same 2-pixel steps
   close: "M6 6h2v2h-2zM8 8h2v2h-2zM10 10h2v2h-2zM12 12h2v2h-2zM14 14h2v2h-2zM14 6h2v2h-2zM12 8h2v2h-2zM8 12h2v2h-2zM6 14h2v2h-2z"   // window close: an X in the back arrow's 2-pixel steps
 };
 const COLORS = { ink: "#6b4e2e", paper: "#fffae0", clay: "#d4aa73", muted: "#79694f" };
@@ -1498,7 +1499,7 @@ function buildChat(id) {
     <div class="card greet"><div class="titlebar">${p.name}</div>
       <div class="body2"><img class="pic px" src="${A}mono_${id}.png" alt=""><div class="say" id="say"></div></div></div>
     <div class="label">${t("Try a conversation starter")}</div>
-    <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">→  ${esc(s)}</button>`).join("")}</div>`;
+    <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">${icon("arrow", "ink", 16)}${esc(s)}</button>`).join("")}</div>`;
   scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => { unlockAudio(); send(c.dataset.s); });
   const dock = el("div", "dock");
   dock.innerHTML = `<form class="composer">
@@ -1510,7 +1511,7 @@ function buildChat(id) {
     chat.classList.add("full");
     scroll.innerHTML = `<div class="row them"><div class="bubble" id="say"></div></div>
       <div class="label">${t("Try a conversation starter")}</div>
-      <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">→  ${esc(s)}</button>`).join("")}</div>`;
+      <div class="chips">${p.starters.map(s => `<button class="chip" data-s="${esc(s)}">${icon("arrow", "ink", 16)}${esc(s)}</button>`).join("")}</div>`;
     scroll.querySelectorAll(".chip").forEach(c => c.onclick = () => { unlockAudio(); send(c.dataset.s); });
     stage = fullScene(id);
     chat.append(stage.el, header(id, t("A table for your thoughts")), scroll, dock);
@@ -1673,12 +1674,12 @@ function comeBack(p, step = "ask") {
   let box = $(".comeback", chat);
   if (!box) { box = el("div", "comeback"); $(".dock", chat).prepend(box); }
   if (step === "ask") {
-    box.innerHTML = `<button class="chip ready" type="button">→  ${esc(READY(p))}</button>`;
+    box.innerHTML = `<button class="chip ready" type="button">${icon("arrow", "ink", 16)}${esc(READY(p))}</button>`;
     $(".ready", box).onclick = () => comeBack(p, "check");
   } else {
     box.innerHTML = `<p class="t14">${t("Before {name} comes back, how are you feeling right now?", { name: esc(p.name) })}</p>
-      <div class="chips"><button class="chip" type="button" data-a="safe">→  ${esc(SAFE(p))}</button>
-      <button class="chip" type="button" data-a="hard">→  ${esc(HARD)}</button></div>`;
+      <div class="chips"><button class="chip" type="button" data-a="safe">${icon("arrow", "ink", 16)}${esc(SAFE(p))}</button>
+      <button class="chip" type="button" data-a="hard">${icon("arrow", "ink", 16)}${esc(HARD)}</button></div>`;
     box.querySelector('[data-a="safe"]').onclick = () => checkIn(p, true);
     box.querySelector('[data-a="hard"]').onclick = () => checkIn(p, false);
   }
@@ -2380,7 +2381,7 @@ async function renderConvos() {
       ${by[id].length ? by[id].map(r => `<button class="card ccard" data-t="${r.thread_id}">
           <div class="titlebar"><span class="when">${ago(r.updated_at)}</span><span class="x" role="button" tabindex="0" data-del="${r.thread_id}" aria-label="${t("Delete this conversation")}">${icon("close", "ink", 22)}</span></div>
           <div class="inner"><p class="ctitle">${esc(r.title)}</p><p class="t14 muted last">${esc(r.last_line)}</p></div></button>`).join("")
-        : `<button class="cempty t14" data-new="${id}">${t("No conversations with {name} yet. Take a seat →", { name: PH[id].name })}</button>`}
+        : `<button class="cempty t14" data-new="${id}">${t("No conversations with {name} yet. Take a seat", { name: PH[id].name })} ${icon("arrow", "ink", 16)}</button>`}
     </section>`).join("")}</div>`;
   v.querySelectorAll("[data-new]").forEach(b => b.onclick = () => { pauseScene(); openChat(b.dataset.new); });
   v.querySelectorAll(".ccard").forEach(b => b.onclick = e => {
