@@ -67,6 +67,135 @@
     "nod": {
       "src": "scene_nod.png",
       "dy": 1
+    },
+    "left": {
+      "src": "scene_left.png",
+      "dx": -1
+    },
+    "right": {
+      "src": "scene_right.png",
+      "dx": 1
+    },
+    "look": {
+      "src": "scene_look.png",
+      "dx": 1
+    }
+  },
+  "ambient": [
+    {
+      "x": 25,
+      "y": 0,
+      "w": 28,
+      "h": 30,
+      "sy": 0,
+      "frames": 3,
+      "kind": "lamp",
+      "mode": "pingpong",
+      "seq": [
+        0,
+        1,
+        0,
+        2
+      ],
+      "ms": [
+        900,
+        1300
+      ]
+    },
+    {
+      "x": 0,
+      "y": 64,
+      "w": 32,
+      "h": 61,
+      "sy": 30,
+      "frames": 3,
+      "kind": "sway",
+      "mode": "pingpong",
+      "seq": [
+        0,
+        1,
+        0,
+        2
+      ],
+      "ms": [
+        1100,
+        1700
+      ]
+    },
+    {
+      "x": 4,
+      "y": 162,
+      "w": 51,
+      "h": 68,
+      "sy": 91,
+      "frames": 2,
+      "kind": "breathe",
+      "mode": "pingpong",
+      "seq": [
+        0,
+        1
+      ],
+      "ms": [
+        1300,
+        1600
+      ]
+    },
+    {
+      "x": 4,
+      "y": 162,
+      "w": 51,
+      "h": 68,
+      "sy": 159,
+      "frames": 2,
+      "kind": "perk",
+      "mode": "once",
+      "on": [
+        "send",
+        "reply"
+      ],
+      "seq": [
+        1,
+        0
+      ],
+      "ms": [
+        900,
+        0
+      ]
+    },
+    {
+      "x": 0,
+      "y": 200,
+      "w": 17,
+      "h": 21,
+      "sy": 227,
+      "frames": 3,
+      "kind": "wag",
+      "mode": "once",
+      "on": [
+        "send",
+        "reply"
+      ],
+      "seq": [
+        1,
+        2,
+        1,
+        2,
+        1,
+        2,
+        0
+      ],
+      "ms": [
+        130,
+        0
+      ]
+    }
+  ],
+  "particles": {
+    "dust": {
+      "x": 39.0,
+      "y": 30,
+      "spread": 16,
+      "depth": 44
     }
   }
 }

@@ -67,6 +67,62 @@
     "nod": {
       "src": "scene_nod.png",
       "dy": 1
+    },
+    "left": {
+      "src": "scene_left.png",
+      "dx": -1
+    },
+    "right": {
+      "src": "scene_right.png",
+      "dx": 1
+    },
+    "look": {
+      "src": "scene_look.png",
+      "dx": 1
+    }
+  },
+  "ambient": [
+    {
+      "x": 81,
+      "y": 0,
+      "w": 28,
+      "h": 31,
+      "sy": 0,
+      "frames": 3,
+      "kind": "lamp",
+      "mode": "pingpong",
+      "seq": [
+        0,
+        1,
+        0,
+        2
+      ],
+      "ms": [
+        900,
+        1300
+      ]
+    },
+    {
+      "x": 121,
+      "y": 89,
+      "w": 7,
+      "h": 13,
+      "sy": 31,
+      "frames": 4,
+      "kind": "flame",
+      "mode": "flicker",
+      "ms": [
+        110,
+        260
+      ]
+    }
+  ],
+  "particles": {
+    "dust": {
+      "x": 95.0,
+      "y": 31,
+      "spread": 16,
+      "depth": 44
     }
   }
 }

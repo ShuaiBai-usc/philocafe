@@ -67,6 +67,48 @@
     "nod": {
       "src": "scene_nod.png",
       "dy": 1
+    },
+    "left": {
+      "src": "scene_left.png",
+      "dx": -1
+    },
+    "right": {
+      "src": "scene_right.png",
+      "dx": 1
+    },
+    "look": {
+      "src": "scene_look.png",
+      "dx": 1
+    }
+  },
+  "ambient": [
+    {
+      "x": 109,
+      "y": 0,
+      "w": 28,
+      "h": 30,
+      "sy": 0,
+      "frames": 3,
+      "kind": "lamp",
+      "mode": "pingpong",
+      "seq": [
+        0,
+        1,
+        0,
+        2
+      ],
+      "ms": [
+        900,
+        1300
+      ]
+    }
+  ],
+  "particles": {
+    "dust": {
+      "x": 123.0,
+      "y": 30,
+      "spread": 16,
+      "depth": 44
     }
   }
 }

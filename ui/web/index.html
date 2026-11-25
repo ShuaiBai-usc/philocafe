@@ -1134,22 +1134,71 @@ function fullScene(id) {
   think.innerHTML = '<div class="cloud"></div><i class="d1"></i><i class="d2"></i>';
   wrap.append(cv, think);
   const g = cv.getContext("2d");
-  const s = { meta: null, scene: null, faces: null, poses: {}, breathIn: false, nodding: false,
-              mood: "attentive", eyes: "open", talking: false, mouth: "open",
-              busy: false, queued: null, alive: true, thinking: false, reserve: 60 };
+  const s = { meta: null, scene: null, faces: null, poses: {}, amb: null, breathIn: false, nodding: false, sway: null,
+              mood: "attentive", locked: true, eyes: "open", talking: false, mouth: "open",
+              busy: false, queued: null, alive: true, thinking: false, reserve: 60, els: [], motes: [], puffs: [] };
   let holdT = null;
   const wait = ms => new Promise(r => setTimeout(r, ms));
+  const between = ([a, b]) => a + Math.random() * (b - a);
   const load = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = base + src; });
-  // Body poses (faces.json "poses"): breathing in lifts head and shoulders a row; a nod while talking
-  // drops the head a row. Each pose is its own picture; the face patch moves with it.
+  // Body poses (faces.json "poses"), one picture each, the face patch moved with it: a nod (while he
+  // talks, and when a message arrives), a look aside while he thinks, a slow sway now and then, and
+  // breathing. Over them the scene's own motion (faces.json "ambient", frames in ambient.png: the lamp,
+  // plants, pets, flames) and a few loose pixels: dust in the lamplight, steam off a cup.
+  function pose() {
+    return s.nodding ? "nod" : s.thinking ? "look" : s.sway ? s.sway : s.breathIn ? "in" : null;
+  }
   function draw() {
     if (!s.faces) return;
-    const m = s.meta, P = m.patch;
-    const pose = s.nodding ? "nod" : s.breathIn ? "in" : null, pz = pose && s.poses[pose] ? m.poses[pose] : null;
-    g.drawImage(pz ? s.poses[pose] : s.scene, 0, 0);
+    const m = s.meta, P = m.patch, name = pose(), pz = name && s.poses[name] ? m.poses[name] : null;
+    g.drawImage(pz ? s.poses[name] : s.scene, 0, 0);
+    if (s.amb) for (const e of s.els) {
+      const f = e.mode === "once" ? (e.playing ? e.seq[e.i] : 0) : e.mode === "flicker" ? e.f : e.seq[e.i];
+      if (f) g.drawImage(s.amb, f * e.w, e.sy, e.w, e.h, e.x, e.y, e.w, e.h);
+    }
+    const H = m.anchor.head;
+    for (const d of s.motes) {
+      const x = Math.round(d.x), y = Math.round(d.y);
+      if (x >= H[0] && x <= H[2] && y >= H[1]) continue;                 // never over his head
+      g.globalAlpha = d.a * (0.6 + 0.4 * Math.sin(d.t)); g.fillStyle = "#fffdf2"; g.fillRect(x, y, 1, 1);
+    }
+    for (const q of s.puffs) { g.globalAlpha = q.a; g.fillStyle = "#f6f1e8"; g.fillRect(Math.round(q.x), Math.round(q.y), 1, 1); }
+    g.globalAlpha = 1;
     const col = m.frames.indexOf(s.eyes !== "open" ? s.eyes : s.talking ? s.mouth : "open");
     const row = Math.max(0, m.moods.indexOf(s.mood));
-    g.drawImage(s.faces, col * P.w, row * P.h, P.w, P.h, P.x, P.y + (pz ? pz.dy : 0), P.w, P.h);
+    g.drawImage(s.faces, col * P.w, row * P.h, P.w, P.h, P.x + (pz?.dx || 0), P.y + (pz?.dy || 0), P.w, P.h);
+  }
+  function tick(now) {                                             // 12 times a second while the scene is open
+    for (const e of s.els) {
+      if (now < e.next) continue;
+      if (e.mode === "flicker") { e.f = Math.floor(Math.random() * e.frames); e.next = now + between(e.ms); }
+      else if (e.mode === "once") {
+        if (!e.playing) continue;
+        if (++e.i >= e.seq.length) { e.playing = false; e.i = 0; } else e.next = now + (e.ms[1] || e.ms[0]);
+      } else { e.i = (e.i + 1) % e.seq.length; e.next = now + between(e.ms); }
+    }
+    const D = s.meta.particles?.dust;
+    if (D) {
+      while (s.motes.length < 12) {
+        const k = Math.random();
+        s.motes.push({ x: D.x + (Math.random() - .5) * D.spread * (.3 + k), y: D.y + k * D.depth, vx: (Math.random() - .5) * .06,
+                       vy: .015 + Math.random() * .03, a: .55 + Math.random() * .4, t: Math.random() * 6, life: 120 + Math.random() * 200 });
+      }
+      s.motes = s.motes.filter(d => (d.x += d.vx + Math.sin(d.t) * .02, d.y += d.vy, d.t += .15, --d.life > 0 && d.y < D.y + D.depth + 6));
+    }
+    const S = s.meta.particles?.steam;
+    if (S) {
+      if (Math.random() < .2) s.puffs.push({ x: S[0] + Math.round((Math.random() - .5) * 2), y: S[1], a: .55, t: Math.random() * 6 });
+      s.puffs = s.puffs.filter(q => (q.y -= .12, q.x += Math.sin(q.t += .3) * .08, q.a -= .018, q.a > 0));
+    }
+    draw();
+  }
+  function react(event) {
+    if (!s.meta || reduce) return;
+    if (!s.locked) for (const e of s.els) if (e.mode === "once" && e.on?.includes(event) && !e.playing) {
+      e.playing = true; e.i = 0; e.next = performance.now() + e.ms[0];
+    }
+    if (!s.nodding) (async () => { s.nodding = true; await wait(s.meta.timing_ms.nod || 260); s.nodding = false; })();
   }
   // A blink and a change of mood share one path: open, half, closed (the new face lands here), half, open.
   async function blink(next) {
@@ -1165,17 +1214,25 @@ function fullScene(id) {
   }
   function loops() {
     if (reduce) return;
-    const T = s.meta.timing_ms, between = ([a, b]) => a + Math.random() * (b - a);
+    const T = s.meta.timing_ms;
+    s.els = (s.meta.ambient || []).map(e => ({ ...e, i: 0, f: 0, playing: false, next: performance.now() + between(e.ms[1] ? e.ms : [e.ms[0], e.ms[0]]) }));
+    const timer = setInterval(() => { if (!s.alive) return clearInterval(timer); if (!document.hidden) tick(performance.now()); }, 83);
     (async () => { while (s.alive) { await wait(between(T.blink_every)); if (s.alive) await blink(); } })();
     if (T.breath) (async () => {                                   // slow, even breathing
-      while (s.alive) { await wait(between(T.breath)); s.breathIn = !s.breathIn; if (!s.busy) draw(); }
+      while (s.alive) { await wait(between(T.breath)); s.breathIn = !s.breathIn; }
     })();
     if (T.nod) (async () => {                                      // now and then a small nod while he talks
       while (s.alive) {
         await wait(between(T.nod_every));
-        if (!s.talking || !s.alive) continue;
-        s.nodding = true; if (!s.busy) draw();
-        await wait(T.nod); s.nodding = false; if (!s.busy) draw();
+        if (!s.talking || !s.alive || s.nodding) continue;
+        s.nodding = true; await wait(T.nod); s.nodding = false;
+      }
+    })();
+    (async () => {                                                 // shifting in the chair when nothing happens
+      while (s.alive) {
+        await wait(between([5000, 11000]));
+        if (s.talking || s.thinking || !s.alive) continue;
+        s.sway = Math.random() < .5 ? "left" : "right"; await wait(between([1200, 2200])); s.sway = null;
       }
     })();
     (async () => {
@@ -1192,6 +1249,7 @@ function fullScene(id) {
       s.meta = await (await fetch(base + "faces.json")).json();
       [s.scene, s.faces] = await Promise.all([load("scene.png"), load("faces.png")]);
       for (const [k, v] of Object.entries(s.meta.poses || {})) load(v.src).then(i => { s.poses[k] = i; }).catch(() => {});
+      if (s.meta.ambient?.length) load("ambient.png").then(i => { s.amb = i; }).catch(() => {});
       cv.width = s.meta.grid[0]; cv.height = s.meta.grid[1];
       api.layout(); draw(); loops();
       if (stage === api) { chat.classList.add("snap"); fullApply(); requestAnimationFrame(() => requestAnimationFrame(() => { chat.classList.remove("snap"); scrollDown(); })); }
@@ -1207,12 +1265,14 @@ function fullScene(id) {
     },
     mood(label, locked = false, ms = null) {
       clearTimeout(holdT);
+      s.locked = !!locked;
       const face = locked ? "attentive" : (FULL_MOODS[label] || label);
       const known = !s.meta || s.meta.moods.includes(face) ? face : "attentive";
       if (known !== s.mood) blink(known);
       if (ms != null && !locked && known !== "attentive") holdT = setTimeout(() => blink("attentive"), ms);
     },
-    talk(on) { s.talking = !!on; if (!on && s.mouth !== "open") { s.mouth = "open"; if (!s.busy) draw(); } },
+    react,
+    talk(on) { if (on && !s.talking) react("reply"); s.talking = !!on; if (!on && s.mouth !== "open") { s.mouth = "open"; if (!s.busy) draw(); } },
     // The thought bubble (7.8): the latest one or two sentences of his thinking (one when two
     // would not fit over his head); null takes it away.
     think(lines) {
@@ -2082,6 +2142,7 @@ async function regenerate(acts) {
 
 async function send(text) {
   if (busy) return;
+  stage?.react("send");                                // he looks up from his thoughts: a small nod
   if (backend.live) return sendLive(text);
   const p = cur;
   if (DISTRESS.test(text)) return distress(curId, text);   // demo only; live pauses come from the server

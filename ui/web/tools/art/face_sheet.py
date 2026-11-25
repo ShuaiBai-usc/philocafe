@@ -35,6 +35,7 @@ from PIL import Image
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from pixelate import find_grid, quantize, sample  # noqa: E402
+import ambient  # noqa: E402
 
 ROOT = HERE.parents[3]
 GRID = (143, 256)
@@ -48,19 +49,19 @@ TIMING = {"half": 55, "closed": 85, "blink_every": [2800, 6500], "talk": [90, 15
 FACES = {
     "socrates": dict(src="socrates_restyled_gen.jpg",
                      eyes=[((64, 66, 57, 58), (65, 65)), ((74, 76, 57, 58), (75, 75))],
-                     brows=[(62, 67, 54, 56), (73, 78, 54, 56)], mouth=(67, 67, 73), lips=False, breath=100, chin=84),
+                     brows=[(62, 67, 54, 56), (73, 78, 54, 56)], mouth=(67, 67, 73), lips=False, breath=100, chin=84, ambient=[("lamp", (109, 141)), ("sway", (118, 48, 142, 100))], steam=(122, 103)),
     "montaigne": dict(src="montaigne_restyled_gen.jpg",
                       eyes=[((63, 68, 60, 61), (66, 67)), ((73, 79, 60, 61), (76, 77))],
-                      brows=[(63, 69, 57, 58), (73, 79, 57, 58)], mouth=(68, 69, 74), lips=True, breath=98, chin=76, lamp=92),
+                      brows=[(63, 69, 57, 58), (73, 79, 57, 58)], mouth=(68, 69, 74), lips=True, breath=98, chin=76, lamp=92, ambient=[("lamp", (76, 110)), ("breathe", (10, 198, 64, 238))]),
     "seneca": dict(src="seneca_restyled_gen.jpg",
                    eyes=[((64, 67, 57, 58), (65, 66)), ((74, 77, 57, 58), (75, 76))],
-                   brows=[(62, 69, 54, 56), (72, 79, 54, 56)], mouth=(67, 68, 74), lips=True, breath=100, chin=82, lamp=94),
+                   brows=[(62, 69, 54, 56), (72, 79, 54, 56)], mouth=(67, 68, 74), lips=True, breath=100, chin=82, lamp=94, ambient=[("lamp", (78, 112)), ("flame", (121, 90, 127, 101))]),
     "epictetus": dict(src="epictetus_restyled_gen.jpg",
                       eyes=[((64, 67, 57, 58), (66, 66)), ((73, 76, 57, 58), (75, 75))],
-                      brows=[(63, 68, 54, 56), (72, 78, 54, 56)], mouth=(67, 67, 74), lips=False, breath=100, chin=86),
+                      brows=[(63, 68, 54, 56), (72, 78, 54, 56)], mouth=(67, 67, 74), lips=False, breath=100, chin=86, ambient=[("lamp", (104, 141))]),
     "schopenhauer": dict(src="schopenhauer_seated_gen.jpg",
                          eyes=[((64, 67, 58, 59), (66, 66)), ((74, 77, 58, 59), (75, 75))],
-                         brows=[(62, 69, 55, 57), (72, 79, 55, 57)], mouth=(67, 68, 73), lips=False, breath=98, chin=76, lamp=38),
+                         brows=[(62, 69, 55, 57), (72, 79, 55, 57)], mouth=(67, 68, 73), lips=False, breath=98, chin=76, lamp=38, ambient=[("lamp", (20, 56)), ("sway", (0, 64, 30, 124)), ("breathe", (4, 163, 54, 229)), ("perk", (4, 163, 54, 229), (26, 163, 54, 194)), ("wag", (4, 163, 54, 229), (0, 200, 14, 220))]),
 }
 BLUSH = (214, 140, 112)
 INSIDE = (92, 46, 38)
@@ -306,12 +307,34 @@ def build(pid):
     top = min(y for y in range(base.shape[0]) if m[y].any())
     Image.fromarray(pose(base, m, top, f["breath"], -1)).save(out / "scene_in.png", optimize=True)
     Image.fromarray(pose(base, m, top, f["chin"], 1)).save(out / "scene_nod.png", optimize=True)
+    for name, dx, bottom in (("left", -1, f["breath"]), ("right", 1, f["breath"]), ("look", 1, f["chin"])):
+        Image.fromarray(ambient.shift(base, m, dx, 0, (top, bottom))).save(out / f"scene_{name}.png", optimize=True)
+    els = ambient.build(base, f.get("ambient", []))
+    amb, sy = [], 0
+    width = max([(r[2] - r[0] + 1) * len(fr) for r, fr, _ in els] or [1])
+    sheet_a = np.zeros((sum(r[3] - r[1] + 1 for r, _, _ in els) or 1, width, 3), np.uint8)
+    for (ax0, ay0, ax1, ay1), frames, info in els:
+        aw, ah = ax1 - ax0 + 1, ay1 - ay0 + 1
+        for k, fr in enumerate(frames):
+            sheet_a[sy:sy + ah, k * aw:(k + 1) * aw] = fr[ay0:ay1 + 1, ax0:ax1 + 1]
+        amb.append({"x": int(ax0), "y": int(ay0), "w": aw, "h": ah, "sy": sy, "frames": len(frames), **info})
+        sy += ah
+    Image.fromarray(sheet_a).save(out / "ambient.png", optimize=True)
+    lamp_el = next((a for a in amb if a["kind"] == "lamp"), None)
+    particles = {}
+    if lamp_el:
+        particles["dust"] = {"x": lamp_el["x"] + lamp_el["w"] / 2, "y": lamp_el["h"], "spread": 16, "depth": 44}
+    if f.get("steam"):
+        particles["steam"] = list(f["steam"])
     Image.fromarray(sheet).save(out / "faces.png", optimize=True)
     (e0, _), (e1, _) = f["eyes"]
     meta = {"grid": list(GRID), "patch": {"x": x0, "y": y0, "w": w, "h": h}, "moods": list(MOODS), "frames": list(FRAMES),
             "anchor": {"face": [round((e0[0] + e1[1]) / 2), e0[3] + 2], "head": [x0 - 4, y0 - 14, x1 + 4, y1 + 8]},
             "source": f["src"], "palette": 48, "timing_ms": TIMING,
-            "poses": {"in": {"src": "scene_in.png", "dy": -1}, "nod": {"src": "scene_nod.png", "dy": 1}}}
+            "poses": {"in": {"src": "scene_in.png", "dy": -1}, "nod": {"src": "scene_nod.png", "dy": 1},
+                      "left": {"src": "scene_left.png", "dx": -1}, "right": {"src": "scene_right.png", "dx": 1},
+                      "look": {"src": "scene_look.png", "dx": 1}},
+            "ambient": amb, "particles": particles}
     (out / "faces.json").write_text(json.dumps(meta, indent=2) + "\n")
     print(pid, f"grid {nw}x{nh} offset ({ox}, {oy}) patch {(x0, y0, w, h)}")
 
