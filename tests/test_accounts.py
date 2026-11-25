@@ -143,3 +143,19 @@ def test_done_carries_the_reply_id_and_prefs_can_be_reset():
     assert "message_id" not in [d for k, d in send(c, "a", "TEST_TIER3") if k == "done"][0]
     r = c.patch("/me", json={"prefs": {"length": -2, "x": 1}})
     assert r.json()["prefs"] == {"length": -2, "plain": 0, "questions": 0, "quotes": 0}
+
+
+def test_tokens_survive_a_new_instance_without_philocafe_secret(monkeypatch):
+    # Vercel: each function instance builds its own Tokens; they must agree on the key.
+    monkeypatch.delenv("PHILOCAFE_SECRET", raising=False)
+    monkeypatch.setenv("DATABASE_URL", "postgres://user:pw@db.example/philocafe")
+    tok = Tokens().issue("u1")
+    assert Tokens().user_id(tok) == "u1"
+    monkeypatch.setenv("DATABASE_URL", "postgres://user:other@db.example/philocafe")
+    assert Tokens().user_id(tok) is None
+
+
+def test_philocafe_secret_wins_over_the_database_url(monkeypatch):
+    monkeypatch.setenv("PHILOCAFE_SECRET", "s3")
+    monkeypatch.setenv("DATABASE_URL", "postgres://x")
+    assert Tokens().user_id(Tokens("s3").issue("u1")) == "u1"

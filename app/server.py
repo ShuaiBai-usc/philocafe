@@ -11,8 +11,9 @@ On Vercel (ADR-11) the entrypoint is asgi.py and these environment variables mat
 - PHILOCAFE_CHECKPOINT_URL, else DATABASE_URL or POSTGRES_URL: conversation checkpoints
   go to Postgres, so a thread (and its support mode, FR-32) survives across function
   instances. Without one, checkpoints stay in memory, which is right for local runs.
-- PHILOCAFE_SECRET: signs sign-in tokens (7.10). Set it on Vercel; without it, tokens last
-  only as long as the server process.
+- PHILOCAFE_SECRET: signs sign-in tokens (7.10). Set it on Vercel; without it the key is derived
+  from the database URL (the same on every instance), and with neither, tokens last only as long
+  as the server process.
 - Accounts, conversation rows and notes (app/store.py) go to the same Postgres; locally they
   stay in memory.
 - CRON_SECRET: guards /internal/purge, which the daily Vercel Cron calls. It deletes

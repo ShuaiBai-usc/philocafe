@@ -46,9 +46,26 @@ def check_passcode(passcode: str, stored: str) -> bool:
     return hmac.compare_digest(got.hex(), digest)
 
 
+def _shared_secret() -> str:
+    """PHILOCAFE_SECRET, else a key derived from the database URL, else ''.
+
+    On Vercel every function instance builds its own Tokens. Without one secret they all share, a
+    token signed on one instance fails on the next and every page asks the user to sign in again.
+    The database URL is the same on every instance and is itself a secret, so when PHILOCAFE_SECRET
+    is missing a key is derived from it (HMAC with a fixed label, never the URL itself)."""
+    if os.environ.get("PHILOCAFE_SECRET", "").strip():
+        return os.environ["PHILOCAFE_SECRET"].strip()
+    for name in ("DATABASE_URL", "POSTGRES_URL", "PHILOCAFE_CHECKPOINT_URL"):
+        url = os.environ.get(name, "").strip()
+        if url:
+            log.warning("PHILOCAFE_SECRET is not set; signing sign-in tokens with a key derived from %s", name)
+            return hmac.new(url.encode(), b"philocafe-sign-in-tokens", hashlib.sha256).hexdigest()
+    return ""
+
+
 class Tokens:
     def __init__(self, secret: str | None = None):
-        secret = secret or os.environ.get("PHILOCAFE_SECRET", "")
+        secret = secret or _shared_secret()
         if not secret:
             # Local runs and tests: a secret for this process only, so tokens end with the server.
             log.warning("PHILOCAFE_SECRET is not set; sign-ins last until the server restarts")
