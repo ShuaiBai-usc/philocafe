@@ -3,8 +3,9 @@
 Background: sources/home_plate_gen.jpg, an ElevenLabs edit (Nano Banana 2) of one flat, front-view
 Stardew-style café with the five armchairs empty (square side tables drawn straight from the front, so no
 surface shows a top in perspective). It is read on the team sprites' grid (96 cells across, 8 source px a
-cell), reduced to 44 colours, with ten rows of plain wall in the top band for the wordmark. Socrates'
-generated cup goes: his sprite brings its own.
+cell), reduced to 44 colours, with ten rows of plain wall in the top band for the wordmark. The rugs,
+drawn a little wider at the bottom, are made rectangles (no perspective), and Socrates' generated cup
+goes: his sprite brings its own.
 
 People: the team's home sprites (data.json home_*, 12 px cells) with their motions fitted to the room:
     seated     the thigh rows are taken out, so each sits in his armchair (hands on its arms, feet on the
@@ -48,6 +49,12 @@ PEOPLE = {
     "schopenhauer": {"x": 66, "y": 91, "cut": (19, 5), "cup": None},
     "epictetus":    {"x": 33, "y": 132, "cut": (19, 5), "cup": (64, 149), "stick": 2},
 }
+RUGS = [                           # (window, cells to leave alone): each rug made a rectangle
+    ((2, 76, 50, 94), ()),
+    ((50, 76, 95, 94), ()),
+    ((0, 115, 48, 133), [(3, 108, 13, 119), (29, 108, 44, 128)]),           # the hourglass stool, Seneca's table
+    ((48, 115, 95, 133), [(80, 108, 92, 119), (58, 111, 71, 128)]),         # the music stand, the poodle
+]
 ERASE_CUP = (38, 41, 62, 64)       # Socrates' generated cup on his side table (cells x0..x1, rows y0..y1)
 AMBIENT = [
     ("sway", (37, 47, 47, 56)),                      # Socrates' plant
@@ -95,6 +102,62 @@ def erase_cup(a):
     x0, x1, y0, y1 = ERASE_CUP
     for y in range(y0, y1 + 1):
         a[y, x0:x1 + 1] = a[y0 - 1, x0:x1 + 1]
+
+
+def floorlike(c):
+    c = c.astype(int)
+    return (c[..., 0] > c[..., 1] + 22) & (c[..., 0] > c[..., 2] + 45)
+
+
+def square_rug(a, win, protect=(), e=3, eb=2):
+    """The generated rugs widen toward the bottom (a trapezoid, a hint of perspective). Each becomes a
+    rectangle as wide as its median row: per row, the side borders (e cells) move to the rectangle's edges,
+    a gap inside is filled from the nearest interior row (same parity, so the pattern keeps its rhythm) or,
+    in the top and bottom border bands, from the band itself, and rug cells outside it become the nearest
+    floor cell of the same row. Cells in `protect` (furniture standing on the rug's edge) are left alone."""
+    x0, y0, x1, y1 = win
+    old = a.copy()
+    ext = {}
+    for y in range(y0, y1 + 1):
+        xs = np.nonzero(~floorlike(old[y, x0:x1 + 1]))[0]
+        if len(xs) >= 8:
+            ext[y] = (x0 + int(xs.min()), x0 + int(xs.max()))
+    ys = sorted(ext)
+    top, bot = ys[0], ys[-1]
+    L, R = int(np.median([ext[y][0] for y in ys])), int(np.median([ext[y][1] for y in ys]))
+    prot = np.zeros(a.shape[:2], bool)
+    for px0, py0, px1, py1 in protect:
+        prot[py0:py1 + 1, px0:px1 + 1] = True
+
+    def interior(x, y):
+        cand = [yy for yy in ys if top + eb <= yy <= bot - eb and ext[yy][0] + e <= x <= ext[yy][1] - e]
+        if not cand:
+            return None
+        yy = min(cand, key=lambda yy: abs(yy - y) + (0 if (yy - y) % 2 == 0 else 100))
+        return old[yy, x]
+
+    for y in ys:
+        l, r = ext[y]
+        band = y < top + eb or y > bot - eb
+        for x in range(min(l, L), max(r, R) + 1):
+            if prot[y, x]:
+                continue
+            if L <= x <= R:
+                if x < L + e:
+                    a[y, x] = old[y, l + (x - L)]
+                elif x > R - e:
+                    a[y, x] = old[y, r - (R - x)]
+                elif not (l + e <= x <= r - e):
+                    if band:
+                        xx = x + (l - L) if x < l + e else x - (R - r)
+                        a[y, x] = old[y, min(max(xx, l + e), r - e)]
+                    else:
+                        c = interior(x, y)
+                        if c is not None:
+                            a[y, x] = c
+            else:
+                fl = [c for c in range(a.shape[1]) if (c < l or c > r) and floorlike(old[y, c])]
+                a[y, x] = old[y, min(fl, key=lambda c: abs(c - x) + (0 if (c - x) % 2 == 0 else 1))]
 
 
 def cells(path):
@@ -250,6 +313,8 @@ def build():
     (OUT / "people.png").unlink(missing_ok=True)
     base = pano()
     erase_cup(base)
+    for win, protect in RUGS:
+        square_rug(base, win, protect)
     H, W = base.shape[:2]
     people = {}
     for pid, P in PEOPLE.items():
