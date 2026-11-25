@@ -177,25 +177,22 @@ class Face:
             p[y - 1, x0] = p[y - 1, x1] = line
             for x in range(x0 + 1, x1): p[y, x] = line
         elif how in ("talk1", "talk2"):            # the jaw drops: chin and beard below the mouth move down
-            d = 1 if how == "talk1" else 2
-            jx0, jx1, chin = x0 - 4, x1 + 4, self.f["chin"]
+            d = 1                                   # never more than a row: a bigger drop reads as a gaping jaw
+            jx0, jx1, chin = x0 - 3, x1 + 3, self.f["chin"]
             src = p.copy()
             for yy in range(chin, y, -1):
                 for x in range(jx0, jx1 + 1):
                     if self.M[yy, x]:
                         p[yy + d, x] = src[yy, x]
                         self.moved.add((yy + d, x))
-            half = 1 if how == "talk1" else 2
-            for k in range(1, d + 1):
-                for x in range(jx0, jx1 + 1):
-                    if not self.M[y + 1, x]:
-                        continue
-                    inner = abs(x - cx) <= (half if k == 1 else half - 1)
-                    p[y + k, x] = INSIDE if inner else src[y + 1, x]
-            if self.f["lips"]:
-                for x in range(m0, m1 + 1):
-                    if self.M[y + d + 1, x]:
-                        p[y + d + 1, x] = lip
+            half = 0.5 if how == "talk1" else 1.5          # 1-2 cells open, then 3-4 (a small mouth)
+            for x in range(jx0, jx1 + 1):
+                if self.M[y + 1, x]:
+                    p[y + 1, x] = INSIDE if abs(x - cx) <= half else src[y + 1, x]
+            if self.f["lips"] and how == "talk2":
+                for x in range(int(np.floor(cx - .5)), int(np.ceil(cx + .5)) + 1):
+                    if self.M[y + 2, x]:
+                        p[y + 2, x] = lip
         elif how == "smirk":
             for x in range(int(cx), x1 + 1): p[y - 1, x] = line
             p[y, x1] = tuple(self.base[y + 1, x1])
