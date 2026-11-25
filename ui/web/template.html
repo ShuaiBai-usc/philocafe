@@ -1134,20 +1134,19 @@ function fullScene(id) {
   think.innerHTML = '<div class="cloud"></div><i class="d1"></i><i class="d2"></i>';
   wrap.append(cv, think);
   const g = cv.getContext("2d");
-  const s = { meta: null, scene: null, faces: null, poses: {}, amb: null, breathIn: false, nodding: false, sway: null,
+  const s = { meta: null, scene: null, faces: null, poses: {}, amb: null, breathIn: false, nodding: false, 
               mood: "attentive", locked: true, eyes: "open", talking: false, mouth: "open",
               busy: false, queued: null, alive: true, thinking: false, reserve: 60, els: [], motes: [], puffs: [] };
   let holdT = null;
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const between = ([a, b]) => a + Math.random() * (b - a);
   const load = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = base + src; });
-  // Body poses (faces.json "poses"), one picture each, the face patch moved with it: a nod (while he
-  // talks, and when a message arrives), a look aside while he thinks, a slow sway now and then, and
-  // breathing. Over them the scene's own motion (faces.json "ambient", frames in ambient.png: the lamp,
-  // plants, pets, flames) and a few loose pixels: dust in the lamplight, steam off a cup.
-  function pose() {
-    return s.nodding ? "nod" : s.thinking ? "look" : s.sway ? s.sway : s.breathIn ? "in" : null;
-  }
+  // Body poses (faces.json "poses"), one picture each, made from the philosopher on his own layer over a
+  // painted-out plate (tools/art/layers.py): breathing, and a nod when a message arrives, when he starts
+  // a reply and now and then while he talks. The face patch has alpha, so only his head is redrawn, and
+  // it moves with the pose. Over them the scene's own motion (faces.json "ambient", ambient.png: plants,
+  // pets, a flame, each on its own layer) and a few loose pixels: dust in the lamplight, steam off a cup.
+  function pose() { return s.nodding ? "nod" : s.breathIn ? "in" : null; }
   function draw() {
     if (!s.faces) return;
     const m = s.meta, P = m.patch, name = pose(), pz = name && s.poses[name] ? m.poses[name] : null;
@@ -1226,13 +1225,6 @@ function fullScene(id) {
         await wait(between(T.nod_every));
         if (!s.talking || !s.alive || s.nodding) continue;
         s.nodding = true; await wait(T.nod); s.nodding = false;
-      }
-    })();
-    (async () => {                                                 // shifting in the chair when nothing happens
-      while (s.alive) {
-        await wait(between([5000, 11000]));
-        if (s.talking || s.thinking || !s.alive) continue;
-        s.sway = Math.random() < .5 ? "left" : "right"; await wait(between([1200, 2200])); s.sway = null;
       }
     })();
     (async () => {

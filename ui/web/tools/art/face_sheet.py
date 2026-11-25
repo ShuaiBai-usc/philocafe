@@ -36,6 +36,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from pixelate import find_grid, quantize, sample  # noqa: E402
 import ambient  # noqa: E402
+import layers  # noqa: E402
 
 ROOT = HERE.parents[3]
 GRID = (143, 256)
@@ -49,19 +50,19 @@ TIMING = {"half": 55, "closed": 85, "blink_every": [2800, 6500], "talk": [90, 15
 FACES = {
     "socrates": dict(src="socrates_restyled_gen.jpg",
                      eyes=[((64, 66, 57, 58), (65, 65)), ((74, 76, 57, 58), (75, 75))],
-                     brows=[(62, 67, 54, 56), (73, 78, 54, 56)], mouth=(67, 67, 73), lips=False, breath=100, chin=84, ambient=[("lamp", (109, 141)), ("sway", (118, 48, 142, 100))], steam=(122, 103)),
+                     brows=[(62, 67, 54, 56), (73, 78, 54, 56)], mouth=(67, 67, 73), lips=False, breath=100, chin=84, lamp_cols=(109, 141), rail=70, ambient=[("sway", (118, 48, 142, 100))], steam=(122, 103)),
     "montaigne": dict(src="montaigne_restyled_gen.jpg",
                       eyes=[((63, 68, 60, 61), (66, 67)), ((73, 79, 60, 61), (76, 77))],
-                      brows=[(63, 69, 57, 58), (73, 79, 57, 58)], mouth=(68, 69, 74), lips=True, breath=98, chin=76, lamp=92, ambient=[("lamp", (76, 110)), ("breathe", (10, 198, 64, 238))]),
+                      brows=[(63, 69, 57, 58), (73, 79, 57, 58)], mouth=(68, 69, 73), lips=True, breath=98, chin=76, lamp=92, lamp_cols=(76, 110), rail=66, ambient=[("breathe", (10, 198, 64, 238))]),
     "seneca": dict(src="seneca_restyled_gen.jpg",
                    eyes=[((64, 67, 57, 58), (65, 66)), ((74, 77, 57, 58), (75, 76))],
-                   brows=[(62, 69, 54, 56), (72, 79, 54, 56)], mouth=(67, 68, 74), lips=True, breath=100, chin=82, lamp=94, ambient=[("lamp", (78, 112)), ("flame", (121, 90, 127, 101))]),
+                   brows=[(62, 69, 54, 56), (72, 79, 54, 56)], mouth=(67, 68, 74), lips=True, breath=100, chin=82, lamp=94, lamp_cols=(78, 112), rail=68, ambient=[("flame", (121, 90, 127, 101))]),
     "epictetus": dict(src="epictetus_restyled_gen.jpg",
                       eyes=[((64, 67, 57, 58), (66, 66)), ((73, 76, 57, 58), (75, 75))],
-                      brows=[(63, 68, 54, 56), (72, 78, 54, 56)], mouth=(67, 67, 74), lips=False, breath=100, chin=86, ambient=[("lamp", (104, 141))]),
+                      brows=[(63, 68, 54, 56), (72, 78, 54, 56)], mouth=(67, 67, 74), lips=False, breath=100, chin=86, lamp_cols=(104, 141), rail=67, ambient=[]),
     "schopenhauer": dict(src="schopenhauer_seated_gen.jpg",
                          eyes=[((64, 67, 58, 59), (66, 66)), ((74, 77, 58, 59), (75, 75))],
-                         brows=[(62, 69, 55, 57), (72, 79, 55, 57)], mouth=(67, 68, 73), lips=False, breath=98, chin=76, lamp=38, ambient=[("lamp", (20, 56)), ("sway", (0, 64, 30, 124)), ("breathe", (4, 163, 54, 229)), ("perk", (4, 163, 54, 229), (26, 163, 54, 194)), ("wag", (4, 163, 54, 229), (0, 200, 14, 220))]),
+                         brows=[(62, 69, 55, 57), (72, 79, 55, 57)], mouth=(67, 68, 73), lips=False, breath=98, chin=76, lamp=38, lamp_cols=(20, 56), rail=67, ambient=[("sway", (0, 64, 30, 124)), ("breathe", (4, 163, 54, 229), [(22, 163, 54, 229), (4, 186, 54, 229)]), ("perk", (4, 163, 54, 229), (26, 163, 54, 194), [(22, 163, 54, 229), (4, 186, 54, 229)]), ("wag", (4, 163, 54, 229), (0, 200, 14, 220), [(22, 163, 54, 229), (4, 186, 54, 229)])]),
 }
 BLUSH = (214, 140, 112)
 INSIDE = (92, 46, 38)
@@ -77,8 +78,8 @@ def lum(c):
 
 
 class Face:
-    def __init__(self, base, f):
-        self.base, self.f = base, f
+    def __init__(self, base, f, M=None):
+        self.base, self.f, self.M, self.moved = base, f, M, set()
         (e0, p0), (e1, _) = f["eyes"]
         y = e0[3] + 2
         cheek = [tuple(base[y, x]) for x in range(e0[0], e1[1] + 1)]
@@ -175,13 +176,26 @@ class Face:
         if how == "smile":
             p[y - 1, x0] = p[y - 1, x1] = line
             for x in range(x0 + 1, x1): p[y, x] = line
-        elif how == "talk1":
-            for x in range(m0, m1 + 1): p[y, x] = INSIDE
-            for x in range(m0 + 1, m1): p[y + 1, x] = lip
-        elif how == "talk2":
-            for x in range(m0 - 1, m1 + 2): p[y, x] = INSIDE
-            for x in range(m0, m1 + 1): p[y + 1, x] = INSIDE
-            for x in range(m0 + 1, m1): p[y + 2, x] = lip
+        elif how in ("talk1", "talk2"):            # the jaw drops: chin and beard below the mouth move down
+            d = 1 if how == "talk1" else 2
+            jx0, jx1, chin = x0 - 4, x1 + 4, self.f["chin"]
+            src = p.copy()
+            for yy in range(chin, y, -1):
+                for x in range(jx0, jx1 + 1):
+                    if self.M[yy, x]:
+                        p[yy + d, x] = src[yy, x]
+                        self.moved.add((yy + d, x))
+            half = 1 if how == "talk1" else 2
+            for k in range(1, d + 1):
+                for x in range(jx0, jx1 + 1):
+                    if not self.M[y + 1, x]:
+                        continue
+                    inner = abs(x - cx) <= (half if k == 1 else half - 1)
+                    p[y + k, x] = INSIDE if inner else src[y + 1, x]
+            if self.f["lips"]:
+                for x in range(m0, m1 + 1):
+                    if self.M[y + d + 1, x]:
+                        p[y + d + 1, x] = lip
         elif how == "smirk":
             for x in range(int(cx), x1 + 1): p[y - 1, x] = line
             p[y, x1] = tuple(self.base[y + 1, x1])
@@ -189,6 +203,7 @@ class Face:
     # --- one cell of the sheet ---------------------------------------------------------------------
     def frame(self, mood, name):
         p = self.base.copy()
+        self.moved = set()
         brows = {"curious": ("up", "up"), "skeptical": ("up", "inner_down"), "pondering": ("inner_down", "inner_down"),
                  "amused": ("outer_up", "outer_up")}.get(mood, (None, None))
         for k in (0, 1):
@@ -272,6 +287,32 @@ def person_mask(base, P):
     return cv2.morphologyEx(m.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool)
 
 
+def refine_head(base, m, P, rail):
+    """add the head's edge against the wallpaper: cells above the wainscot, near the head, unlike their
+    column's wallpaper (taken just above the head) in columns where that is plain light wallpaper"""
+    a = base.astype(int)
+    hx0, hx1 = P["x"] - 8, P["x"] + P["w"] + 8
+    hm = np.zeros_like(m)
+    for x in range(hx0, hx1 + 1):
+        col = [tuple(c) for c in base[33:37, x]]
+        bg = np.array(max(set(col), key=col.count))
+        if bg.mean() < 190:                          # a picture or the lamp there, not wallpaper
+            continue
+        for y in range(33, rail):
+            hm[y, x] = np.abs(a[y, x] - bg).sum() > 28
+    import cv2
+    band = layers.rows(np.ones_like(m), 33, rail - 1)
+    seed = (P["x"] + P["w"] // 2, P["y"] + P["h"] // 2)
+    head = layers.keep_component(hm | (m & band), seed)
+    # hair cells that share the wallpaper's colour leave notches: close them
+    head = cv2.morphologyEx(head.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8)).astype(bool) & band | head
+    full = layers.fill_holes(m | head)
+    # below the head, thin bits GrabCut tied on (a rail, a music stand's pole) come off
+    below = layers.rows(full, rail, full.shape[0])
+    opened = cv2.morphologyEx(below.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(bool)
+    return layers.keep_component((full & ~below) | opened, seed)
+
+
 def pose(base, m, top, bottom, dy):
     """the masked cells of rows top..bottom moved dy rows (dy = -1 up, +1 down)"""
     out = base.copy()
@@ -291,24 +332,39 @@ def build(pid):
     base = np.asarray(quantize(sample(src, nw, nh, ox, oy), 48)).copy()
     if f.get("lamp"):
         base = move_lamp(base, f["lamp"])
-    face = Face(base, f)
     xs = [e[0] for e, _ in f["eyes"]] + [e[1] for e, _ in f["eyes"]] + [b[0] for b in f["brows"]] + [b[1] for b in f["brows"]]
     x0, x1 = min(xs) - 2, max(xs) + 2
-    y0, y1 = min(b[2] for b in f["brows"]) - 2, f["mouth"][0] + 3
+    y0, y1 = min(b[2] for b in f["brows"]) - 2, f["chin"] + 3
     w, h = x1 - x0 + 1, y1 - y0 + 1
-    sheet = np.zeros((h * len(MOODS), w * len(FRAMES), 3), np.uint8)
-    for i, mood in enumerate(MOODS):
-        for j, name in enumerate(FRAMES):
-            sheet[i * h:(i + 1) * h, j * w:(j + 1) * w] = face.frame(mood, name)[y0:y0 + h, x0:x0 + w]
+    P = {"x": x0, "y": y0, "w": w, "h": h}
+    # the philosopher on his own layer
+    Pm = {"x": x0, "y": y0, "w": w, "h": f["mouth"][0] + 3 - y0 + 1}      # brows to mouth: the seeds
+    M = refine_head(base, person_mask(base, Pm), Pm, f["rail"])
+    back = layers.plate(base, M)
+    top = int(np.nonzero(M.any(1))[0].min())
     out = ROOT / f"ui/web/assets/personas/{pid}/full"
     out.mkdir(parents=True, exist_ok=True)
     Image.fromarray(base).save(out / "scene.png", optimize=True)
-    m = person_mask(base, {"x": x0, "y": y0, "w": w, "h": h})
-    top = min(y for y in range(base.shape[0]) if m[y].any())
-    Image.fromarray(pose(base, m, top, f["breath"], -1)).save(out / "scene_in.png", optimize=True)
-    Image.fromarray(pose(base, m, top, f["chin"], 1)).save(out / "scene_nod.png", optimize=True)
-    for name, dx, bottom in (("left", -1, f["breath"]), ("right", 1, f["breath"]), ("look", 1, f["chin"])):
-        Image.fromarray(ambient.shift(base, m, dx, 0, (top, bottom))).save(out / f"scene_{name}.png", optimize=True)
+    breath_in = layers.compose(base, back, M, ambient.rise(M, top, f["breath"]))
+    nod = layers.compose(base, back, M, [(layers.rows(M, top, f["chin"]), 0, 1)])
+    Image.fromarray(breath_in).save(out / "scene_in.png", optimize=True)
+    Image.fromarray(nod).save(out / "scene_nod.png", optimize=True)
+    for old in ("scene_left.png", "scene_right.png", "scene_look.png"):
+        (out / old).unlink(missing_ok=True)
+    # the face sheet: only the head's own cells (alpha), so a pose shows through around it
+    face = Face(base, f, M)
+    sheet = np.zeros((h * len(MOODS), w * len(FRAMES), 4), np.uint8)
+    head_rows = layers.rows(M, 0, f["chin"])
+    for i, mood in enumerate(MOODS):
+        for j, name in enumerate(FRAMES):
+            p = face.frame(mood, name)
+            alpha = head_rows.copy()
+            for yy, xx in face.moved:
+                alpha[yy, xx] = True
+            cell = np.dstack([p, alpha.astype(np.uint8) * 255])[y0:y0 + h, x0:x0 + w]
+            sheet[i * h:(i + 1) * h, j * w:(j + 1) * w] = cell
+    Image.fromarray(sheet, "RGBA").save(out / "faces.png", optimize=True)
+    # the scene's own motion
     els = ambient.build(base, f.get("ambient", []))
     amb, sy = [], 0
     width = max([(r[2] - r[0] + 1) * len(fr) for r, fr, _ in els] or [1])
@@ -320,22 +376,18 @@ def build(pid):
         amb.append({"x": int(ax0), "y": int(ay0), "w": aw, "h": ah, "sy": sy, "frames": len(frames), **info})
         sy += ah
     Image.fromarray(sheet_a).save(out / "ambient.png", optimize=True)
-    lamp_el = next((a for a in amb if a["kind"] == "lamp"), None)
-    particles = {}
-    if lamp_el:
-        particles["dust"] = {"x": lamp_el["x"] + lamp_el["w"] / 2, "y": lamp_el["h"], "spread": 16, "depth": 44}
+    lx0, _, lx1, ly1 = ambient.lamp_box(base, f["lamp_cols"])
+    particles = {"dust": {"x": (lx0 + lx1) / 2, "y": ly1 + 1, "spread": 16, "depth": 44}}
     if f.get("steam"):
         particles["steam"] = list(f["steam"])
-    Image.fromarray(sheet).save(out / "faces.png", optimize=True)
     (e0, _), (e1, _) = f["eyes"]
-    meta = {"grid": list(GRID), "patch": {"x": x0, "y": y0, "w": w, "h": h}, "moods": list(MOODS), "frames": list(FRAMES),
-            "anchor": {"face": [round((e0[0] + e1[1]) / 2), e0[3] + 2], "head": [x0 - 4, y0 - 14, x1 + 4, y1 + 8]},
+    meta = {"grid": list(GRID), "patch": P, "moods": list(MOODS), "frames": list(FRAMES),
+            "anchor": {"face": [round((e0[0] + e1[1]) / 2), e0[3] + 2], "head": [x0 - 4, y0 - 14, x1 + 4, f["mouth"][0] + 11]},
             "source": f["src"], "palette": 48, "timing_ms": TIMING,
-            "poses": {"in": {"src": "scene_in.png", "dy": -1}, "nod": {"src": "scene_nod.png", "dy": 1},
-                      "left": {"src": "scene_left.png", "dx": -1}, "right": {"src": "scene_right.png", "dx": 1},
-                      "look": {"src": "scene_look.png", "dx": 1}},
+            "poses": {"in": {"src": "scene_in.png", "dy": -1}, "nod": {"src": "scene_nod.png", "dy": 1}},
             "ambient": amb, "particles": particles}
     (out / "faces.json").write_text(json.dumps(meta, indent=2) + "\n")
+    np.save(f"/tmp/{pid}_person.npy", M)
     print(pid, f"grid {nw}x{nh} offset ({ox}, {oy}) patch {(x0, y0, w, h)}")
 
 

@@ -7,7 +7,7 @@
     "x": 60,
     "y": 52,
     "w": 21,
-    "h": 19
+    "h": 36
   },
   "moods": [
     "attentive",
@@ -67,47 +67,15 @@
     "nod": {
       "src": "scene_nod.png",
       "dy": 1
-    },
-    "left": {
-      "src": "scene_left.png",
-      "dx": -1
-    },
-    "right": {
-      "src": "scene_right.png",
-      "dx": 1
-    },
-    "look": {
-      "src": "scene_look.png",
-      "dx": 1
     }
   },
   "ambient": [
-    {
-      "x": 109,
-      "y": 0,
-      "w": 28,
-      "h": 30,
-      "sy": 0,
-      "frames": 3,
-      "kind": "lamp",
-      "mode": "pingpong",
-      "seq": [
-        0,
-        1,
-        0,
-        2
-      ],
-      "ms": [
-        900,
-        1300
-      ]
-    },
     {
       "x": 117,
       "y": 48,
       "w": 26,
       "h": 53,
-      "sy": 30,
+      "sy": 0,
       "frames": 3,
       "kind": "sway",
       "mode": "pingpong",
@@ -125,8 +93,8 @@
   ],
   "particles": {
     "dust": {
-      "x": 123.0,
-      "y": 30,
+      "x": 122.5,
+      "y": 29,
       "spread": 16,
       "depth": 44
     },
